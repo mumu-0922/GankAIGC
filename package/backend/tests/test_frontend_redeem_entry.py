@@ -32,6 +32,7 @@ def test_admin_dashboard_uses_left_sidebar_navigation():
     assert 'data-admin-nav="sidebar"' in admin_dashboard
     assert 'data-admin-nav="top-tabs"' not in admin_dashboard
     assert "lg:grid-cols-[240px_minmax(0,1fr)]" in admin_dashboard
+    assert "lg:min-h-[calc(100vh-8rem)]" in admin_dashboard
 
 
 def test_frontend_exposes_profile_page_and_nickname_update():

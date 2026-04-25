@@ -388,9 +388,9 @@ const AdminDashboard = () => {
         <div className="grid grid-cols-1 lg:grid-cols-[240px_minmax(0,1fr)] gap-6 items-start">
           <aside
             data-admin-nav="sidebar"
-            className="gank-glass-card rounded-2xl p-3 lg:sticky lg:top-24"
+            className="gank-glass-card rounded-2xl p-3 lg:sticky lg:top-24 lg:min-h-[calc(100vh-8rem)] lg:flex lg:flex-col"
           >
-            <nav className="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-visible">
+            <nav className="flex lg:flex-col lg:flex-1 gap-2 overflow-x-auto lg:overflow-visible">
               {adminNavItems.map(({ id, label, icon: Icon, activeClass, inactiveClass }) => (
                 <button
                   key={id}
