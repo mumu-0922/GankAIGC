@@ -20,7 +20,7 @@ import {
  */
 const ApiConfigGuide = () => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [activeSection, setActiveSection] = useState(null);
+  const [activeSections, setActiveSections] = useState([]);
   const [copiedText, setCopiedText] = useState(null);
 
   // 复制到剪贴板
@@ -34,6 +34,16 @@ const ApiConfigGuide = () => {
     }
   };
 
+  const toggleSection = (id) => {
+    setActiveSections((previousSections) => {
+      if (previousSections.includes(id)) {
+        return previousSections.filter((sectionId) => sectionId !== id);
+      }
+
+      return [...previousSections, id];
+    });
+  };
+
   // 代码块组件
   const CodeBlock = ({ code, label }) => (
     <div className="relative group">
@@ -41,6 +51,7 @@ const ApiConfigGuide = () => {
         {code}
       </pre>
       <button
+        type="button"
         onClick={() => copyToClipboard(code, label)}
         className="absolute top-2 right-2 p-1.5 bg-gray-700 hover:bg-gray-600 rounded opacity-0 group-hover:opacity-100 transition-opacity"
         title="复制"
@@ -56,11 +67,12 @@ const ApiConfigGuide = () => {
 
   // 折叠区块组件
   const CollapsibleSection = ({ id, title, icon: Icon, children, badge }) => {
-    const isActive = activeSection === id;
+    const isActive = activeSections.includes(id);
     return (
       <div className="border border-gray-200 rounded-xl overflow-hidden">
         <button
-          onClick={() => setActiveSection(isActive ? null : id)}
+          type="button"
+          onClick={() => toggleSection(id)}
           className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
         >
           <div className="flex items-center gap-3">
@@ -93,6 +105,7 @@ const ApiConfigGuide = () => {
     <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl shadow-ios overflow-hidden">
       {/* 头部 - 可折叠 */}
       <button
+        type="button"
         onClick={() => setIsExpanded(!isExpanded)}
         className="w-full flex items-center justify-between p-6 hover:bg-white/50 transition-colors text-left"
       >
