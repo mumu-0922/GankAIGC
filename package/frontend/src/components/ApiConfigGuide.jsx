@@ -133,7 +133,7 @@ const ApiConfigGuide = () => {
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-blue-500 mt-1">•</span>
-                    推荐使用 <strong>Gemini 2.5 Pro</strong> 模型以获得更好的性价比
+                    推荐优先使用 <strong>gpt-5.5</strong>，需要控制成本时可选择 <strong>gpt-5.4</strong>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-blue-500 mt-1">•</span>
@@ -296,58 +296,76 @@ const ApiConfigGuide = () => {
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                       <tr className="bg-green-50/50">
-                        <td className="p-3 text-gray-800">Google</td>
+                        <td className="p-3 text-gray-800">OpenAI</td>
                         <td className="p-3">
                           <code className="bg-green-100 text-green-800 px-2 py-0.5 rounded text-xs">
-                            gemini-2.5-pro
+                            gpt-5.5
                           </code>
                         </td>
-                        <td className="p-3 text-gray-600">性价比高、效果好 ⭐</td>
+                        <td className="p-3 text-gray-600">旗舰模型，复杂任务效果好 ⭐</td>
+                      </tr>
+                      <tr>
+                        <td className="p-3 text-gray-800">OpenAI</td>
+                        <td className="p-3">
+                          <code className="bg-gray-100 text-gray-800 px-2 py-0.5 rounded text-xs">
+                            gpt-5.4
+                          </code>
+                        </td>
+                        <td className="p-3 text-gray-600">通用能力强，成本更低</td>
                       </tr>
                       <tr>
                         <td className="p-3 text-gray-800">Google</td>
                         <td className="p-3">
                           <code className="bg-gray-100 text-gray-800 px-2 py-0.5 rounded text-xs">
-                            gemini-2.5-flash
+                            gemini-3-pro-preview
                           </code>
                         </td>
-                        <td className="p-3 text-gray-600">速度快、成本低</td>
+                        <td className="p-3 text-gray-600">Gemini 3 Pro 预览版</td>
                       </tr>
                       <tr>
-                        <td className="p-3 text-gray-800">OpenAI</td>
+                        <td className="p-3 text-gray-800">Google</td>
                         <td className="p-3">
                           <code className="bg-gray-100 text-gray-800 px-2 py-0.5 rounded text-xs">
-                            gpt-4o
+                            gemini-3-flash-preview
                           </code>
                         </td>
-                        <td className="p-3 text-gray-600">综合能力强</td>
-                      </tr>
-                      <tr>
-                        <td className="p-3 text-gray-800">OpenAI</td>
-                        <td className="p-3">
-                          <code className="bg-gray-100 text-gray-800 px-2 py-0.5 rounded text-xs">
-                            gpt-4o-mini
-                          </code>
-                        </td>
-                        <td className="p-3 text-gray-600">经济实惠</td>
+                        <td className="p-3 text-gray-600">速度快，适合日常任务</td>
                       </tr>
                       <tr>
                         <td className="p-3 text-gray-800">Claude</td>
                         <td className="p-3">
                           <code className="bg-gray-100 text-gray-800 px-2 py-0.5 rounded text-xs">
-                            claude-sonnet-4-20250514
+                            claude-opus-4-7
                           </code>
                         </td>
-                        <td className="p-3 text-gray-600">写作能力优秀</td>
+                        <td className="p-3 text-gray-600">长文写作和深度推理强</td>
+                      </tr>
+                      <tr>
+                        <td className="p-3 text-gray-800">Claude</td>
+                        <td className="p-3">
+                          <code className="bg-gray-100 text-gray-800 px-2 py-0.5 rounded text-xs">
+                            claude-sonnet-4-6
+                          </code>
+                        </td>
+                        <td className="p-3 text-gray-600">写作能力优秀，响应更均衡</td>
                       </tr>
                       <tr>
                         <td className="p-3 text-gray-800">DeepSeek</td>
                         <td className="p-3">
                           <code className="bg-gray-100 text-gray-800 px-2 py-0.5 rounded text-xs">
-                            deepseek-chat
+                            deepseek-v4-pro
                           </code>
                         </td>
-                        <td className="p-3 text-gray-600">中文理解好、价格低</td>
+                        <td className="p-3 text-gray-600">中文理解好，复杂任务更稳</td>
+                      </tr>
+                      <tr>
+                        <td className="p-3 text-gray-800">DeepSeek</td>
+                        <td className="p-3">
+                          <code className="bg-gray-100 text-gray-800 px-2 py-0.5 rounded text-xs">
+                            deepseek-v4-flash
+                          </code>
+                        </td>
+                        <td className="p-3 text-gray-600">速度快，价格更低</td>
                       </tr>
                     </tbody>
                   </table>
@@ -440,21 +458,21 @@ const ApiConfigGuide = () => {
             >
               <div className="space-y-4">
                 <p className="text-sm text-gray-600">
-                  以下是使用 Google Gemini API 的完整配置示例：
+                  以下是使用 OpenAI API 的完整配置示例：
                 </p>
 
                 <div className="bg-gray-50 rounded-lg p-4 space-y-3">
                   <div>
                     <p className="text-xs text-gray-500 mb-1">模型名称</p>
-                    <CodeBlock code="gemini-2.5-pro" label="ex-model" />
+                    <CodeBlock code="gpt-5.5" label="ex-model" />
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 mb-1">API Key</p>
-                    <CodeBlock code="AIzaSyxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" label="ex-key" />
+                    <CodeBlock code="sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" label="ex-key" />
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Base URL</p>
-                    <CodeBlock code="https://generativelanguage.googleapis.com/v1beta/openai" label="ex-url" />
+                    <CodeBlock code="https://api.openai.com/v1" label="ex-url" />
                   </div>
                 </div>
 

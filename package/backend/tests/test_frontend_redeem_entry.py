@@ -62,3 +62,28 @@ def test_frontend_exposes_user_invite_generation_on_profile_page():
     assert "复制邀请码" in profile_page
     assert "每个账号仅可生成 1 个邀请码" in profile_page
     assert "使用后可再次生成" not in profile_page
+
+
+def test_api_config_guide_lists_current_model_recommendations():
+    api_guide = (FRONTEND_SRC / "components" / "ApiConfigGuide.jsx").read_text(encoding="utf-8")
+
+    for model_name in [
+        "gpt-5.5",
+        "gpt-5.4",
+        "gemini-3-pro-preview",
+        "gemini-3-flash-preview",
+        "claude-opus-4-7",
+        "claude-sonnet-4-6",
+        "deepseek-v4-pro",
+        "deepseek-v4-flash",
+    ]:
+        assert model_name in api_guide
+
+    for legacy_model_name in [
+        "gemini-2.5-pro",
+        "gemini-3.1-pro",
+        "claude-sonnet-4-20250514",
+        "deepseek-chat",
+        "gpt-5.2",
+    ]:
+        assert legacy_model_name not in api_guide
