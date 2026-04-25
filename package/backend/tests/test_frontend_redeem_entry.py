@@ -26,6 +26,14 @@ def test_admin_dashboard_hides_legacy_card_key_management():
     assert "/api/admin/users/${userId}/usage" not in admin_dashboard
 
 
+def test_admin_dashboard_uses_left_sidebar_navigation():
+    admin_dashboard = (FRONTEND_SRC / "pages" / "AdminDashboard.jsx").read_text(encoding="utf-8")
+
+    assert 'data-admin-nav="sidebar"' in admin_dashboard
+    assert 'data-admin-nav="top-tabs"' not in admin_dashboard
+    assert "lg:grid-cols-[240px_minmax(0,1fr)]" in admin_dashboard
+
+
 def test_frontend_exposes_profile_page_and_nickname_update():
     app = (FRONTEND_SRC / "App.jsx").read_text(encoding="utf-8")
     user_menu = (FRONTEND_SRC / "components" / "UserMenu.jsx").read_text(encoding="utf-8")

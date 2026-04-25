@@ -324,6 +324,44 @@ const AdminDashboard = () => {
     );
   }
 
+  const adminNavItems = [
+    {
+      id: 'dashboard',
+      label: '数据面板',
+      icon: BarChart3,
+      activeClass: 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/30',
+      inactiveClass: 'text-gray-600 hover:text-blue-600 hover:bg-blue-50',
+    },
+    {
+      id: 'sessions',
+      label: '会话监控',
+      icon: Activity,
+      activeClass: 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/30',
+      inactiveClass: 'text-gray-600 hover:text-blue-600 hover:bg-blue-50',
+    },
+    {
+      id: 'accounts',
+      label: '账号次数',
+      icon: Users,
+      activeClass: 'bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-lg shadow-indigo-500/30',
+      inactiveClass: 'text-gray-600 hover:text-indigo-600 hover:bg-indigo-50',
+    },
+    {
+      id: 'database',
+      label: '数据库管理',
+      icon: Database,
+      activeClass: 'bg-gradient-to-r from-emerald-600 to-emerald-500 text-white shadow-lg shadow-emerald-500/30',
+      inactiveClass: 'text-gray-600 hover:text-emerald-600 hover:bg-emerald-50',
+    },
+    {
+      id: 'config',
+      label: '系统配置',
+      icon: Settings,
+      activeClass: 'bg-gradient-to-r from-amber-600 to-amber-500 text-white shadow-lg shadow-amber-500/30',
+      inactiveClass: 'text-gray-600 hover:text-amber-600 hover:bg-amber-50',
+    },
+  ];
+
   // Admin Dashboard
   return (
     <div className="gank-app-page">
@@ -346,99 +384,33 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      {/* Tabs Navigation - Enhanced Design */}
-      <div className="border-b border-white/70 bg-white/36 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex space-x-2 overflow-x-auto py-3">
-            <button
-              onClick={() => setActiveTab('dashboard')}
-              className={`group relative flex items-center gap-2.5 px-6 py-3 rounded-xl font-semibold transition-all duration-300 ease-out ${
-                activeTab === 'dashboard'
-                  ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/30 scale-105'
-                  : 'bg-white text-gray-600 hover:text-blue-600 hover:bg-blue-50 hover:shadow-md border border-gray-200'
-              }`}
-            >
-              <BarChart3 className={`w-5 h-5 transition-transform duration-300 ${
-                activeTab === 'dashboard' ? 'scale-110' : 'group-hover:scale-110'
-              }`} />
-              <span className="whitespace-nowrap">数据面板</span>
-              {activeTab === 'dashboard' && (
-                <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-12 h-1 bg-white rounded-full"></div>
-              )}
-            </button>
-            
-            <button
-              onClick={() => setActiveTab('sessions')}
-              className={`group relative flex items-center gap-2.5 px-6 py-3 rounded-xl font-semibold transition-all duration-300 ease-out ${
-                activeTab === 'sessions'
-                  ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/30 scale-105'
-                  : 'bg-white text-gray-600 hover:text-blue-600 hover:bg-blue-50 hover:shadow-md border border-gray-200'
-              }`}
-            >
-              <Activity className={`w-5 h-5 transition-transform duration-300 ${
-                activeTab === 'sessions' ? 'scale-110' : 'group-hover:scale-110'
-              }`} />
-              <span className="whitespace-nowrap">会话监控</span>
-              {activeTab === 'sessions' && (
-                <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-12 h-1 bg-white rounded-full"></div>
-              )}
-            </button>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-[240px_minmax(0,1fr)] gap-6 items-start">
+          <aside
+            data-admin-nav="sidebar"
+            className="gank-glass-card rounded-2xl p-3 lg:sticky lg:top-24"
+          >
+            <nav className="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-visible">
+              {adminNavItems.map(({ id, label, icon: Icon, activeClass, inactiveClass }) => (
+                <button
+                  key={id}
+                  onClick={() => setActiveTab(id)}
+                  className={`group flex min-w-max lg:min-w-0 items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-200 ${
+                    activeTab === id
+                      ? activeClass
+                      : `bg-white/70 border border-white/70 shadow-sm ${inactiveClass}`
+                  }`}
+                >
+                  <Icon className={`w-5 h-5 transition-transform duration-200 ${
+                    activeTab === id ? 'scale-110' : 'group-hover:scale-110'
+                  }`} />
+                  <span className="whitespace-nowrap">{label}</span>
+                </button>
+              ))}
+            </nav>
+          </aside>
 
-            <button
-              onClick={() => setActiveTab('accounts')}
-              className={`group relative flex items-center gap-2.5 px-6 py-3 rounded-xl font-semibold transition-all duration-300 ease-out ${
-                activeTab === 'accounts'
-                  ? 'bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-lg shadow-indigo-500/30 scale-105'
-                  : 'bg-white text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 hover:shadow-md border border-gray-200'
-              }`}
-            >
-              <Users className={`w-5 h-5 transition-transform duration-300 ${
-                activeTab === 'accounts' ? 'scale-110' : 'group-hover:scale-110'
-              }`} />
-              <span className="whitespace-nowrap">账号次数</span>
-              {activeTab === 'accounts' && (
-                <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-12 h-1 bg-white rounded-full"></div>
-              )}
-            </button>
-             
-            <button
-              onClick={() => setActiveTab('database')}
-              className={`group relative flex items-center gap-2.5 px-6 py-3 rounded-xl font-semibold transition-all duration-300 ease-out ${
-                activeTab === 'database'
-                  ? 'bg-gradient-to-r from-emerald-600 to-emerald-500 text-white shadow-lg shadow-emerald-500/30 scale-105'
-                  : 'bg-white text-gray-600 hover:text-emerald-600 hover:bg-emerald-50 hover:shadow-md border border-gray-200'
-              }`}
-            >
-              <Database className={`w-5 h-5 transition-transform duration-300 ${
-                activeTab === 'database' ? 'scale-110' : 'group-hover:scale-110'
-              }`} />
-              <span className="whitespace-nowrap">数据库管理</span>
-              {activeTab === 'database' && (
-                <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-12 h-1 bg-white rounded-full"></div>
-              )}
-            </button>
-            
-            <button
-              onClick={() => setActiveTab('config')}
-              className={`group relative flex items-center gap-2.5 px-6 py-3 rounded-xl font-semibold transition-all duration-300 ease-out ${
-                activeTab === 'config'
-                  ? 'bg-gradient-to-r from-amber-600 to-amber-500 text-white shadow-lg shadow-amber-500/30 scale-105'
-                  : 'bg-white text-gray-600 hover:text-amber-600 hover:bg-amber-50 hover:shadow-md border border-gray-200'
-              }`}
-            >
-              <Settings className={`w-5 h-5 transition-transform duration-300 ${
-                activeTab === 'config' ? 'scale-110' : 'group-hover:scale-110'
-              }`} />
-              <span className="whitespace-nowrap">系统配置</span>
-              {activeTab === 'config' && (
-                <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-12 h-1 bg-white rounded-full"></div>
-              )}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <main className="min-w-0">
         {/* Tab Content */}
         {activeTab === 'dashboard' && (
           <>
@@ -965,6 +937,8 @@ const AdminDashboard = () => {
         {activeTab === 'config' && (
           <ConfigManager adminToken={adminToken} />
         )}
+          </main>
+        </div>
       </div>
 
     </div>
