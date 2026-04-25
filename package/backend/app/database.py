@@ -202,6 +202,9 @@ def _add_performance_indexes():
             ("idx_change_log_session_id", "change_logs", "session_id"),
             ("idx_change_log_segment_index", "change_logs", "segment_index"),
             ("idx_change_log_stage", "change_logs", "stage"),
+
+            # RegistrationInvite indexes
+            ("idx_registration_invites_created_by_user_id", "registration_invites", "created_by_user_id"),
         ]
         
         with engine.connect() as conn:
@@ -396,6 +399,13 @@ def _migrate_database_schema():
                 if "is_active" not in prompt_columns:
                     if _add_column_safely(conn, "custom_prompts", "is_active", "BOOLEAN DEFAULT 1"):
                         print("  ✓ 添加字段: custom_prompts.is_active")
+
+            if "registration_invites" in tables:
+                invite_columns = {column["name"] for column in inspector.get_columns("registration_invites")}
+
+                if "created_by_user_id" not in invite_columns:
+                    if _add_column_safely(conn, "registration_invites", "created_by_user_id", "INTEGER"):
+                        print("  ✓ 添加字段: registration_invites.created_by_user_id")
 
     except Exception as e:
         print(f"  ⚠ 数据库迁移警告: {str(e)}")

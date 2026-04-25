@@ -41,7 +41,7 @@ os.environ["SECRET_KEY"] = "test-secret-key"
 os.environ["ADMIN_PASSWORD"] = "test-admin-password"
 
 from app.models import models  # noqa: F401
-from app.main import app
+from app.main import app, auth_rate_limiter, redeem_rate_limiter
 from app.database import Base, engine
 
 
@@ -49,6 +49,8 @@ from app.database import Base, engine
 def reset_db():
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
+    auth_rate_limiter.reset()
+    redeem_rate_limiter.reset()
     yield
 
 

@@ -68,6 +68,19 @@ class InviteCreateRequest(BaseModel):
     expires_at: Optional[datetime] = None
 
 
+class UserInviteResponse(BaseModel):
+    id: int
+    code: str
+    is_active: bool
+    expires_at: Optional[datetime] = None
+    created_by_user_id: Optional[int] = None
+    used_by_user_id: Optional[int] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
 class CreditCodeCreateRequest(BaseModel):
     code: Optional[str] = None
     credit_amount: int = Field(..., ge=1)

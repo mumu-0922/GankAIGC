@@ -16,3 +16,6 @@ class SlidingWindowLimiter:
             return False
         bucket.append(now)
         return True
+
+    def reset(self) -> None:
+        self._hits.clear()

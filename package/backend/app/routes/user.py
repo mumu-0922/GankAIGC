@@ -1,10 +1,11 @@
+import secrets
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models.models import CreditTransaction, PaperProject, User
+from app.models.models import CreditTransaction, PaperProject, RegistrationInvite, User
 from app.routes.auth import get_current_user_from_bearer
 from app.schemas import (
     CreditBalanceResponse,
@@ -15,11 +16,67 @@ from app.schemas import (
     ProviderConfigResponse,
     ProviderConfigUpdateRequest,
     RedeemCodeRequest,
+    UserInviteResponse,
 )
 from app.services.credit_service import CreditService
 from app.services.provider_config_service import ProviderConfigService
 
 router = APIRouter(prefix="/user", tags=["user"])
+
+
+def _generate_unique_invite_code(db: Session) -> str:
+    for _ in range(10):
+        code = secrets.token_urlsafe(18)
+        existing_invite = db.query(RegistrationInvite).filter(RegistrationInvite.code == code).first()
+        if not existing_invite:
+            return code
+    raise HTTPException(status_code=500, detail="邀请码生成失败，请重试")
+
+
+@router.get("/invites/my", response_model=UserInviteResponse | None)
+async def get_my_registration_invite(
+    current_user: User = Depends(get_current_user_from_bearer),
+    db: Session = Depends(get_db),
+) -> RegistrationInvite | None:
+    return (
+        db.query(RegistrationInvite)
+        .filter(
+            RegistrationInvite.created_by_user_id == current_user.id,
+            RegistrationInvite.is_active.is_(True),
+            RegistrationInvite.used_by_user_id.is_(None),
+        )
+        .order_by(RegistrationInvite.created_at.desc())
+        .first()
+    )
+
+
+@router.post("/invites", response_model=UserInviteResponse)
+async def create_my_registration_invite(
+    current_user: User = Depends(get_current_user_from_bearer),
+    db: Session = Depends(get_db),
+) -> RegistrationInvite:
+    existing_invite = (
+        db.query(RegistrationInvite)
+        .filter(
+            RegistrationInvite.created_by_user_id == current_user.id,
+            RegistrationInvite.is_active.is_(True),
+            RegistrationInvite.used_by_user_id.is_(None),
+        )
+        .order_by(RegistrationInvite.created_at.desc())
+        .first()
+    )
+    if existing_invite:
+        return existing_invite
+
+    invite = RegistrationInvite(
+        code=_generate_unique_invite_code(db),
+        is_active=True,
+        created_by_user_id=current_user.id,
+    )
+    db.add(invite)
+    db.commit()
+    db.refresh(invite)
+    return invite
 
 
 @router.get("/projects", response_model=List[PaperProjectResponse])

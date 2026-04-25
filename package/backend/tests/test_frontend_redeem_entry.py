@@ -36,3 +36,16 @@ def test_frontend_exposes_profile_page_and_nickname_update():
     assert "nickname" in profile_page
     assert "保存昵称" in profile_page
     assert "updateProfile" in api
+
+
+def test_frontend_exposes_user_invite_generation_on_profile_page():
+    api = (FRONTEND_SRC / "api" / "index.js").read_text(encoding="utf-8")
+    profile_page = (FRONTEND_SRC / "pages" / "ProfilePage.jsx").read_text(encoding="utf-8")
+
+    assert "getMyInvite" in api
+    assert "createMyInvite" in api
+    assert "/user/invites/my" in api
+    assert "/user/invites" in api
+    assert "我的邀请码" in profile_page
+    assert "生成邀请码" in profile_page
+    assert "复制邀请码" in profile_page

@@ -1,22 +1,28 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { ArrowLeft, Coins, Loader2, Save, ShieldCheck, UserCircle } from 'lucide-react';
-import { authAPI } from '../api';
+import { ArrowLeft, Coins, Copy, Loader2, Save, ShieldCheck, UserCircle, UserPlus } from 'lucide-react';
+import { authAPI, userAPI } from '../api';
 import BrandLogo from '../components/BrandLogo';
 
 const ProfilePage = () => {
   const [profile, setProfile] = useState(null);
   const [nickname, setNickname] = useState('');
+  const [invite, setInvite] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [generatingInvite, setGeneratingInvite] = useState(false);
 
   const loadProfile = async () => {
     setLoading(true);
     try {
-      const response = await authAPI.me();
-      setProfile(response.data);
-      setNickname(response.data.nickname || response.data.username || '');
+      const [profileResponse, inviteResponse] = await Promise.all([
+        authAPI.me(),
+        userAPI.getMyInvite(),
+      ]);
+      setProfile(profileResponse.data);
+      setNickname(profileResponse.data.nickname || profileResponse.data.username || '');
+      setInvite(inviteResponse.data);
     } catch (error) {
       toast.error(error.response?.data?.detail || '加载个人信息失败');
     } finally {
@@ -46,6 +52,30 @@ const ProfilePage = () => {
       toast.error(error.response?.data?.detail || '保存昵称失败');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleGenerateInvite = async () => {
+    setGeneratingInvite(true);
+    try {
+      const response = await userAPI.createMyInvite();
+      setInvite(response.data);
+      toast.success('邀请码已生成');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || '生成邀请码失败');
+    } finally {
+      setGeneratingInvite(false);
+    }
+  };
+
+  const handleCopyInvite = async () => {
+    if (!invite?.code) return;
+
+    try {
+      await navigator.clipboard.writeText(invite.code);
+      toast.success('邀请码已复制');
+    } catch (error) {
+      toast.error('复制失败，请手动复制');
     }
   };
 
@@ -143,6 +173,44 @@ const ProfilePage = () => {
                   </button>
                 </div>
               </form>
+
+              <div className="gank-card rounded-2xl p-6">
+                <div className="flex items-start justify-between gap-4 mb-5">
+                  <div>
+                    <div className="flex items-center gap-2 text-teal-700 mb-2">
+                      <UserPlus className="w-5 h-5" />
+                      <span className="font-semibold">我的邀请码</span>
+                    </div>
+                    <p className="text-sm text-gray-500">邀请新用户注册，使用后可再次生成。</p>
+                  </div>
+                </div>
+
+                {invite?.code ? (
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <div className="gank-input flex-1 rounded-xl px-4 py-3 font-mono text-sm text-gray-950 break-all">
+                      {invite.code}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleCopyInvite}
+                      className="gank-secondary-button inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-semibold transition-colors"
+                    >
+                      <Copy className="w-4 h-4" />
+                      复制邀请码
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleGenerateInvite}
+                    disabled={generatingInvite}
+                    className="gank-primary-button inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl disabled:opacity-60 text-white font-semibold transition-colors"
+                  >
+                    {generatingInvite ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
+                    生成邀请码
+                  </button>
+                )}
+              </div>
             </section>
           </div>
         )}

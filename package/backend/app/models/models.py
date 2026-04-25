@@ -29,6 +29,7 @@ class User(Base):
     sessions = relationship("OptimizationSession", back_populates="user")
     prompts = relationship("CustomPrompt", back_populates="user")
     saved_specs = relationship("SavedSpec", back_populates="user", cascade="all, delete-orphan")
+    created_invites = relationship("RegistrationInvite", back_populates="created_by_user", foreign_keys="RegistrationInvite.created_by_user_id")
     used_invites = relationship("RegistrationInvite", back_populates="used_by_user", foreign_keys="RegistrationInvite.used_by_user_id")
     redeemed_credit_codes = relationship("CreditCode", back_populates="redeemed_by_user", foreign_keys="CreditCode.redeemed_by_user_id")
     credit_transactions = relationship("CreditTransaction", back_populates="user", cascade="all, delete-orphan")
@@ -196,9 +197,11 @@ class RegistrationInvite(Base):
     code = Column(String(64), unique=True, index=True, nullable=False)
     is_active = Column(Boolean, default=True)
     expires_at = Column(DateTime, nullable=True)
+    created_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     used_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+    created_by_user = relationship("User", back_populates="created_invites", foreign_keys=[created_by_user_id])
     used_by_user = relationship("User", back_populates="used_invites", foreign_keys=[used_by_user_id])
 
 
