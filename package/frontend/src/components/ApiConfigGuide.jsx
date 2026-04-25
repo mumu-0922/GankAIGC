@@ -523,7 +523,7 @@ const ApiConfigGuide = () => {
             <p className="text-sm text-gray-500">
               如有其他问题，请访问{' '}
               <a
-                href="https://github.com/chi111i/GankAIGC/issues"
+                href="https://github.com/mumu-0922/GankAIGC/issues"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-blue-600 hover:text-blue-700 font-medium"

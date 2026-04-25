@@ -114,6 +114,13 @@ def test_api_config_guide_preserves_scroll_position_when_toggling_sections():
     assert "preserveScrollPosition(() => {" in api_guide
 
 
+def test_api_config_guide_links_to_current_project_issues():
+    api_guide = (FRONTEND_SRC / "components" / "ApiConfigGuide.jsx").read_text(encoding="utf-8")
+
+    assert "https://github.com/mumu-0922/GankAIGC/issues" in api_guide
+    assert "https://github.com/chi111i/GankAIGC/issues" not in api_guide
+
+
 def test_served_static_bundle_includes_api_guide_interaction_fix():
     static_index = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
     bundle_match = re.search(r'src="/assets/(index-[^"]+\.js)"', static_index)
@@ -126,3 +133,5 @@ def test_served_static_bundle_includes_api_guide_interaction_fix():
     assert "gpt-5.5" in static_bundle
     assert "requestAnimationFrame" in static_bundle
     assert "scrollTo" in static_bundle
+    assert "https://github.com/mumu-0922/GankAIGC/issues" in static_bundle
+    assert "https://github.com/chi111i/GankAIGC/issues" not in static_bundle
