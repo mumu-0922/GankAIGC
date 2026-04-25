@@ -215,10 +215,18 @@ def test_admin_can_create_list_and_toggle_registration_invites(client):
     assert invite["code"] == "INVITE123"
     assert invite["is_active"] is True
 
+    second_create_response = client.post(
+        "/api/admin/invites",
+        json={"code": "INVITE456"},
+        headers=headers,
+    )
+    assert second_create_response.status_code == 200
+    assert second_create_response.json()["code"] == "INVITE456"
+
     list_response = client.get("/api/admin/invites", headers=headers)
 
     assert list_response.status_code == 200
-    assert [item["code"] for item in list_response.json()] == ["INVITE123"]
+    assert [item["code"] for item in list_response.json()] == ["INVITE456", "INVITE123"]
 
     toggle_response = client.patch(f"/api/admin/invites/{invite['id']}/toggle", headers=headers)
 

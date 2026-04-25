@@ -42,8 +42,6 @@ async def get_my_registration_invite(
         db.query(RegistrationInvite)
         .filter(
             RegistrationInvite.created_by_user_id == current_user.id,
-            RegistrationInvite.is_active.is_(True),
-            RegistrationInvite.used_by_user_id.is_(None),
         )
         .order_by(RegistrationInvite.created_at.desc())
         .first()
@@ -59,8 +57,6 @@ async def create_my_registration_invite(
         db.query(RegistrationInvite)
         .filter(
             RegistrationInvite.created_by_user_id == current_user.id,
-            RegistrationInvite.is_active.is_(True),
-            RegistrationInvite.used_by_user_id.is_(None),
         )
         .order_by(RegistrationInvite.created_at.desc())
         .first()

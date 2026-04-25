@@ -181,23 +181,31 @@ const ProfilePage = () => {
                       <UserPlus className="w-5 h-5" />
                       <span className="font-semibold">我的邀请码</span>
                     </div>
-                    <p className="text-sm text-gray-500">邀请新用户注册，使用后可再次生成。</p>
+                    <p className="text-sm text-gray-500">每个账号仅可生成 1 个邀请码。</p>
                   </div>
                 </div>
 
                 {invite?.code ? (
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <div className="gank-input flex-1 rounded-xl px-4 py-3 font-mono text-sm text-gray-950 break-all">
-                      {invite.code}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm font-medium text-gray-600">邀请码状态</span>
+                      <span className={`rounded-full px-3 py-1 text-xs font-semibold ${invite.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
+                        {invite.is_active ? '可使用' : '已使用'}
+                      </span>
                     </div>
-                    <button
-                      type="button"
-                      onClick={handleCopyInvite}
-                      className="gank-secondary-button inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-semibold transition-colors"
-                    >
-                      <Copy className="w-4 h-4" />
-                      复制邀请码
-                    </button>
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <div className="gank-input flex-1 rounded-xl px-4 py-3 font-mono text-sm text-gray-950 break-all">
+                        {invite.code}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleCopyInvite}
+                        className="gank-secondary-button inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-semibold transition-colors"
+                      >
+                        <Copy className="w-4 h-4" />
+                        复制邀请码
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <button

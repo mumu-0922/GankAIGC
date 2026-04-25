@@ -21,7 +21,7 @@ def _create_user_token(username: str = "alice") -> str:
         db.close()
 
 
-def test_user_can_create_one_active_registration_invite(client):
+def test_user_can_create_only_one_registration_invite(client):
     token = _create_user_token("alice")
     headers = {"Authorization": f"Bearer {token}"}
 
@@ -43,7 +43,7 @@ def test_user_can_create_one_active_registration_invite(client):
     assert repeat_response.json()["code"] == invite["code"]
 
 
-def test_user_created_invite_can_register_another_user_and_then_regenerate(client):
+def test_user_created_invite_can_register_another_user_but_not_regenerate(client):
     token = _create_user_token("alice")
     headers = {"Authorization": f"Bearer {token}"}
 
@@ -73,9 +73,15 @@ def test_user_created_invite_can_register_another_user_and_then_regenerate(clien
     finally:
         db.close()
 
+    get_response = client.get("/api/user/invites/my", headers=headers)
+    assert get_response.status_code == 200
+    assert get_response.json()["id"] == first_invite["id"]
+    assert get_response.json()["code"] == first_invite["code"]
+    assert get_response.json()["is_active"] is False
+
     next_response = client.post("/api/user/invites", headers=headers)
     assert next_response.status_code == 200
     next_invite = next_response.json()
-    assert next_invite["id"] != first_invite["id"]
-    assert next_invite["code"] != first_invite["code"]
-    assert next_invite["is_active"] is True
+    assert next_invite["id"] == first_invite["id"]
+    assert next_invite["code"] == first_invite["code"]
+    assert next_invite["is_active"] is False
