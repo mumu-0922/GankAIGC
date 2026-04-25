@@ -1,0 +1,43 @@
+name: gankaigc
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        DOCKER_IMAGE_PREFIX: ${DOCKER_IMAGE_PREFIX:-docker.m.daocloud.io/}
+    env_file:
+      - .env.docker
+    environment:
+      SERVER_HOST: 0.0.0.0
+      SERVER_PORT: 9800
+      APP_ENV: production
+      AUTO_OPEN_BROWSER: "false"
+    command: >
+      sh -c 'export DATABASE_URL="postgresql://ai_polish:$${POSTGRES_PASSWORD}@postgres:5432/ai_polish";
+      python main.py'
+    ports:
+      - "${APP_PORT:-9800}:9800"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  postgres:
+    image: ${DOCKER_IMAGE_PREFIX:-docker.m.daocloud.io/}library/postgres:16-alpine
+    environment:
+      POSTGRES_DB: ai_polish
+      POSTGRES_USER: ai_polish
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.docker}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ai_polish -d ai_polish"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

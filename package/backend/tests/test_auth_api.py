@@ -1,0 +1,474 @@
+import pytest
+from cryptography.fernet import Fernet
+from starlette.requests import Request
+
+import app.config as config_module
+from app.main import _get_rate_limit_key
+from app.utils.crypto import decrypt_secret, encrypt_secret
+from app.utils.auth import create_access_token, generate_access_link
+
+
+def _admin_auth_headers(client):
+    response = client.post(
+        "/api/admin/login",
+        json={"username": config_module.settings.ADMIN_USERNAME, "password": config_module.settings.ADMIN_PASSWORD},
+    )
+    assert response.status_code == 200
+    token = response.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
+def test_auth_endpoints_require_non_default_runtime_secrets(client):
+    response = client.get("/health")
+    assert response.status_code == 200
+
+
+def test_register_requires_valid_invite(client):
+    response = client.post(
+        "/api/auth/register",
+        json={
+            "invite_code": "bad-code",
+            "username": "alice",
+            "password": "Password123!",
+        },
+    )
+
+    assert response.status_code == 400
+
+
+def test_login_returns_user_token(client):
+    from app.database import SessionLocal
+    from app.models.models import User
+    from app.utils.auth import get_password_hash
+
+    db = SessionLocal()
+    try:
+        db.add(
+            User(
+                username="alice",
+                password_hash=get_password_hash("Password123!"),
+                access_link="http://testserver/access/alice",
+                is_active=True,
+                credit_balance=0,
+            )
+        )
+        db.commit()
+    finally:
+        db.close()
+
+    response = client.post(
+        "/api/auth/login",
+        json={
+            "username": "alice",
+            "password": "Password123!",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["access_token"]
+
+
+def test_register_with_invite_creates_user_and_disables_invite(client):
+    from app.database import SessionLocal
+    from app.models.models import RegistrationInvite
+
+    db = SessionLocal()
+    try:
+        db.add(RegistrationInvite(code="INVITE123", is_active=True))
+        db.commit()
+    finally:
+        db.close()
+
+    response = client.post(
+        "/api/auth/register",
+        json={
+            "invite_code": "INVITE123",
+            "username": "alice",
+            "password": "Password123!",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["username"] == "alice"
+    assert response.json()["nickname"] == "alice"
+
+    db = SessionLocal()
+    try:
+        invite = db.query(RegistrationInvite).filter(RegistrationInvite.code == "INVITE123").one()
+        assert invite.is_active is False
+        assert invite.used_by_user_id == response.json()["id"]
+    finally:
+        db.close()
+
+
+def test_user_me_returns_profile_for_bearer_token(client):
+    from app.database import SessionLocal
+    from app.models.models import User
+    from app.utils.auth import create_user_access_token, get_password_hash
+
+    db = SessionLocal()
+    try:
+        user = User(
+            username="alice",
+            nickname="Alice Chen",
+            password_hash=get_password_hash("Password123!"),
+            access_link="http://testserver/access/alice",
+            is_active=True,
+            credit_balance=3,
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        token = create_user_access_token(user.id, user.username)
+    finally:
+        db.close()
+
+    response = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+
+    assert response.status_code == 200
+    assert response.json()["username"] == "alice"
+    assert response.json()["nickname"] == "Alice Chen"
+    assert response.json()["credit_balance"] == 3
+    assert response.json()["created_at"]
+
+
+def test_user_can_update_own_nickname(client):
+    from app.database import SessionLocal
+    from app.models.models import User
+    from app.utils.auth import create_user_access_token, get_password_hash
+
+    db = SessionLocal()
+    try:
+        user = User(
+            username="alice",
+            password_hash=get_password_hash("Password123!"),
+            access_link="http://testserver/access/alice",
+            is_active=True,
+            credit_balance=0,
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        token = create_user_access_token(user.id, user.username)
+        user_id = user.id
+    finally:
+        db.close()
+
+    response = client.patch(
+        "/api/auth/me",
+        json={"nickname": "小艾"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["nickname"] == "小艾"
+
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.id == user_id).one()
+        assert user.nickname == "小艾"
+    finally:
+        db.close()
+
+
+def test_user_nickname_rejects_blank_value(client):
+    from app.database import SessionLocal
+    from app.models.models import User
+    from app.utils.auth import create_user_access_token, get_password_hash
+
+    db = SessionLocal()
+    try:
+        user = User(
+            username="alice",
+            password_hash=get_password_hash("Password123!"),
+            access_link="http://testserver/access/alice",
+            is_active=True,
+            credit_balance=0,
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        token = create_user_access_token(user.id, user.username)
+    finally:
+        db.close()
+
+    response = client.patch(
+        "/api/auth/me",
+        json={"nickname": "   "},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 400
+
+
+def test_admin_can_create_list_and_toggle_registration_invites(client):
+    headers = _admin_auth_headers(client)
+
+    create_response = client.post(
+        "/api/admin/invites",
+        json={"code": "INVITE123"},
+        headers=headers,
+    )
+
+    assert create_response.status_code == 200
+    invite = create_response.json()
+    assert invite["code"] == "INVITE123"
+    assert invite["is_active"] is True
+
+    list_response = client.get("/api/admin/invites", headers=headers)
+
+    assert list_response.status_code == 200
+    assert [item["code"] for item in list_response.json()] == ["INVITE123"]
+
+    toggle_response = client.patch(f"/api/admin/invites/{invite['id']}/toggle", headers=headers)
+
+    assert toggle_response.status_code == 200
+    assert toggle_response.json()["is_active"] is False
+
+
+def test_admin_can_toggle_user_unlimited_flag(client):
+    from app.database import SessionLocal
+    from app.models.models import User
+    from app.utils.auth import get_password_hash
+
+    db = SessionLocal()
+    try:
+        user = User(
+            username="alice",
+            password_hash=get_password_hash("Password123!"),
+            access_link="http://testserver/access/alice",
+            is_active=True,
+            credit_balance=0,
+            is_unlimited=False,
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        user_id = user.id
+    finally:
+        db.close()
+
+    headers = _admin_auth_headers(client)
+    response = client.patch(
+        f"/api/admin/users/{user_id}/unlimited",
+        json={"is_unlimited": True},
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["is_unlimited"] is True
+
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.id == user_id).one()
+        assert user.is_unlimited is True
+    finally:
+        db.close()
+
+
+def test_server_mode_rejects_sample_placeholder_runtime_secrets(monkeypatch):
+    monkeypatch.setattr(config_module.settings, "APP_ENV", "production")
+    monkeypatch.setattr(config_module.settings, "SECRET_KEY", "please-change-this-to-a-random-string-32-chars")
+    monkeypatch.setattr(config_module.settings, "ADMIN_PASSWORD", "please-change-this-password")
+
+    with pytest.raises(RuntimeError):
+        config_module.ensure_runtime_secrets_safe()
+
+
+def test_server_mode_rejects_trivially_weak_custom_runtime_secrets(monkeypatch):
+    monkeypatch.setattr(config_module.settings, "APP_ENV", "production")
+    monkeypatch.setattr(config_module.settings, "SECRET_KEY", "short")
+    monkeypatch.setattr(config_module.settings, "ADMIN_PASSWORD", "tiny")
+
+    with pytest.raises(RuntimeError):
+        config_module.ensure_runtime_secrets_safe()
+
+
+def test_reload_settings_rejects_unsafe_server_secrets(monkeypatch, tmp_path):
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "\n".join(
+            [
+                "APP_ENV=production",
+                "SECRET_KEY=please-change-this-to-a-random-string-32-chars",
+                "ADMIN_PASSWORD=please-change-this-password",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(config_module, "get_env_file_path", lambda: str(env_file))
+    monkeypatch.setattr(config_module.settings, "APP_ENV", "development")
+    monkeypatch.setattr(config_module.settings, "SECRET_KEY", "test-secret-key")
+    monkeypatch.setattr(config_module.settings, "ADMIN_PASSWORD", "test-admin-password")
+
+    with pytest.raises(RuntimeError):
+        config_module.reload_settings()
+
+    assert config_module.settings.APP_ENV == "development"
+    assert config_module.settings.SECRET_KEY == "test-secret-key"
+    assert config_module.settings.ADMIN_PASSWORD == "test-admin-password"
+
+
+def test_env_file_path_prefers_runtime_override(monkeypatch, tmp_path):
+    env_file = tmp_path / ".env"
+
+    monkeypatch.setenv("GANKAIGC_ENV_FILE", str(env_file))
+
+    assert config_module.get_env_file_path() == str(env_file)
+
+
+def test_admin_config_updates_runtime_env_file_from_override(client, monkeypatch, tmp_path):
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "\n".join(
+            [
+                "APP_ENV=development",
+                "SECRET_KEY=test-secret-key",
+                "ADMIN_PASSWORD=test-admin-password",
+                "POLISH_MODEL=old-model",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setenv("GANKAIGC_ENV_FILE", str(env_file))
+    monkeypatch.setattr(config_module.settings, "APP_ENV", "development")
+    monkeypatch.setattr(config_module.settings, "SECRET_KEY", "test-secret-key")
+    monkeypatch.setattr(config_module.settings, "ADMIN_PASSWORD", "test-admin-password")
+    monkeypatch.setattr(config_module.settings, "POLISH_MODEL", "old-model")
+    admin_token = create_access_token({"sub": config_module.settings.ADMIN_USERNAME, "role": "admin"})
+
+    response = client.post(
+        "/api/admin/config",
+        json={"POLISH_MODEL": "new-model"},
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+
+    assert response.status_code == 200
+    assert "POLISH_MODEL=new-model" in env_file.read_text(encoding="utf-8")
+    assert config_module.settings.POLISH_MODEL == "new-model"
+
+
+def test_admin_config_rollback_restores_env_file_and_live_settings_on_invalid_update(client, monkeypatch, tmp_path):
+    env_file = tmp_path / ".env"
+    original_env = "\n".join(
+        [
+            "APP_ENV=development",
+            "SECRET_KEY=test-secret-key",
+            "ADMIN_PASSWORD=test-admin-password",
+        ]
+    )
+    env_file.write_text(original_env, encoding="utf-8")
+
+    monkeypatch.setattr(config_module, "get_env_file_path", lambda: str(env_file))
+    monkeypatch.setattr(config_module.settings, "APP_ENV", "development")
+    monkeypatch.setattr(config_module.settings, "SECRET_KEY", "test-secret-key")
+    monkeypatch.setattr(config_module.settings, "ADMIN_PASSWORD", "test-admin-password")
+
+    response = client.post(
+        "/api/admin/config",
+        json={
+            "APP_ENV": "production",
+            "SECRET_KEY": "weak",
+            "ADMIN_PASSWORD": "tiny",
+        },
+        headers=_admin_auth_headers(client),
+    )
+
+    assert response.status_code >= 400
+    assert env_file.read_text(encoding="utf-8") == original_env
+    assert config_module.settings.APP_ENV == "development"
+    assert config_module.settings.SECRET_KEY == "test-secret-key"
+    assert config_module.settings.ADMIN_PASSWORD == "test-admin-password"
+
+
+def test_admin_config_rebuilds_active_cors_middleware(client, monkeypatch, tmp_path):
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "\n".join(
+            [
+                "APP_ENV=development",
+                "SECRET_KEY=test-secret-key",
+                "ADMIN_PASSWORD=test-admin-password",
+                "ALLOWED_ORIGINS=http://old.example",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(config_module, "get_env_file_path", lambda: str(env_file))
+    monkeypatch.setattr(config_module.settings, "APP_ENV", "development")
+    monkeypatch.setattr(config_module.settings, "SECRET_KEY", "test-secret-key")
+    monkeypatch.setattr(config_module.settings, "ADMIN_PASSWORD", "test-admin-password")
+    monkeypatch.setattr(config_module.settings, "ALLOWED_ORIGINS", "http://old.example")
+
+    before = client.options(
+        "/health",
+        headers={
+            "Origin": "http://new.example",
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+    assert before.status_code == 400
+
+    response = client.post(
+        "/api/admin/config",
+        json={"ALLOWED_ORIGINS": "http://new.example"},
+        headers=_admin_auth_headers(client),
+    )
+    assert response.status_code == 200
+
+    after = client.options(
+        "/health",
+        headers={
+            "Origin": "http://new.example",
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+    assert after.status_code == 200
+    assert after.headers["access-control-allow-origin"] == "http://new.example"
+
+
+def test_rate_limit_key_uses_direct_client_host(monkeypatch):
+    request = Request(
+        {
+            "type": "http",
+            "method": "POST",
+            "path": "/api/admin/login",
+            "headers": [(b"x-forwarded-for", b"203.0.113.10")],
+            "client": ("127.0.0.1", 4567),
+            "server": ("testserver", 80),
+            "scheme": "http",
+            "query_string": b"",
+            "http_version": "1.1",
+        }
+    )
+
+    assert _get_rate_limit_key(request, "auth") == "auth:127.0.0.1"
+
+
+def test_generate_access_link_does_not_use_cors_origins(monkeypatch):
+    monkeypatch.setattr(config_module.settings, "ALLOWED_ORIGINS", "https://evil.example,https://app.example")
+
+    assert generate_access_link("CARD123") == "http://localhost:9800/access/CARD123"
+
+
+def test_admin_card_key_links_use_request_base_url(client):
+    response = client.post(
+        "/api/admin/card-keys",
+        json={"card_key": "CARD123"},
+        headers=_admin_auth_headers(client),
+    )
+
+    assert response.status_code == 200
+    assert response.json()["access_link"] == "http://testserver/access/CARD123"
+
+
+def test_crypto_helpers_round_trip_with_test_fernet_key(monkeypatch):
+    monkeypatch.setattr(config_module.settings, "ENCRYPTION_KEY", Fernet.generate_key().decode())
+
+    encrypted = encrypt_secret("top-secret")
+
+    assert encrypted != "top-secret"
+    assert decrypt_secret(encrypted) == "top-secret"
