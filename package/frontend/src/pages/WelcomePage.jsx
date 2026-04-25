@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, LogIn, Shield, UserPlus } from 'lucide-react';
+import { LogIn, Shield, UserPlus } from 'lucide-react';
 import BrandLogo from '../components/BrandLogo';
 
 const WelcomePage = () => {
@@ -21,23 +21,6 @@ const WelcomePage = () => {
             <p className="mt-6 text-xl sm:text-2xl text-slate-700 leading-relaxed max-w-3xl">
               论文降 AI、润色、格式检测与 Word 排版的一体化工作台
             </p>
-
-            <div className="mt-9 flex flex-col sm:flex-row gap-4">
-              <button
-                onClick={() => navigate('/login')}
-                className="gank-primary-button inline-flex items-center justify-center gap-3 rounded-2xl px-7 py-4 text-lg font-bold transition-all active:scale-[0.98]"
-              >
-                进入工作台
-                <ArrowRight className="w-6 h-6" />
-              </button>
-              <button
-                onClick={() => navigate('/register')}
-                className="gank-secondary-button inline-flex items-center justify-center gap-3 rounded-2xl px-7 py-4 text-lg font-bold transition-all active:scale-[0.98]"
-              >
-                邀请码注册
-                <UserPlus className="w-5 h-5" />
-              </button>
-            </div>
           </div>
 
           <div className="gank-terminal rounded-[2rem] overflow-hidden">
