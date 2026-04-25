@@ -1,7 +1,10 @@
 from pathlib import Path
+import re
 
 
+PACKAGE_ROOT = Path(__file__).resolve().parents[2]
 FRONTEND_SRC = Path(__file__).resolve().parents[2] / "frontend" / "src"
+STATIC_DIR = PACKAGE_ROOT / "static"
 
 
 def test_user_menu_exposes_explicit_redeem_entry():
@@ -98,4 +101,17 @@ def test_api_config_guide_keeps_previous_sections_open_when_expanding_next():
     assert "return [...previousSections, id]" in api_guide
     assert "activeSection === id" not in api_guide
     assert "setActiveSection(isActive ? null : id)" not in api_guide
+    assert 'data-api-guide-multi-expand="true"' in api_guide
     assert api_guide.count('type="button"') >= 3
+
+
+def test_served_static_bundle_includes_api_guide_interaction_fix():
+    static_index = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+    bundle_match = re.search(r'src="/assets/(index-[^"]+\.js)"', static_index)
+    assert bundle_match
+
+    static_bundle = (STATIC_DIR / "assets" / bundle_match.group(1)).read_text(encoding="utf-8")
+
+    assert "data-api-guide-multi-expand" in static_bundle
+    assert "gemini-3.1-pro-preview" in static_bundle
+    assert "gpt-5.5" in static_bundle

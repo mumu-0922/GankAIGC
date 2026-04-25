@@ -102,7 +102,10 @@ const ApiConfigGuide = () => {
   };
 
   return (
-    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl shadow-ios overflow-hidden">
+    <div
+      data-api-guide-multi-expand="true"
+      className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl shadow-ios overflow-hidden"
+    >
       {/* 头部 - 可折叠 */}
       <button
         type="button"
