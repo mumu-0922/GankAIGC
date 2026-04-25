@@ -70,7 +70,7 @@ def test_api_config_guide_lists_current_model_recommendations():
     for model_name in [
         "gpt-5.5",
         "gpt-5.4",
-        "gemini-3-pro-preview",
+        "gemini-3.1-pro-preview",
         "gemini-3-flash-preview",
         "claude-opus-4-7",
         "claude-sonnet-4-6",
@@ -81,7 +81,7 @@ def test_api_config_guide_lists_current_model_recommendations():
 
     for legacy_model_name in [
         "gemini-2.5-pro",
-        "gemini-3.1-pro",
+        "gemini-3-pro-preview",
         "claude-sonnet-4-20250514",
         "deepseek-chat",
         "gpt-5.2",

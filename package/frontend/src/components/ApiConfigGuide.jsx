@@ -317,10 +317,10 @@ const ApiConfigGuide = () => {
                         <td className="p-3 text-gray-800">Google</td>
                         <td className="p-3">
                           <code className="bg-gray-100 text-gray-800 px-2 py-0.5 rounded text-xs">
-                            gemini-3-pro-preview
+                            gemini-3.1-pro-preview
                           </code>
                         </td>
-                        <td className="p-3 text-gray-600">Gemini 3 Pro 预览版</td>
+                        <td className="p-3 text-gray-600">Gemini 3.1 Pro 预览版</td>
                       </tr>
                       <tr>
                         <td className="p-3 text-gray-800">Google</td>
