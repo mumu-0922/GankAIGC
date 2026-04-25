@@ -16,6 +16,8 @@ def test_admin_dashboard_hides_legacy_card_key_management():
 
     assert "次数兑换码" in admin_dashboard
     assert "用户次数余额" in admin_dashboard
+    assert "邀请码、兑换码和用户余额统一在这里管理。" not in admin_dashboard
+    assert "前往管理" not in admin_dashboard
     assert "生成卡密" not in admin_dashboard
     assert "批量生成" not in admin_dashboard
     assert "使用次数" not in admin_dashboard

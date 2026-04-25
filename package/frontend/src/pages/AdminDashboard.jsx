@@ -653,20 +653,6 @@ const AdminDashboard = () => {
                 )}
               </>
             )}
-
-            <div className="bg-white rounded-2xl shadow-ios p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-bold text-gray-900">账号次数</h2>
-                <p className="text-sm text-gray-500 mt-1">邀请码、兑换码和用户余额统一在这里管理。</p>
-              </div>
-              <button
-                onClick={() => setActiveTab('accounts')}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors"
-              >
-                <Users className="w-4 h-4" />
-                前往管理
-              </button>
-            </div>
           </>
         )}
 
