@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, FileText, KeyRound, LogIn, Shield, UserPlus } from 'lucide-react';
+import { ArrowRight, LogIn, Shield, UserPlus } from 'lucide-react';
 import BrandLogo from '../components/BrandLogo';
 
 const WelcomePage = () => {
@@ -10,11 +10,6 @@ const WelcomePage = () => {
     <div className="gank-auth-page px-5 py-5 sm:px-8 sm:py-7">
       <header className="gank-glass-toolbar rounded-[1.75rem] px-5 py-4 flex items-center justify-between max-w-7xl mx-auto">
         <BrandLogo size="sm" />
-        <div className="hidden sm:flex items-center gap-2 text-sm font-semibold text-slate-600">
-          <span className="gank-topbar-pill rounded-full px-4 py-2">CN ZH</span>
-          <span className="gank-topbar-pill rounded-full px-4 py-2">浅色</span>
-          <span className="rounded-full bg-slate-950 text-white px-4 py-2">控制台</span>
-        </div>
       </header>
 
       <main className="max-w-7xl mx-auto pt-20 pb-8">
@@ -65,8 +60,8 @@ const WelcomePage = () => {
         <section className="mt-16 grid gap-5 md:grid-cols-3">
           {[
             { title: '账号登录', icon: LogIn, path: '/login' },
-            { title: '兑换码充值', icon: KeyRound, path: '/credits' },
-            { title: '文档工具', icon: FileText, path: '/word-formatter' },
+            { title: '邀请码注册', icon: UserPlus, path: '/register' },
+            { title: '管理后台', icon: Shield, path: '/admin' },
           ].map(({ title, icon: Icon, path }) => (
             <button
               key={title}
@@ -78,16 +73,6 @@ const WelcomePage = () => {
             </button>
           ))}
         </section>
-
-        <div className="mt-8 flex justify-center">
-          <button
-            onClick={() => navigate('/admin')}
-            className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-slate-900"
-          >
-            <Shield className="w-4 h-4" />
-            管理后台
-          </button>
-        </div>
       </main>
     </div>
   );
