@@ -34,13 +34,29 @@ const ApiConfigGuide = () => {
     }
   };
 
-  const toggleSection = (id) => {
-    setActiveSections((previousSections) => {
-      if (previousSections.includes(id)) {
-        return previousSections.filter((sectionId) => sectionId !== id);
-      }
+  const preserveScrollPosition = (applyStateChange) => {
+    if (typeof window === 'undefined') {
+      applyStateChange();
+      return;
+    }
 
-      return [...previousSections, id];
+    const scrollX = window.scrollX;
+    const scrollY = window.scrollY;
+    applyStateChange();
+    window.requestAnimationFrame(() => {
+      window.scrollTo(scrollX, scrollY);
+    });
+  };
+
+  const toggleSection = (id) => {
+    preserveScrollPosition(() => {
+      setActiveSections((previousSections) => {
+        if (previousSections.includes(id)) {
+          return previousSections.filter((sectionId) => sectionId !== id);
+        }
+
+        return [...previousSections, id];
+      });
     });
   };
 

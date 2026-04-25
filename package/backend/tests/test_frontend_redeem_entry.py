@@ -105,6 +105,15 @@ def test_api_config_guide_keeps_previous_sections_open_when_expanding_next():
     assert api_guide.count('type="button"') >= 3
 
 
+def test_api_config_guide_preserves_scroll_position_when_toggling_sections():
+    api_guide = (FRONTEND_SRC / "components" / "ApiConfigGuide.jsx").read_text(encoding="utf-8")
+
+    assert "preserveScrollPosition" in api_guide
+    assert "window.requestAnimationFrame" in api_guide
+    assert "window.scrollTo(scrollX, scrollY)" in api_guide
+    assert "preserveScrollPosition(() => {" in api_guide
+
+
 def test_served_static_bundle_includes_api_guide_interaction_fix():
     static_index = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
     bundle_match = re.search(r'src="/assets/(index-[^"]+\.js)"', static_index)
@@ -115,3 +124,5 @@ def test_served_static_bundle_includes_api_guide_interaction_fix():
     assert "data-api-guide-multi-expand" in static_bundle
     assert "gemini-3.1-pro-preview" in static_bundle
     assert "gpt-5.5" in static_bundle
+    assert "requestAnimationFrame" in static_bundle
+    assert "scrollTo" in static_bundle
