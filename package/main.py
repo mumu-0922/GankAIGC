@@ -451,10 +451,17 @@ async def serve_static(file_path: str):
     raise HTTPException(status_code=404, detail="File not found")
 
 
-def open_browser(port: int):
+def get_browser_host(bind_host: str | None) -> str:
+    """Return a browser-friendly host for a server bind address."""
+    if not bind_host or bind_host in {"0.0.0.0", "::"}:
+        return "localhost"
+    return bind_host
+
+
+def open_browser(port: int, host: str | None = None):
     """延迟打开浏览器"""
     time.sleep(2)  # 等待服务器启动
-    url = f"http://localhost:{port}"
+    url = f"http://{get_browser_host(host)}:{port}"
     print(f"\n🌐 正在打开浏览器: {url}")
     webbrowser.open(url)
 
@@ -537,6 +544,7 @@ def main():
     """主入口函数"""
     port = settings.SERVER_PORT
     host = settings.SERVER_HOST
+    browser_host = get_browser_host(host)
     
     print("\n" + "="*60)
     print("🚀 GankAIGC - 启动中...")
@@ -545,15 +553,15 @@ def main():
     # 创建示例配置文件
     create_sample_env()
     
-    print(f"\n📍 服务地址: http://{host}:{port}")
-    print(f"📍 管理后台: http://{host}:{port}/admin")
-    print(f"📍 API 文档: http://{host}:{port}/docs")
+    print(f"\n📍 服务地址: http://{browser_host}:{port}")
+    print(f"📍 管理后台: http://{browser_host}:{port}/admin")
+    print(f"📍 API 文档: http://{browser_host}:{port}/docs")
     print("\n按 Ctrl+C 停止服务")
     print("="*60 + "\n")
     
     # 仅在本地交互式运行时自动打开浏览器
     if settings.AUTO_OPEN_BROWSER and not is_server_deployment():
-        browser_thread = threading.Thread(target=open_browser, args=(port,))
+        browser_thread = threading.Thread(target=open_browser, args=(port, host))
         browser_thread.daemon = True
         browser_thread.start()
     
