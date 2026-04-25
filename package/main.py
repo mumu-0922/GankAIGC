@@ -458,6 +458,17 @@ def get_browser_host(bind_host: str | None) -> str:
     return bind_host
 
 
+def get_uvicorn_host(bind_host: str | None, server_deployment: bool) -> str:
+    """Return the host uvicorn should bind to for the current runtime mode."""
+    if not bind_host:
+        return "0.0.0.0" if server_deployment else "localhost"
+    if server_deployment:
+        return bind_host
+    if bind_host in {"0.0.0.0", "::"}:
+        return "localhost"
+    return bind_host
+
+
 def open_browser(port: int, host: str | None = None):
     """延迟打开浏览器"""
     time.sleep(2)  # 等待服务器启动
@@ -544,7 +555,9 @@ def main():
     """主入口函数"""
     port = settings.SERVER_PORT
     host = settings.SERVER_HOST
+    server_deployment = is_server_deployment()
     browser_host = get_browser_host(host)
+    uvicorn_host = get_uvicorn_host(host, server_deployment)
     
     print("\n" + "="*60)
     print("🚀 GankAIGC - 启动中...")
@@ -560,7 +573,7 @@ def main():
     print("="*60 + "\n")
     
     # 仅在本地交互式运行时自动打开浏览器
-    if settings.AUTO_OPEN_BROWSER and not is_server_deployment():
+    if settings.AUTO_OPEN_BROWSER and not server_deployment:
         browser_thread = threading.Thread(target=open_browser, args=(port, host))
         browser_thread.daemon = True
         browser_thread.start()
@@ -569,7 +582,7 @@ def main():
     try:
         uvicorn.run(
             app,
-            host=host,
+            host=uvicorn_host,
             port=port,
             log_level="info",
             access_log=True
