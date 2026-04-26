@@ -67,6 +67,28 @@ def test_frontend_exposes_user_invite_generation_on_profile_page():
     assert "使用后可再次生成" not in profile_page
 
 
+def test_frontend_removes_legacy_card_key_and_dead_prompt_manager():
+    app = (FRONTEND_SRC / "App.jsx").read_text(encoding="utf-8")
+    api = (FRONTEND_SRC / "api" / "index.js").read_text(encoding="utf-8")
+    session_monitor = (FRONTEND_SRC / "components" / "SessionMonitor.jsx").read_text(encoding="utf-8")
+
+    assert 'path="/access/:cardKey"' not in app
+    assert not (FRONTEND_SRC / "components" / "PromptManager.jsx").exists()
+    assert "export const promptsAPI" not in api
+    assert "export const healthAPI" not in api
+    assert "export const adminAPI" not in api
+    assert "admin_password" not in api
+    assert "adminAPI" not in session_monitor
+    assert "prompt(" not in session_monitor
+
+
+def test_package_main_no_longer_registers_legacy_access_page():
+    package_main = (PACKAGE_ROOT / "main.py").read_text(encoding="utf-8")
+
+    assert '@app.get("/access/{card_key}")' not in package_main
+    assert "async def serve_access" not in package_main
+
+
 def test_api_config_guide_lists_current_model_recommendations():
     api_guide = (FRONTEND_SRC / "components" / "ApiConfigGuide.jsx").read_text(encoding="utf-8")
 

@@ -122,7 +122,6 @@ async def enforce_sensitive_endpoint_rate_limits(request: Request, call_next):
         scope = "auth"
         limit = settings.AUTH_RATE_LIMIT_PER_MINUTE
     elif request.method == "POST" and request.url.path in {
-        "/api/admin/verify-card-key",
         "/api/user/redeem-code",
     }:
         limiter = redeem_rate_limiter

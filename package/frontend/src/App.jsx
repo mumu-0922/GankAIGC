@@ -49,7 +49,6 @@ function App() {
         <Route path="/" element={<WelcomePage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
-        <Route path="/access/:cardKey" element={<Navigate to="/login" replace />} />
         <Route path="/admin" element={<AdminDashboard />} />
         
         <Route

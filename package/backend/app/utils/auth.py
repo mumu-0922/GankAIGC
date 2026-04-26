@@ -1,5 +1,4 @@
 import secrets
-import string
 from datetime import datetime, timedelta
 from typing import Optional
 from fastapi import Depends, Header, HTTPException, status
@@ -12,21 +11,6 @@ from sqlalchemy.orm import Session
 
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-
-def generate_card_key(length: int = 16, prefix: str = "") -> str:
-    """生成卡密"""
-    chars = string.ascii_uppercase + string.digits
-    random_part = ''.join(secrets.choice(chars) for _ in range(length))
-    if prefix:
-        return f"{prefix}-{random_part}"
-    return random_part
-
-
-def generate_access_link(card_key: str, base_url: Optional[str] = None) -> str:
-    """生成访问链接"""
-    resolved_base_url = base_url or f"http://localhost:{settings.SERVER_PORT}"
-    return f"{resolved_base_url.rstrip('/')}/access/{card_key}"
 
 
 def generate_session_id() -> str:
@@ -104,7 +88,6 @@ def get_current_user_from_bearer(
 def get_current_user_with_legacy_fallback(
     authorization: Optional[str] = Header(None),
     access_token: Optional[str] = None,
-    card_key: Optional[str] = None,
     db: Session = Depends(get_db),
 ) -> User:
     if authorization and authorization.startswith("Bearer "):
@@ -120,19 +103,5 @@ def get_current_user_with_legacy_fallback(
                     user.last_used = datetime.utcnow()
                     db.commit()
                     return user
-
-    if card_key:
-        user = (
-            db.query(User)
-            .filter(
-                (User.legacy_card_key == card_key) | (User.card_key == card_key),
-                User.is_active.is_(True),
-            )
-            .first()
-        )
-        if user:
-            user.last_used = datetime.utcnow()
-            db.commit()
-            return user
 
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="缺少有效用户凭据")

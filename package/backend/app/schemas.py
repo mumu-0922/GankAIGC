@@ -281,19 +281,6 @@ class ExportConfirmation(BaseModel):
     export_format: str = Field(..., pattern="^(txt|docx|pdf)$")
 
 
-class CardKeyGenerate(BaseModel):
-    """生成卡密"""
-    count: int = Field(1, ge=1, le=100)
-    prefix: Optional[str] = None
-
-
-class CardKeyResponse(BaseModel):
-    """卡密响应"""
-    card_key: str
-    access_link: str
-    created_at: datetime
-
-
 class UserUsageUpdate(BaseModel):
     """更新用户使用限制"""
     usage_limit: int = Field(..., ge=0)  # 0 表示无限制

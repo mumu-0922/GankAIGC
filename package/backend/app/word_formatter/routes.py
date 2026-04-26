@@ -2,7 +2,7 @@
 Word Formatter API Routes
 
 Provides endpoints for document formatting with AI-assisted recognition.
-Authentication uses card_key, usage counts shared with polishing service.
+Authentication uses user tokens, usage counts shared with polishing service.
 """
 from __future__ import annotations
 

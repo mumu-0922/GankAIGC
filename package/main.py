@@ -148,7 +148,6 @@ async def enforce_sensitive_endpoint_rate_limits(request: Request, call_next):
         scope = "auth"
         limit = settings.AUTH_RATE_LIMIT_PER_MINUTE
     elif request.method == "POST" and request.url.path in {
-        "/api/admin/verify-card-key",
         "/api/user/redeem-code",
     }:
         limiter = redeem_rate_limiter
@@ -423,12 +422,6 @@ async def serve_word_formatter(path: str = ""):
 async def serve_session(session_id: str):
     """服务会话详情页面"""
     return _serve_spa_index_or_api_info("Session page not found")
-
-
-@app.get("/access/{card_key}")
-async def serve_access(card_key: str):
-    """服务访问页面"""
-    return _serve_spa_index_or_api_info("Access page not found")
 
 
 # 处理其他静态文件

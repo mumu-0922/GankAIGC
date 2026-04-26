@@ -44,14 +44,7 @@ async def start_optimization(
     db: Session = Depends(get_db)
 ):
     """开始优化任务"""
-    if user.card_key:
-        usage_limit = user.usage_limit if user.usage_limit is not None else settings.DEFAULT_USAGE_LIMIT
-        usage_count = user.usage_count or 0
-        # 0 表示无限制
-        if usage_limit > 0 and usage_count >= usage_limit:
-            raise HTTPException(status_code=403, detail="该卡密已达到使用次数限制")
-    else:
-        usage_count = user.usage_count or 0
+    usage_count = user.usage_count or 0
     
     # 验证处理模式
     valid_modes = ['paper_polish', 'paper_enhance', 'paper_polish_enhance', 'emotion_polish']

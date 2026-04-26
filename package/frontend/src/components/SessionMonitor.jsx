@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import { Activity, RefreshCw, Clock, User, FileText, TrendingUp, BarChart3, Zap, History, Square } from 'lucide-react';
-import { adminAPI } from '../api';
 
 const SessionMonitor = ({ adminToken }) => {
   const [activeSessions, setActiveSessions] = useState([]);
@@ -30,11 +29,11 @@ const SessionMonitor = ({ adminToken }) => {
     if (!window.confirm('确定要强制停止该会话吗？')) {
       return;
     }
-    const password = prompt("请输入管理员密码以确认停止操作:");
-    if (!password) return;
 
     try {
-      await adminAPI.stopSession(sessionId, password);
+      await axios.post(`/api/admin/sessions/${sessionId}/stop`, null, {
+        headers: { Authorization: `Bearer ${adminToken}` }
+      });
       toast.success('会话已停止');
       fetchActiveSessions();
     } catch (error) {

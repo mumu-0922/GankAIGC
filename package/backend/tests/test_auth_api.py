@@ -5,7 +5,7 @@ from starlette.requests import Request
 import app.config as config_module
 from app.main import _get_rate_limit_key
 from app.utils.crypto import decrypt_secret, encrypt_secret
-from app.utils.auth import create_access_token, generate_access_link
+from app.utils.auth import create_access_token
 
 
 def _admin_auth_headers(client):
@@ -456,21 +456,19 @@ def test_rate_limit_key_uses_direct_client_host(monkeypatch):
     assert _get_rate_limit_key(request, "auth") == "auth:127.0.0.1"
 
 
-def test_generate_access_link_does_not_use_cors_origins(monkeypatch):
-    monkeypatch.setattr(config_module.settings, "ALLOWED_ORIGINS", "https://evil.example,https://app.example")
+def test_legacy_admin_card_key_endpoints_are_removed(client):
+    headers = _admin_auth_headers(client)
 
-    assert generate_access_link("CARD123") == "http://localhost:9800/access/CARD123"
+    legacy_requests = [
+        ("post", "/api/admin/verify-card-key", {"json": {"card_key": "CARD123"}}),
+        ("post", "/api/admin/card-keys", {"json": {"card_key": "CARD123"}, "headers": headers}),
+        ("post", "/api/admin/batch-generate-keys?count=1", {"headers": headers}),
+        ("post", f"/api/admin/generate-keys?admin_password={config_module.settings.ADMIN_PASSWORD}", {"json": {"count": 1}}),
+    ]
 
-
-def test_admin_card_key_links_use_request_base_url(client):
-    response = client.post(
-        "/api/admin/card-keys",
-        json={"card_key": "CARD123"},
-        headers=_admin_auth_headers(client),
-    )
-
-    assert response.status_code == 200
-    assert response.json()["access_link"] == "http://testserver/access/CARD123"
+    for method, path, kwargs in legacy_requests:
+        response = getattr(client, method)(path, **kwargs)
+        assert response.status_code == 404
 
 
 def test_crypto_helpers_round_trip_with_test_fernet_key(monkeypatch):

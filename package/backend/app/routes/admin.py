@@ -24,8 +24,6 @@ from app.models.models import (
 from app.runtime import refresh_cors_middleware
 from app.schemas import (
     AdminCreditAdjustRequest,
-    CardKeyGenerate,
-    CardKeyResponse,
     CreditCodeCreateRequest,
     CreditCodeResponse,
     DatabaseUpdateRequest,
@@ -38,8 +36,6 @@ from app.services.credit_service import CreditService
 from app.word_formatter.services.job_manager import get_job_manager
 from app.utils.auth import (
     create_access_token,
-    generate_access_link,
-    generate_card_key,
     verify_token,
 )
 
@@ -55,15 +51,6 @@ class AdminLoginResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     username: str
-
-
-class CardKeyCreate(BaseModel):
-    card_key: Optional[str] = None
-    usage_limit: Optional[int] = None
-
-
-class CardKeyVerify(BaseModel):
-    card_key: str
 
 
 class UnlimitedToggleRequest(BaseModel):
@@ -121,10 +108,6 @@ def _model_to_dict(record: Any) -> Dict[str, Any]:
     return data
 
 
-def _request_base_url(request: Request) -> str:
-    return str(request.base_url).rstrip("/")
-
-
 @router.post("/login", response_model=AdminLoginResponse)
 async def admin_login(credentials: AdminLogin) -> AdminLoginResponse:
     # 速率限制: 每分钟最多5次登录尝试 (在 main.py 的 limiter 中配置)
@@ -143,50 +126,6 @@ async def admin_login(credentials: AdminLogin) -> AdminLoginResponse:
 async def verify_admin_token_endpoint(authorization: Optional[str] = Header(None)) -> Dict[str, bool]:
     get_admin_from_token(authorization)
     return {"valid": True}
-
-
-@router.post("/verify-card-key")
-async def verify_card_key(data: CardKeyVerify, db: Session = Depends(get_db)) -> Dict[str, Any]:
-    # 速率限制: 每分钟最多10次卡密验证 (在 main.py 的 limiter 中配置)
-    user = db.query(User).filter(User.card_key == data.card_key, User.is_active.is_(True)).first()
-    if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="无效的卡密或卡密已被禁用")
-
-    user.last_used = datetime.utcnow()
-    db.commit()
-    return {"valid": True, "user_id": user.id, "created_at": user.created_at}
-
-
-@router.post("/card-keys")
-async def create_card_key(
-    data: CardKeyCreate,
-    request: Request,
-    _: str = Depends(get_admin_from_token),
-    db: Session = Depends(get_db),
-) -> Dict[str, Any]:
-    card_key = data.card_key or generate_card_key()
-    existing_user = db.query(User).filter(User.card_key == card_key).first()
-    if existing_user:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="该卡密已存在")
-
-    usage_limit = data.usage_limit or settings.DEFAULT_USAGE_LIMIT
-    access_link = generate_access_link(card_key, base_url=_request_base_url(request))
-    user = User(
-        card_key=card_key,
-        access_link=access_link,
-        is_active=True,
-        usage_limit=usage_limit,
-        usage_count=0,
-    )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-    return {
-        "card_key": user.card_key,
-        "access_link": user.access_link,
-        "usage_limit": user.usage_limit,
-        "created_at": user.created_at,
-    }
 
 
 @router.post("/invites", response_model=InviteResponse)
@@ -330,39 +269,6 @@ async def list_provider_config_summaries(
         }
         for config, user in rows
     ]
-
-
-@router.post("/batch-generate-keys")
-async def batch_generate_keys(
-    count: int,
-    request: Request,
-    prefix: str = "",
-    usage_limit: Optional[int] = None,
-    _: str = Depends(get_admin_from_token),
-    db: Session = Depends(get_db),
-) -> Dict[str, Any]:
-    if count <= 0 or count > 100:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="批量生成数量必须在 1-100 之间")
-
-    limit = usage_limit or settings.DEFAULT_USAGE_LIMIT
-    results: List[Dict[str, Any]] = []
-    base_url = _request_base_url(request)
-    for _ in range(count):
-        card_key = generate_card_key(prefix=prefix)
-        access_link = generate_access_link(card_key, base_url=base_url)
-        user = User(card_key=card_key, access_link=access_link, is_active=True, usage_limit=limit, usage_count=0)
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-        results.append(
-            {
-                "card_key": card_key,
-                "access_link": access_link,
-                "usage_limit": user.usage_limit,
-                "created_at": user.created_at,
-            }
-        )
-    return {"count": len(results), "keys": results}
 
 
 @router.get("/users", response_model=List[UserResponse])
@@ -608,42 +514,6 @@ async def get_user_details(
             for session in recent_sessions
         ],
     }
-
-
-@router.post("/generate-keys", response_model=List[CardKeyResponse])
-async def generate_keys(
-    data: CardKeyGenerate,
-    admin_password: str,
-    request: Request,
-    db: Session = Depends(get_db),
-) -> List[CardKeyResponse]:
-    if not verify_admin_credentials(settings.ADMIN_USERNAME, admin_password):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="管理员密码错误")
-
-    results: List[CardKeyResponse] = []
-    base_url = _request_base_url(request)
-    for _ in range(data.count):
-        card_key = generate_card_key(prefix=data.prefix or "")
-        access_link = generate_access_link(card_key, base_url=base_url)
-        user = User(
-            card_key=card_key,
-            access_link=access_link,
-            is_active=True,
-            usage_limit=settings.DEFAULT_USAGE_LIMIT,
-            usage_count=0,
-        )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-        results.append(
-            CardKeyResponse(
-                card_key=card_key,
-                access_link=access_link,
-                created_at=user.created_at,
-            )
-        )
-
-    return results
 
 
 @router.get("/sessions")

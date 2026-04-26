@@ -33,13 +33,12 @@ def test_user_token_can_access_prompt_routes(client):
     assert response.json() == []
 
 
-def test_legacy_card_key_still_works_during_transition(client):
+def test_legacy_card_key_no_longer_authenticates_prompt_routes(client):
     _create_user(username="legacy", card_key="legacy-demo-key")
 
     response = client.get("/api/prompts/", params={"card_key": "legacy-demo-key"})
 
-    assert response.status_code == 200
-    assert response.json() == []
+    assert response.status_code == 401
 
 
 def test_bearer_token_is_preferred_over_invalid_card_key(client):
@@ -64,13 +63,12 @@ def test_user_token_can_access_word_formatter_usage(client):
     assert response.json()["usage_count"] == 0
 
 
-def test_legacy_card_key_can_access_word_formatter_usage(client):
+def test_legacy_card_key_no_longer_authenticates_word_formatter_usage(client):
     _create_user(username="legacy", card_key="legacy-demo-key")
 
     response = client.get("/api/word-formatter/usage", params={"card_key": "legacy-demo-key"})
 
-    assert response.status_code == 200
-    assert response.json()["usage_count"] == 0
+    assert response.status_code == 401
 
 
 def test_query_access_token_supports_browser_direct_urls(client):

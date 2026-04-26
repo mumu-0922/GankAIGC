@@ -73,40 +73,6 @@ export const projectAPI = {
   archive: (projectId) => api.delete(`/user/projects/${projectId}`),
 };
 
-// Admin API
-export const adminAPI = {
-  listUsers: (password) =>
-    api.get('/admin/users', {
-      params: { admin_password: password },
-    }),
-  deleteUser: (userId, password) =>
-    api.delete(`/admin/users/${userId}`, {
-      params: { admin_password: password },
-    }),
-  stopSession: (sessionId, password) =>
-    api.post(`/admin/sessions/${sessionId}/stop`, null, {
-      params: { admin_password: password },
-    }),
-  toggleUserActive: (userId, password) =>
-    api.put(`/admin/users/${userId}/toggle-active`, null, {
-      params: { admin_password: password },
-    }),
-};
-
-// Prompts API
-export const promptsAPI = {
-  getSystemPrompts: () => api.get('/prompts/system'),
-  getUserPrompts: (stage = null) =>
-    api.get('/prompts/', {
-      params: stage ? { stage } : {},
-    }),
-  createPrompt: (data) => api.post('/prompts/', data),
-  updatePrompt: (promptId, data) => api.put(`/prompts/${promptId}`, data),
-  deletePrompt: (promptId) => api.delete(`/prompts/${promptId}`),
-  setDefaultPrompt: (promptId) =>
-    api.post(`/prompts/${promptId}/set-default`),
-};
-
 // Optimization API
 export const optimizationAPI = {
   startOptimization: (data) => api.post('/optimization/start', data, {
@@ -155,13 +121,6 @@ export const optimizationAPI = {
     const query = userToken ? `?access_token=${encodeURIComponent(userToken)}` : '';
     return `${baseUrl}/optimization/sessions/${sessionId}/stream${query}`;
   },
-};
-
-// Health API
-export const healthAPI = {
-  checkModels: () => api.get('/health/models', {
-    timeout: 15000, // 15秒超时
-  }),
 };
 
 // Word Formatter API
