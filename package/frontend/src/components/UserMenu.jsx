@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Coins, KeyRound, LogOut, UserCircle } from 'lucide-react';
+import { Coins, FileText, KeyRound, LogOut, UserCircle } from 'lucide-react';
 import { authAPI } from '../api';
 
 const UserMenu = ({ credits }) => {
@@ -45,6 +45,13 @@ const UserMenu = ({ credits }) => {
       >
         <UserCircle className="w-4 h-4" />
         {profile?.nickname || profile?.username || '个人信息'}
+      </Link>
+      <Link
+        to="/word-formatter"
+        className="flex items-center gap-1.5 gank-topbar-pill text-slate-700 px-3 py-1.5 rounded-xl text-sm font-medium transition-colors hover:text-slate-950"
+      >
+        <FileText className="w-4 h-4 text-ios-blue" />
+        Word 排版
       </Link>
       <Link
         to="/credits"

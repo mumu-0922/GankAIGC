@@ -14,6 +14,13 @@ def test_user_menu_exposes_explicit_redeem_entry():
     assert user_menu.count('to="/credits"') == 1
 
 
+def test_user_menu_exposes_word_formatter_entry():
+    user_menu = (FRONTEND_SRC / "components" / "UserMenu.jsx").read_text(encoding="utf-8")
+
+    assert "Word 排版" in user_menu
+    assert user_menu.count('to="/word-formatter"') == 1
+
+
 def test_admin_dashboard_hides_legacy_card_key_management():
     admin_dashboard = (FRONTEND_SRC / "pages" / "AdminDashboard.jsx").read_text(encoding="utf-8")
 
@@ -228,3 +235,14 @@ def test_served_static_bundle_includes_admin_tab_url_persistence():
     assert "URLSearchParams" in static_bundle
     assert '"tab"' in static_bundle
     assert '"dashboard","sessions","accounts","database","config"' in static_bundle
+
+
+def test_served_static_bundle_includes_word_formatter_menu_entry():
+    static_index = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+    bundle_match = re.search(r'src="/assets/(index-[^"]+\.js)"', static_index)
+    assert bundle_match
+
+    static_bundle = (STATIC_DIR / "assets" / bundle_match.group(1)).read_text(encoding="utf-8")
+
+    assert "Word 排版" in static_bundle
+    assert "/word-formatter" in static_bundle
