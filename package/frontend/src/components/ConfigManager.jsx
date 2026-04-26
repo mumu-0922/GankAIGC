@@ -132,7 +132,7 @@ const ConfigManager = ({ adminToken }) => {
               type="text"
               value={formData.POLISH_MODEL}
               onChange={(e) => setFormData({ ...formData, POLISH_MODEL: e.target.value })}
-              placeholder="gemini-2.5-pro"
+              placeholder="gpt-5.5"
               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
             />
             <p className="mt-1.5 text-xs text-gray-400">
@@ -195,7 +195,7 @@ const ConfigManager = ({ adminToken }) => {
               type="text"
               value={formData.ENHANCE_MODEL}
               onChange={(e) => setFormData({ ...formData, ENHANCE_MODEL: e.target.value })}
-              placeholder="gemini-2.5-pro"
+              placeholder="gpt-5.5"
               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
             />
             <p className="mt-1.5 text-xs text-gray-400">
@@ -258,7 +258,7 @@ const ConfigManager = ({ adminToken }) => {
               type="text"
               value={formData.EMOTION_MODEL}
               onChange={(e) => setFormData({ ...formData, EMOTION_MODEL: e.target.value })}
-              placeholder="gemini-2.5-pro"
+              placeholder="gpt-5.5"
               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
             />
             <p className="mt-1.5 text-xs text-gray-400">
@@ -405,7 +405,7 @@ const ConfigManager = ({ adminToken }) => {
               type="text"
               value={formData.COMPRESSION_MODEL}
               onChange={(e) => setFormData({ ...formData, COMPRESSION_MODEL: e.target.value })}
-              placeholder="gemini-2.5-pro"
+              placeholder="gpt-5.5"
               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
             />
             <p className="mt-1.5 text-xs text-gray-400">用于压缩历史记录的模型</p>

@@ -129,6 +129,13 @@ def test_api_config_guide_lists_current_model_recommendations():
         assert legacy_model_name not in api_guide
 
 
+def test_config_manager_uses_current_model_placeholders():
+    config_manager = (FRONTEND_SRC / "components" / "ConfigManager.jsx").read_text(encoding="utf-8")
+
+    assert config_manager.count('placeholder="gpt-5.5"') == 4
+    assert 'placeholder="gemini-2.5-pro"' not in config_manager
+
+
 def test_api_config_guide_keeps_previous_sections_open_when_expanding_next():
     api_guide = (FRONTEND_SRC / "components" / "ApiConfigGuide.jsx").read_text(encoding="utf-8")
 
