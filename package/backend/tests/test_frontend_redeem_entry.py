@@ -18,12 +18,18 @@ def test_user_menu_exposes_explicit_redeem_entry():
 def test_frontend_uses_brand_logo_as_favicon():
     frontend_index = (FRONTEND_ROOT / "index.html").read_text(encoding="utf-8")
     static_index = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+    brand_logo = (FRONTEND_SRC / "components" / "BrandLogo.jsx").read_text(encoding="utf-8")
 
     for index_html in (frontend_index, static_index):
         assert 'rel="icon"' in index_html
-        assert 'type="image/png"' in index_html
-        assert 'href="/gankaigc-logo.png"' in index_html
+        assert 'type="image/svg+xml"' in index_html
+        assert 'href="/shiliang.svg"' in index_html
         assert "/vite.svg" not in index_html
+
+    assert (FRONTEND_ROOT / "public" / "shiliang.svg").exists()
+    assert (STATIC_DIR / "shiliang.svg").exists()
+    assert 'src="/shiliang.svg"' in brand_logo
+    assert "/gankaigc-logo.png" not in brand_logo
 
 
 def test_welcome_page_focuses_on_ai_reduction_not_word_formatting():

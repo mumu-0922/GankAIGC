@@ -10,7 +10,7 @@ const BrandLogo = ({ size = 'md', showText = true, className = '' }) => {
   return (
     <div className={`flex items-center gap-3 ${className}`}>
       <img
-        src="/gankaigc-logo.png"
+        src="/shiliang.svg"
         alt="GankAIGC 标志"
         className={`${sizeMap[size] || sizeMap.md} object-contain rounded-xl`}
       />
