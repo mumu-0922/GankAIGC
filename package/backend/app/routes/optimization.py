@@ -2,7 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Request
 from sqlalchemy.orm import Session, defer, joinedload
 from sqlalchemy import func, and_, case
 from typing import List, Optional
+import base64
+from io import BytesIO
 import json
+import re
 from app.database import get_db
 from app.models.models import User, OptimizationSession, OptimizationSegment, ChangeLog, PaperProject
 from app.schemas import (
@@ -19,8 +22,38 @@ from datetime import datetime
 import asyncio
 from app.config import settings
 from sse_starlette.sse import EventSourceResponse
+from docx import Document
 
 router = APIRouter(prefix="/optimization", tags=["optimization"])
+
+
+def _clean_export_filename_part(value: str, fallback: str) -> str:
+    cleaned = re.sub(r'[\\/:*?"<>|\r\n\t]+', "_", (value or "").strip())
+    cleaned = re.sub(r"\s+", " ", cleaned).strip(" ._")
+    return cleaned or fallback
+
+
+def _build_export_filename(session: OptimizationSession, extension: str) -> str:
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    project_title = session.project.title if session.project and session.project.title else ""
+    project_part = _clean_export_filename_part(project_title, "未归档")
+
+    parts = [project_part]
+    if project_title and session.task_title and session.task_title.strip():
+        parts.append(_clean_export_filename_part(session.task_title, "本次处理"))
+    parts.append(timestamp)
+    return f"{'_'.join(parts)}.{extension}"
+
+
+def _build_docx_base64(text: str) -> str:
+    document = Document()
+    paragraphs = text.split("\n\n") if text else [""]
+    for paragraph in paragraphs:
+        document.add_paragraph(paragraph)
+
+    buffer = BytesIO()
+    document.save(buffer)
+    return base64.b64encode(buffer.getvalue()).decode("ascii")
 
 
 async def run_optimization(session_id: int, db: Session, runtime_provider_config: Optional[dict] = None):
@@ -253,10 +286,15 @@ async def get_session_progress(
 ):
     """获取会话进度"""
     # 查询完整会话对象，但避免急切加载关联对象
-    session = db.query(OptimizationSession).filter(
-        OptimizationSession.session_id == session_id,
-        OptimizationSession.user_id == user.id
-    ).first()
+    session = (
+        db.query(OptimizationSession)
+        .options(joinedload(OptimizationSession.project))
+        .filter(
+            OptimizationSession.session_id == session_id,
+            OptimizationSession.user_id == user.id,
+        )
+        .first()
+    )
     
     if not session:
         raise HTTPException(status_code=404, detail="会话不存在")
@@ -410,16 +448,20 @@ async def export_session(
         for seg in segments
     ])
     
-    # 根据格式返回
-    if confirmation.export_format == "txt":
+    if confirmation.export_format == "md":
         return {
-            "format": "txt",
+            "format": "md",
             "content": final_text,
-            "filename": f"optimized_{session_id}.txt"
+            "filename": _build_export_filename(session, "md"),
+            "mime_type": "text/markdown;charset=utf-8",
         }
-    else:
-        # TODO: 实现 docx 和 pdf 导出
-        raise HTTPException(status_code=501, detail="暂不支持此格式")
+
+    return {
+        "format": "docx",
+        "content_base64": _build_docx_base64(final_text),
+        "filename": _build_export_filename(session, "docx"),
+        "mime_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    }
 
 
 @router.delete("/sessions/{session_id}")

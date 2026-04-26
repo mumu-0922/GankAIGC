@@ -16,7 +16,7 @@ const SessionDetailPage = () => {
   const [changes, setChanges] = useState([]);
   const [activeTab, setActiveTab] = useState('result');
   const [showExportModal, setShowExportModal] = useState(false);
-  const [exportFormat, setExportFormat] = useState('txt');
+  const [exportFormat, setExportFormat] = useState('docx');
   const [resultViewMode, setResultViewMode] = useState('enhanced');
 
   useEffect(() => {
@@ -135,13 +135,26 @@ const SessionDetailPage = () => {
         export_format: exportFormat,
       });
 
-      // 下载文件
-      const blob = new Blob([response.data.content], { type: 'text/plain' });
+      const mimeType = response.data.mime_type || 'application/octet-stream';
+      let blob;
+      if (response.data.content_base64) {
+        const binary = window.atob(response.data.content_base64);
+        const bytes = new Uint8Array(binary.length);
+        for (let index = 0; index < binary.length; index += 1) {
+          bytes[index] = binary.charCodeAt(index);
+        }
+        blob = new Blob([bytes], { type: mimeType });
+      } else {
+        blob = new Blob([response.data.content || ''], { type: mimeType });
+      }
+
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = response.data.filename;
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
 
       toast.success('导出成功');
@@ -485,9 +498,8 @@ const SessionDetailPage = () => {
                   onChange={(e) => setExportFormat(e.target.value)}
                   className="w-full px-3 py-2 bg-gray-100 rounded-lg text-[15px] border-none focus:ring-0"
                 >
-                  <option value="txt">文本文件 (.txt)</option>
-                  <option value="docx" disabled>Word文档 (.docx) - 即将支持</option>
-                  <option value="pdf" disabled>PDF文件 (.pdf) - 即将支持</option>
+                  <option value="docx">Word文档 (.docx)</option>
+                  <option value="md">Markdown文件 (.md)</option>
                 </select>
               </div>
             </div>

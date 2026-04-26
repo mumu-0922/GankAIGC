@@ -1,4 +1,6 @@
 from sqlalchemy import inspect
+import base64
+import re
 
 from app.database import SessionLocal, engine
 from app.models.models import User
@@ -196,3 +198,147 @@ def test_list_sessions_can_filter_by_project_and_unfiled(client, monkeypatch):
     assert unfiled_sessions.status_code == 200
     assert len(unfiled_sessions.json()) == 1
     assert unfiled_sessions.json()[0]["project_id"] is None
+
+
+def _create_completed_session(user_id, project_id=None, task_title=None, session_id="export-session"):
+    from app.models.models import OptimizationSegment, OptimizationSession
+
+    db = SessionLocal()
+    try:
+        session = OptimizationSession(
+            user_id=user_id,
+            session_id=session_id,
+            original_text="original paragraph",
+            current_stage="enhance",
+            status="completed",
+            progress=100,
+            current_position=1,
+            total_segments=1,
+            processing_mode="paper_enhance",
+            project_id=project_id,
+            task_title=task_title,
+        )
+        db.add(session)
+        db.flush()
+        db.add(
+            OptimizationSegment(
+                session_id=session.id,
+                segment_index=0,
+                stage="enhance",
+                original_text="original paragraph",
+                enhanced_text="final paragraph",
+                status="completed",
+            )
+        )
+        db.commit()
+    finally:
+        db.close()
+
+
+def test_export_supports_markdown_and_word_with_project_task_filename(client):
+    user_id, headers = _create_user()
+    project = client.post(
+        "/api/user/projects",
+        json={"title": "基于大语言模型的教育应用研究"},
+        headers=headers,
+    ).json()
+    _create_completed_session(
+        user_id,
+        project_id=project["id"],
+        task_title="摘要降 AI",
+        session_id="export-project-task",
+    )
+
+    markdown_response = client.post(
+        "/api/optimization/sessions/export-project-task/export",
+        json={
+            "session_id": "export-project-task",
+            "acknowledge_academic_integrity": True,
+            "export_format": "md",
+        },
+        headers=headers,
+    )
+
+    assert markdown_response.status_code == 200
+    markdown_payload = markdown_response.json()
+    assert markdown_payload["format"] == "md"
+    assert markdown_payload["content"] == "final paragraph"
+    assert markdown_payload["mime_type"] == "text/markdown;charset=utf-8"
+    assert re.fullmatch(
+        r"基于大语言模型的教育应用研究_摘要降 AI_\d{8}_\d{6}\.md",
+        markdown_payload["filename"],
+    )
+
+    word_response = client.post(
+        "/api/optimization/sessions/export-project-task/export",
+        json={
+            "session_id": "export-project-task",
+            "acknowledge_academic_integrity": True,
+            "export_format": "docx",
+        },
+        headers=headers,
+    )
+
+    assert word_response.status_code == 200
+    word_payload = word_response.json()
+    assert word_payload["format"] == "docx"
+    assert word_payload["mime_type"] == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    assert re.fullmatch(
+        r"基于大语言模型的教育应用研究_摘要降 AI_\d{8}_\d{6}\.docx",
+        word_payload["filename"],
+    )
+    assert base64.b64decode(word_payload["content_base64"]).startswith(b"PK")
+
+
+def test_export_filename_uses_project_without_task_or_unfiled(client):
+    user_id, headers = _create_user()
+    project = client.post(
+        "/api/user/projects",
+        json={"title": "论文项目A"},
+        headers=headers,
+    ).json()
+    _create_completed_session(user_id, project_id=project["id"], session_id="export-project-only")
+    _create_completed_session(user_id, task_title="孤立任务", session_id="export-unfiled")
+
+    project_response = client.post(
+        "/api/optimization/sessions/export-project-only/export",
+        json={
+            "session_id": "export-project-only",
+            "acknowledge_academic_integrity": True,
+            "export_format": "md",
+        },
+        headers=headers,
+    )
+    unfiled_response = client.post(
+        "/api/optimization/sessions/export-unfiled/export",
+        json={
+            "session_id": "export-unfiled",
+            "acknowledge_academic_integrity": True,
+            "export_format": "md",
+        },
+        headers=headers,
+    )
+
+    assert project_response.status_code == 200
+    assert re.fullmatch(r"论文项目A_\d{8}_\d{6}\.md", project_response.json()["filename"])
+    assert unfiled_response.status_code == 200
+    assert re.fullmatch(r"未归档_\d{8}_\d{6}\.md", unfiled_response.json()["filename"])
+    assert "孤立任务" not in unfiled_response.json()["filename"]
+
+
+def test_export_rejects_removed_txt_and_pdf_formats(client):
+    user_id, headers = _create_user()
+    _create_completed_session(user_id, session_id="export-format-check")
+
+    for export_format in ("txt", "pdf"):
+        response = client.post(
+            "/api/optimization/sessions/export-format-check/export",
+            json={
+                "session_id": "export-format-check",
+                "acknowledge_academic_integrity": True,
+                "export_format": export_format,
+            },
+            headers=headers,
+        )
+
+        assert response.status_code == 422

@@ -89,6 +89,21 @@ def test_package_main_no_longer_registers_legacy_access_page():
     assert "async def serve_access" not in package_main
 
 
+def test_session_export_modal_only_offers_word_and_markdown():
+    session_detail = (FRONTEND_SRC / "pages" / "SessionDetailPage.jsx").read_text(encoding="utf-8")
+    api = (FRONTEND_SRC / "api" / "index.js").read_text(encoding="utf-8")
+
+    assert "useState('docx')" in session_detail
+    assert '<option value="docx">Word文档 (.docx)</option>' in session_detail
+    assert '<option value="md">Markdown文件 (.md)</option>' in session_detail
+    assert 'value="txt"' not in session_detail
+    assert 'value="pdf"' not in session_detail
+    assert "即将支持" not in session_detail
+    assert "content_base64" in session_detail
+    assert "mime_type" in session_detail
+    assert "responseType" not in api
+
+
 def test_api_config_guide_lists_current_model_recommendations():
     api_guide = (FRONTEND_SRC / "components" / "ApiConfigGuide.jsx").read_text(encoding="utf-8")
 
