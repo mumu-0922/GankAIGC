@@ -3,6 +3,7 @@ import re
 
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[2]
+FRONTEND_ROOT = PACKAGE_ROOT / "frontend"
 FRONTEND_SRC = Path(__file__).resolve().parents[2] / "frontend" / "src"
 STATIC_DIR = PACKAGE_ROOT / "static"
 
@@ -12,6 +13,17 @@ def test_user_menu_exposes_explicit_redeem_entry():
 
     assert "兑换次数" in user_menu
     assert user_menu.count('to="/credits"') == 1
+
+
+def test_frontend_uses_brand_logo_as_favicon():
+    frontend_index = (FRONTEND_ROOT / "index.html").read_text(encoding="utf-8")
+    static_index = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+
+    for index_html in (frontend_index, static_index):
+        assert 'rel="icon"' in index_html
+        assert 'type="image/png"' in index_html
+        assert 'href="/gankaigc-logo.png"' in index_html
+        assert "/vite.svg" not in index_html
 
 
 def test_welcome_page_focuses_on_ai_reduction_not_word_formatting():
