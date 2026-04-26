@@ -20,6 +20,9 @@ def test_welcome_page_focuses_on_ai_reduction_not_word_formatting():
     assert "让论文原创更简单" in welcome_page
     assert "开始使用" in welcome_page
     assert "登录 / 注册" in welcome_page
+    assert "功能介绍" not in welcome_page
+    assert "使用场景" not in welcome_page
+    assert "安全保障" not in welcome_page
     assert "Word 排版" not in welcome_page
 
 
@@ -255,3 +258,6 @@ def test_served_static_bundle_includes_ai_reduction_homepage():
 
     assert "让论文原创更简单" in static_bundle
     assert "登录 / 注册" in static_bundle
+    assert "功能介绍" not in static_bundle
+    assert "使用场景" not in static_bundle
+    assert "安全保障" not in static_bundle

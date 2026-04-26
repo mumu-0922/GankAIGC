@@ -54,13 +54,6 @@ const WelcomePage = () => {
         <div className="mx-auto flex min-h-[76px] max-w-7xl items-center justify-between px-5 sm:px-8">
           <BrandLogo size="sm" />
 
-          <nav className="hidden items-center gap-8 text-sm font-semibold text-slate-600 lg:flex">
-            <a href="#home" className="text-blue-600">首页</a>
-            <a href="#features" className="hover:text-slate-950">功能介绍</a>
-            <a href="#scenarios" className="hover:text-slate-950">使用场景</a>
-            <a href="#security" className="hover:text-slate-950">安全保障</a>
-          </nav>
-
           <div className="flex items-center gap-3">
             <button
               type="button"
