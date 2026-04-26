@@ -14,6 +14,15 @@ def test_user_menu_exposes_explicit_redeem_entry():
     assert user_menu.count('to="/credits"') == 1
 
 
+def test_welcome_page_focuses_on_ai_reduction_not_word_formatting():
+    welcome_page = (FRONTEND_SRC / "pages" / "WelcomePage.jsx").read_text(encoding="utf-8")
+
+    assert "让论文原创更简单" in welcome_page
+    assert "开始使用" in welcome_page
+    assert "登录 / 注册" in welcome_page
+    assert "Word 排版" not in welcome_page
+
+
 def test_user_menu_hides_word_formatter_entry_until_feature_is_ready():
     user_menu = (FRONTEND_SRC / "components" / "UserMenu.jsx").read_text(encoding="utf-8")
 
@@ -235,3 +244,14 @@ def test_served_static_bundle_includes_admin_tab_url_persistence():
     assert "URLSearchParams" in static_bundle
     assert '"tab"' in static_bundle
     assert '"dashboard","sessions","accounts","database","config"' in static_bundle
+
+
+def test_served_static_bundle_includes_ai_reduction_homepage():
+    static_index = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+    bundle_match = re.search(r'src="/assets/(index-[^"]+\.js)"', static_index)
+    assert bundle_match
+
+    static_bundle = (STATIC_DIR / "assets" / bundle_match.group(1)).read_text(encoding="utf-8")
+
+    assert "让论文原创更简单" in static_bundle
+    assert "登录 / 注册" in static_bundle
