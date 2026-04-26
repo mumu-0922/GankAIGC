@@ -282,13 +282,10 @@ const WelcomePage = () => {
         </section>
 
         <section id="scenarios" data-home-scenarios="workflow" className="mt-8">
-          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div className="mb-5">
             <div>
               <p className="text-sm font-bold text-blue-600">论文处理链路</p>
               <h2 className="mt-2 text-2xl font-black text-slate-950">从初稿到投稿前的四步优化</h2>
-            </div>
-            <div className="w-fit rounded-full border border-white/80 bg-white/70 px-4 py-2 text-sm font-bold text-slate-600 shadow-sm backdrop-blur-xl">
-              账号次数与自带 API 双模式
             </div>
           </div>
 
