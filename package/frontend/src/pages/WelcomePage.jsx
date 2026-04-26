@@ -36,10 +36,46 @@ const featureCards = [
 ];
 
 const scenarioCards = [
-  { label: '初稿降 AI', value: '润色 + 增强' },
-  { label: '二稿优化', value: '语义更自然' },
-  { label: '投稿前检查', value: '保留处理记录' },
-  { label: '自带 API', value: '不消耗平台次数' },
+  {
+    step: '阶段 01',
+    label: '初稿降 AI',
+    value: '润色 + 增强',
+    desc: '先处理明显机器感表达，保留论文原有结构',
+    icon: Sparkles,
+    iconTone: 'bg-rose-500 text-white shadow-rose-500/25',
+    stripe: 'from-rose-400 to-blue-500',
+    panel: 'from-rose-50/90 via-white/90 to-blue-50/80',
+  },
+  {
+    step: '阶段 02',
+    label: '二稿优化',
+    value: '语义更自然',
+    desc: '调整句式节奏，让表达更贴近人工写作习惯',
+    icon: FileText,
+    iconTone: 'bg-blue-600 text-white shadow-blue-500/25',
+    stripe: 'from-blue-500 to-cyan-400',
+    panel: 'from-blue-50/90 via-white/90 to-cyan-50/80',
+  },
+  {
+    step: '阶段 03',
+    label: '投稿前检查',
+    value: '保留处理记录',
+    desc: '按论文维度归档，方便复查每次处理结果',
+    icon: ShieldCheck,
+    iconTone: 'bg-teal-500 text-white shadow-teal-500/25',
+    stripe: 'from-teal-400 to-emerald-400',
+    panel: 'from-teal-50/90 via-white/90 to-emerald-50/80',
+  },
+  {
+    step: '阶段 04',
+    label: '自带 API',
+    value: '不消耗平台次数',
+    desc: '有自有模型额度时，可切换为自带 API 模式',
+    icon: KeyRound,
+    iconTone: 'bg-violet-500 text-white shadow-violet-500/25',
+    stripe: 'from-violet-500 to-blue-500',
+    panel: 'from-violet-50/90 via-white/90 to-blue-50/80',
+  },
 ];
 
 const WelcomePage = () => {
@@ -245,13 +281,43 @@ const WelcomePage = () => {
           ))}
         </section>
 
-        <section id="scenarios" className="mt-6 grid gap-4 rounded-[1.75rem] border border-white/80 bg-white/70 p-4 shadow-[0_18px_48px_rgba(15,23,42,0.08)] backdrop-blur-2xl sm:grid-cols-2 lg:grid-cols-4">
-          {scenarioCards.map(({ label, value }) => (
-            <div key={label} className="rounded-2xl bg-white/70 p-5">
-              <p className="text-sm font-semibold text-slate-500">{label}</p>
-              <p className="mt-2 text-xl font-black text-slate-950">{value}</p>
+        <section id="scenarios" data-home-scenarios="workflow" className="mt-8">
+          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-sm font-bold text-blue-600">论文处理链路</p>
+              <h2 className="mt-2 text-2xl font-black text-slate-950">从初稿到投稿前的四步优化</h2>
             </div>
-          ))}
+            <div className="w-fit rounded-full border border-white/80 bg-white/70 px-4 py-2 text-sm font-bold text-slate-600 shadow-sm backdrop-blur-xl">
+              账号次数与自带 API 双模式
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {scenarioCards.map(({ step, label, value, desc, icon: Icon, iconTone, stripe, panel }) => (
+              <article
+                key={label}
+                className={`group relative min-h-[220px] overflow-hidden rounded-[1.5rem] border border-white/80 bg-gradient-to-br ${panel} p-5 shadow-[0_18px_48px_rgba(15,23,42,0.09)] backdrop-blur-2xl transition hover:-translate-y-0.5 hover:shadow-[0_24px_60px_rgba(15,23,42,0.13)]`}
+              >
+                <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${stripe}`} />
+                <div className="flex items-start justify-between gap-3">
+                  <div className={`grid h-12 w-12 place-items-center rounded-2xl shadow-lg ${iconTone}`}>
+                    <Icon className="h-6 w-6" />
+                  </div>
+                  <span className="rounded-full border border-white/80 bg-white/75 px-3 py-1 text-xs font-black text-slate-500 shadow-sm">
+                    {step}
+                  </span>
+                </div>
+
+                <p className="mt-6 text-sm font-bold text-slate-500">{label}</p>
+                <h3 className="mt-2 text-2xl font-black text-slate-950">{value}</h3>
+                <p className="mt-4 text-sm leading-6 text-slate-600">{desc}</p>
+
+                <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-white/70">
+                  <div className={`h-full w-2/3 rounded-full bg-gradient-to-r ${stripe}`} />
+                </div>
+              </article>
+            ))}
+          </div>
         </section>
       </main>
     </div>

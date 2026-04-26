@@ -23,6 +23,9 @@ def test_welcome_page_focuses_on_ai_reduction_not_word_formatting():
     assert "优化前" in welcome_page
     assert "优化后" in welcome_page
     assert "AI 率检测结果" in welcome_page
+    assert 'data-home-scenarios="workflow"' in welcome_page
+    assert "论文处理链路" in welcome_page
+    assert "阶段 01" in welcome_page
     assert "论文原创性工作台" not in welcome_page
     assert "功能介绍" not in welcome_page
     assert "使用场景" not in welcome_page
@@ -265,6 +268,9 @@ def test_served_static_bundle_includes_ai_reduction_homepage():
     assert "优化前" in static_bundle
     assert "优化后" in static_bundle
     assert "AI 率检测结果" in static_bundle
+    assert "data-home-scenarios" in static_bundle
+    assert "论文处理链路" in static_bundle
+    assert "阶段 01" in static_bundle
     assert "论文原创性工作台" not in static_bundle
     assert "功能介绍" not in static_bundle
     assert "使用场景" not in static_bundle
