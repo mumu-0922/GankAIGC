@@ -146,7 +146,7 @@ const ConfigManager = ({ adminToken }) => {
               type="password"
               value={formData.POLISH_API_KEY}
               onChange={(e) => setFormData({ ...formData, POLISH_API_KEY: e.target.value })}
-              placeholder="sk-... 或 AIzaSy..."
+              placeholder="sk-... 或 Google API Key"
               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm font-mono"
             />
             <p className="mt-1.5 text-xs text-gray-400">
@@ -209,7 +209,7 @@ const ConfigManager = ({ adminToken }) => {
               type="password"
               value={formData.ENHANCE_API_KEY}
               onChange={(e) => setFormData({ ...formData, ENHANCE_API_KEY: e.target.value })}
-              placeholder="sk-... 或 AIzaSy..."
+              placeholder="sk-... 或 Google API Key"
               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm font-mono"
             />
             <p className="mt-1.5 text-xs text-gray-400">
@@ -272,7 +272,7 @@ const ConfigManager = ({ adminToken }) => {
               type="password"
               value={formData.EMOTION_API_KEY}
               onChange={(e) => setFormData({ ...formData, EMOTION_API_KEY: e.target.value })}
-              placeholder="sk-... 或 AIzaSy..."
+              placeholder="sk-... 或 Google API Key"
               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm font-mono"
             />
           </div>
@@ -417,7 +417,7 @@ const ConfigManager = ({ adminToken }) => {
               type="password"
               value={formData.COMPRESSION_API_KEY}
               onChange={(e) => setFormData({ ...formData, COMPRESSION_API_KEY: e.target.value })}
-              placeholder="sk-... 或 AIzaSy..."
+              placeholder="sk-... 或 Google API Key"
               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm font-mono"
             />
             <p className="mt-1.5 text-xs text-gray-400">可与其他模型使用相同的 Key</p>

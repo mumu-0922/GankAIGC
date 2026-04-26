@@ -200,7 +200,7 @@ const ApiConfigGuide = () => {
                     <li>1. 访问 Google AI Studio</li>
                     <li>2. 使用 Google 账号登录</li>
                     <li>3. 点击 "Get API Key" 创建新的 API Key</li>
-                    <li>4. 复制生成的 Key（格式如：AIzaSy...）</li>
+                    <li>4. 复制生成的 Key（格式如：Google API Key）</li>
                   </ol>
                   <a
                     href="https://aistudio.google.com/apikey"

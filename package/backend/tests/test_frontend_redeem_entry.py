@@ -271,6 +271,23 @@ def test_api_config_guide_links_to_current_project_issues():
     assert "https://github.com/chi111i/GankAIGC/issues" not in api_guide
 
 
+def test_frontend_examples_avoid_secret_scanner_key_prefixes():
+    api_guide = (FRONTEND_SRC / "components" / "ApiConfigGuide.jsx").read_text(encoding="utf-8")
+    config_manager = (FRONTEND_SRC / "components" / "ConfigManager.jsx").read_text(encoding="utf-8")
+    static_index = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+    bundle_match = re.search(r'src="/assets/(index-[^"]+\.js)"', static_index)
+    assert bundle_match
+
+    static_bundle = (STATIC_DIR / "assets" / bundle_match.group(1)).read_text(encoding="utf-8")
+    google_key_prefix = "AI" + "za"
+
+    for source in (api_guide, config_manager, static_bundle):
+        assert google_key_prefix not in source
+
+    assert "Google API Key" in api_guide
+    assert "Google API Key" in config_manager
+
+
 def test_served_static_bundle_includes_api_guide_interaction_fix():
     static_index = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
     bundle_match = re.search(r'src="/assets/(index-[^"]+\.js)"', static_index)
