@@ -7,7 +7,7 @@ import ApiConfigGuide from './ApiConfigGuide';
 const ConfigManager = ({ adminToken }) => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  
+
   const [formData, setFormData] = useState({
     POLISH_MODEL: '',
     POLISH_API_KEY: '',
@@ -40,7 +40,7 @@ const ConfigManager = ({ adminToken }) => {
       const response = await axios.get('/api/admin/config', {
         headers: { Authorization: `Bearer ${adminToken}` }
       });
-      
+
       // 填充表单,直接使用返回的值
       setFormData({
         POLISH_MODEL: response.data.polish.model || '',
@@ -131,12 +131,12 @@ const ConfigManager = ({ adminToken }) => {
             <input
               type="text"
               value={formData.POLISH_MODEL}
-              onChange={(e) => setFormData({...formData, POLISH_MODEL: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, POLISH_MODEL: e.target.value })}
               placeholder="gemini-2.5-pro"
               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
             />
             <p className="mt-1.5 text-xs text-gray-400">
-              推荐：gemini-2.5-pro、gpt-4o、claude-sonnet-4-20250514
+
             </p>
           </div>
 
@@ -147,7 +147,7 @@ const ConfigManager = ({ adminToken }) => {
             <input
               type="password"
               value={formData.POLISH_API_KEY}
-              onChange={(e) => setFormData({...formData, POLISH_API_KEY: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, POLISH_API_KEY: e.target.value })}
               placeholder="sk-... 或 AIzaSy..."
               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm font-mono"
             />
@@ -163,12 +163,12 @@ const ConfigManager = ({ adminToken }) => {
             <input
               type="text"
               value={formData.POLISH_BASE_URL}
-              onChange={(e) => setFormData({...formData, POLISH_BASE_URL: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, POLISH_BASE_URL: e.target.value })}
               placeholder="https://api.openai.com/v1"
               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
             />
             <p className="mt-1.5 text-xs text-gray-400">
-              API 服务地址，必须以 /v1 结尾。Gemini: https://generativelanguage.googleapis.com/v1beta/openai
+              API 服务地址，必须以 /v1 结尾。
             </p>
           </div>
         </div>
@@ -194,7 +194,7 @@ const ConfigManager = ({ adminToken }) => {
             <input
               type="text"
               value={formData.ENHANCE_MODEL}
-              onChange={(e) => setFormData({...formData, ENHANCE_MODEL: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, ENHANCE_MODEL: e.target.value })}
               placeholder="gemini-2.5-pro"
               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
             />
@@ -210,7 +210,7 @@ const ConfigManager = ({ adminToken }) => {
             <input
               type="password"
               value={formData.ENHANCE_API_KEY}
-              onChange={(e) => setFormData({...formData, ENHANCE_API_KEY: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, ENHANCE_API_KEY: e.target.value })}
               placeholder="sk-... 或 AIzaSy..."
               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm font-mono"
             />
@@ -226,7 +226,7 @@ const ConfigManager = ({ adminToken }) => {
             <input
               type="text"
               value={formData.ENHANCE_BASE_URL}
-              onChange={(e) => setFormData({...formData, ENHANCE_BASE_URL: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, ENHANCE_BASE_URL: e.target.value })}
               placeholder="https://api.openai.com/v1"
               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
             />
@@ -257,7 +257,7 @@ const ConfigManager = ({ adminToken }) => {
             <input
               type="text"
               value={formData.EMOTION_MODEL}
-              onChange={(e) => setFormData({...formData, EMOTION_MODEL: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, EMOTION_MODEL: e.target.value })}
               placeholder="gemini-2.5-pro"
               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
             />
@@ -273,7 +273,7 @@ const ConfigManager = ({ adminToken }) => {
             <input
               type="password"
               value={formData.EMOTION_API_KEY}
-              onChange={(e) => setFormData({...formData, EMOTION_API_KEY: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, EMOTION_API_KEY: e.target.value })}
               placeholder="sk-... 或 AIzaSy..."
               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm font-mono"
             />
@@ -286,7 +286,7 @@ const ConfigManager = ({ adminToken }) => {
             <input
               type="text"
               value={formData.EMOTION_BASE_URL}
-              onChange={(e) => setFormData({...formData, EMOTION_BASE_URL: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, EMOTION_BASE_URL: e.target.value })}
               placeholder="https://api.openai.com/v1"
               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
             />
@@ -320,17 +320,15 @@ const ConfigManager = ({ adminToken }) => {
                 ...formData,
                 THINKING_MODE_ENABLED: !formData.THINKING_MODE_ENABLED
               })}
-              className={`relative w-12 h-7 rounded-full transition-colors duration-200 ${
-                formData.THINKING_MODE_ENABLED
-                  ? 'bg-blue-600'
-                  : 'bg-gray-200'
-              }`}
+              className={`relative w-12 h-7 rounded-full transition-colors duration-200 ${formData.THINKING_MODE_ENABLED
+                ? 'bg-blue-600'
+                : 'bg-gray-200'
+                }`}
             >
-              <span className={`absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${
-                formData.THINKING_MODE_ENABLED
-                  ? 'translate-x-5'
-                  : 'translate-x-0'
-              }`} />
+              <span className={`absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${formData.THINKING_MODE_ENABLED
+                ? 'translate-x-5'
+                : 'translate-x-0'
+                }`} />
             </button>
           </div>
 
@@ -341,7 +339,7 @@ const ConfigManager = ({ adminToken }) => {
             </label>
             <select
               value={formData.THINKING_MODE_EFFORT}
-              onChange={(e) => setFormData({...formData, THINKING_MODE_EFFORT: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, THINKING_MODE_EFFORT: e.target.value })}
               disabled={!formData.THINKING_MODE_ENABLED}
               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -378,7 +376,7 @@ const ConfigManager = ({ adminToken }) => {
             <input
               type="number"
               value={formData.MAX_CONCURRENT_USERS}
-              onChange={(e) => setFormData({...formData, MAX_CONCURRENT_USERS: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, MAX_CONCURRENT_USERS: e.target.value })}
               placeholder="5"
               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
             />
@@ -392,7 +390,7 @@ const ConfigManager = ({ adminToken }) => {
             <input
               type="number"
               value={formData.HISTORY_COMPRESSION_THRESHOLD}
-              onChange={(e) => setFormData({...formData, HISTORY_COMPRESSION_THRESHOLD: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, HISTORY_COMPRESSION_THRESHOLD: e.target.value })}
               placeholder="5000"
               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
             />
@@ -406,7 +404,7 @@ const ConfigManager = ({ adminToken }) => {
             <input
               type="text"
               value={formData.COMPRESSION_MODEL}
-              onChange={(e) => setFormData({...formData, COMPRESSION_MODEL: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, COMPRESSION_MODEL: e.target.value })}
               placeholder="gemini-2.5-pro"
               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
             />
@@ -420,7 +418,7 @@ const ConfigManager = ({ adminToken }) => {
             <input
               type="password"
               value={formData.COMPRESSION_API_KEY}
-              onChange={(e) => setFormData({...formData, COMPRESSION_API_KEY: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, COMPRESSION_API_KEY: e.target.value })}
               placeholder="sk-... 或 AIzaSy..."
               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm font-mono"
             />
@@ -434,7 +432,7 @@ const ConfigManager = ({ adminToken }) => {
             <input
               type="text"
               value={formData.COMPRESSION_BASE_URL}
-              onChange={(e) => setFormData({...formData, COMPRESSION_BASE_URL: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, COMPRESSION_BASE_URL: e.target.value })}
               placeholder="https://api.openai.com/v1"
               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
             />
@@ -448,7 +446,7 @@ const ConfigManager = ({ adminToken }) => {
             <input
               type="number"
               value={formData.SEGMENT_SKIP_THRESHOLD}
-              onChange={(e) => setFormData({...formData, SEGMENT_SKIP_THRESHOLD: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, SEGMENT_SKIP_THRESHOLD: e.target.value })}
               placeholder="15"
               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
             />
@@ -462,7 +460,7 @@ const ConfigManager = ({ adminToken }) => {
             <input
               type="number"
               value={formData.API_REQUEST_INTERVAL}
-              onChange={(e) => setFormData({...formData, API_REQUEST_INTERVAL: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, API_REQUEST_INTERVAL: e.target.value })}
               placeholder="6"
               min="0"
               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
@@ -477,7 +475,7 @@ const ConfigManager = ({ adminToken }) => {
             <input
               type="number"
               value={formData.MAX_UPLOAD_FILE_SIZE_MB}
-              onChange={(e) => setFormData({...formData, MAX_UPLOAD_FILE_SIZE_MB: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, MAX_UPLOAD_FILE_SIZE_MB: e.target.value })}
               placeholder="0"
               min="0"
               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
