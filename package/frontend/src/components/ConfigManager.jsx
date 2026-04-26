@@ -24,7 +24,6 @@ const ConfigManager = ({ adminToken }) => {
     COMPRESSION_API_KEY: '',
     COMPRESSION_BASE_URL: '',
     SEGMENT_SKIP_THRESHOLD: '',
-    MAX_UPLOAD_FILE_SIZE_MB: '',
     API_REQUEST_INTERVAL: '',
     THINKING_MODE_ENABLED: true,
     THINKING_MODE_EFFORT: 'high'
@@ -58,7 +57,6 @@ const ConfigManager = ({ adminToken }) => {
         COMPRESSION_API_KEY: response.data.compression?.api_key || '',
         COMPRESSION_BASE_URL: response.data.compression?.base_url || '',
         SEGMENT_SKIP_THRESHOLD: response.data.system.segment_skip_threshold?.toString() || '',
-        MAX_UPLOAD_FILE_SIZE_MB: response.data.system.max_upload_file_size_mb?.toString() || '',
         API_REQUEST_INTERVAL: response.data.system.api_request_interval?.toString() || '6',
         THINKING_MODE_ENABLED: response.data.thinking?.enabled ?? true,
         THINKING_MODE_EFFORT: response.data.thinking?.effort || 'high'
@@ -468,20 +466,6 @@ const ConfigManager = ({ adminToken }) => {
             <p className="mt-1.5 text-xs text-gray-400">每个段落处理完成后的等待时间，用于避免触发 API 频率限制 (RATE_LIMIT)，0 表示无间隔</p>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-500 mb-2">
-              Word 排版文件大小限制 (MB)
-            </label>
-            <input
-              type="number"
-              value={formData.MAX_UPLOAD_FILE_SIZE_MB}
-              onChange={(e) => setFormData({ ...formData, MAX_UPLOAD_FILE_SIZE_MB: e.target.value })}
-              placeholder="0"
-              min="0"
-              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-            />
-            <p className="mt-1.5 text-xs text-gray-400">0 表示无限制</p>
-          </div>
         </div>
       </div>
 

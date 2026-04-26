@@ -233,6 +233,15 @@ def test_config_manager_uses_current_model_placeholders():
     assert 'placeholder="gemini-2.5-pro"' not in config_manager
 
 
+def test_config_manager_hides_word_formatter_file_size_setting_until_feature_is_ready():
+    config_manager = (FRONTEND_SRC / "components" / "ConfigManager.jsx").read_text(encoding="utf-8")
+
+    assert "Word 排版文件大小限制" not in config_manager
+    assert "MAX_UPLOAD_FILE_SIZE_MB" not in config_manager
+    assert "max_upload_file_size_mb" not in config_manager
+    assert "0 表示无限制" not in config_manager
+
+
 def test_api_config_guide_keeps_previous_sections_open_when_expanding_next():
     api_guide = (FRONTEND_SRC / "components" / "ApiConfigGuide.jsx").read_text(encoding="utf-8")
 
@@ -288,6 +297,9 @@ def test_served_static_bundle_includes_admin_tab_url_persistence():
     assert "URLSearchParams" in static_bundle
     assert '"tab"' in static_bundle
     assert '"dashboard","sessions","accounts","database","config"' in static_bundle
+    assert "Word 排版文件大小限制" not in static_bundle
+    assert "MAX_UPLOAD_FILE_SIZE_MB" not in static_bundle
+    assert "max_upload_file_size_mb" not in static_bundle
 
 
 def test_served_static_bundle_includes_ai_reduction_homepage():
