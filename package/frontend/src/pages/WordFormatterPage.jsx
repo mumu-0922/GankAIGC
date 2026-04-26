@@ -33,6 +33,7 @@ const WordFormatterPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingJobs, setIsLoadingJobs] = useState(false);
   const [usage, setUsage] = useState(null);
+  const [billingMode, setBillingMode] = useState('platform');
   const [dragActive, setDragActive] = useState(false);
   const [showPreviewMode, setShowPreviewMode] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
@@ -78,6 +79,17 @@ const WordFormatterPage = () => {
       }
     };
   }, [activeJob]);
+
+  useEffect(() => {
+    if (
+      usage &&
+      !usage.is_unlimited &&
+      (usage.credit_balance || 0) <= 0 &&
+      usage.has_provider_config
+    ) {
+      setBillingMode('byok');
+    }
+  }, [usage]);
 
   const loadSpecs = async () => {
     try {
@@ -210,6 +222,14 @@ const WordFormatterPage = () => {
     if (isSubmitting || activeJob) {
       return;
     }
+    if (billingMode === 'platform' && usage && !usage.is_unlimited && (usage.credit_balance || 0) <= 0) {
+      toast.error('平台剩余次数不足，请先兑换次数或切换自带 API 模式');
+      return;
+    }
+    if (billingMode === 'byok' && usage && !usage.has_provider_config) {
+      toast.error('请先保存自带 API 配置');
+      return;
+    }
 
     try {
       setIsSubmitting(true);
@@ -225,6 +245,7 @@ const WordFormatterPage = () => {
           spec_json: specJsonToUse,
           include_cover: includeCover,
           include_toc: includeToc,
+          billingMode,
         });
       } else {
         response = await wordFormatterAPI.formatText({
@@ -233,6 +254,7 @@ const WordFormatterPage = () => {
           spec_json: specJsonToUse,
           include_cover: includeCover,
           include_toc: includeToc,
+          billing_mode: billingMode,
         });
       }
 
@@ -354,8 +376,9 @@ const WordFormatterPage = () => {
             <div className="flex items-center gap-3">
               {usage && (
                 <div className="hidden sm:block gank-topbar-pill rounded-xl px-3 py-1.5 text-[13px] text-slate-600">
-                  已使用: <span className="font-medium text-black">{usage.usage_count}</span>
-                  {usage.usage_limit > 0 && ` / ${usage.usage_limit}`}
+                  平台次数: <span className="font-medium text-black">
+                    {usage.is_unlimited ? '无限' : `${usage.credit_balance ?? 0} 次`}
+                  </span>
                 </div>
               )}
 
@@ -636,6 +659,47 @@ Deep Learning; Image Recognition; Convolutional Neural Network
                     支持 .docx、.txt、.md 文件或直接输入文本。
                   </p>
                 </div>
+              </div>
+            </div>
+
+            {/* Billing Mode */}
+            <div className="bg-white rounded-2xl shadow-ios p-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setBillingMode('platform')}
+                  className={`text-left rounded-xl border px-4 py-3 transition-all ${
+                    billingMode === 'platform'
+                      ? 'border-blue-300 bg-blue-50 text-blue-700'
+                      : 'border-gray-100 bg-gray-50 text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 font-semibold">
+                    <CheckCircle className="w-4 h-4" />
+                    平台次数
+                  </div>
+                  <p className="mt-1 text-[12px] text-gray-500">
+                    剩余 {usage?.is_unlimited ? '无限' : `${usage?.credit_balance ?? '-'} 次`}
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setBillingMode('byok')}
+                  className={`text-left rounded-xl border px-4 py-3 transition-all ${
+                    billingMode === 'byok'
+                      ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
+                      : 'border-gray-100 bg-gray-50 text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 font-semibold">
+                    <Settings className="w-4 h-4" />
+                    自带 API
+                  </div>
+                  <p className="mt-1 text-[12px] text-gray-500">
+                    {usage?.has_provider_config ? '已保存配置，不消耗平台次数' : '需要先保存 API 配置'}
+                  </p>
+                </button>
               </div>
             </div>
 

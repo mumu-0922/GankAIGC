@@ -2,7 +2,7 @@
 Word Formatter API Routes
 
 Provides endpoints for document formatting with AI-assisted recognition.
-Authentication uses user tokens, usage counts shared with polishing service.
+Authentication uses user tokens, platform credits, or user's own API config.
 """
 from __future__ import annotations
 
@@ -20,9 +20,11 @@ from sse_starlette.sse import EventSourceResponse
 
 from app.config import settings
 from app.database import get_db
-from app.models.models import User, SavedSpec
+from app.models.models import User, SavedSpec, UserProviderConfig
 from app.utils.auth import get_current_user_with_legacy_fallback
 from app.services.ai_service import AIService
+from app.services.credit_service import CreditService
+from app.services.provider_config_service import ProviderConfigService
 
 from .services import (
     CompileOptions,
@@ -56,6 +58,8 @@ from .utils.docx_text import extract_text_from_docx
 
 router = APIRouter(prefix="/word-formatter", tags=["word-formatter"])
 
+WORD_FORMATTER_BILLING_MODES = {"platform", "byok"}
+
 
 # Request/Response Models
 class FormatRequest(BaseModel):
@@ -67,6 +71,7 @@ class FormatRequest(BaseModel):
     include_cover: bool = True
     include_toc: bool = True
     toc_title: str = "目 录"
+    billing_mode: str = "platform"
 
 
 class FormatFileRequest(BaseModel):
@@ -77,11 +82,13 @@ class FormatFileRequest(BaseModel):
     include_cover: bool = True
     include_toc: bool = True
     toc_title: str = "目 录"
+    billing_mode: str = "platform"
 
 
 class GenerateSpecRequest(BaseModel):
     """Request to generate spec from requirements."""
     requirements: str = Field(..., min_length=10, description="User's formatting requirements")
+    billing_mode: str = "platform"
 
 
 class JobResponse(BaseModel):
@@ -117,6 +124,9 @@ class UsageInfoResponse(BaseModel):
     usage_count: int
     usage_limit: int
     remaining: int
+    credit_balance: int = 0
+    is_unlimited: bool = False
+    has_provider_config: bool = False
 
 
 # Preprocess Request/Response Models
@@ -125,6 +135,7 @@ class PreprocessRequest(BaseModel):
     text: str = Field(..., min_length=10, description="原始文章文本")
     chunk_paragraphs: int = Field(40, ge=10, le=100, description="每块最大段落数")
     chunk_chars: int = Field(8000, ge=2000, le=15000, description="每块最大字符数")
+    billing_mode: str = "platform"
 
 
 class PreprocessJobResponse(BaseModel):
@@ -238,24 +249,28 @@ class SavedSpecListResponse(BaseModel):
 
 
 
-def check_usage_limit(user: User) -> None:
-    """Check if user has remaining usage quota (shared with polishing)."""
-    usage_limit = user.usage_limit if user.usage_limit is not None else settings.DEFAULT_USAGE_LIMIT
-    usage_count = user.usage_count or 0
-
-    # 0 means unlimited
-    if usage_limit > 0 and usage_count >= usage_limit:
-        raise HTTPException(status_code=403, detail="该卡密已达到使用次数限制")
+def normalize_word_formatter_billing_mode(billing_mode: str) -> str:
+    mode = (billing_mode or "platform").strip().lower()
+    if mode not in WORD_FORMATTER_BILLING_MODES:
+        raise HTTPException(status_code=400, detail="无效的计费模式")
+    return mode
 
 
-def increment_usage(user: User, db: Session) -> None:
-    """Increment user's usage count (shared with polishing)."""
-    user.usage_count = (user.usage_count or 0) + 1
-    db.commit()
+def get_word_formatter_provider_config(user: User, db: Session, billing_mode: str) -> Optional[dict]:
+    if normalize_word_formatter_billing_mode(billing_mode) != "byok":
+        return None
+    return ProviderConfigService(db).get_runtime_config(user)
 
 
-def get_ai_service() -> AIService:
+def get_word_formatter_ai_service(provider_config: Optional[dict] = None) -> AIService:
     """Get AI service instance for word formatting."""
+    if provider_config:
+        return AIService(
+            model=provider_config.get("polish_model") or settings.POLISH_MODEL,
+            api_key=provider_config.get("api_key"),
+            base_url=provider_config.get("base_url"),
+        )
+
     return AIService(
         model=settings.POLISH_MODEL,
         api_key=settings.POLISH_API_KEY,
@@ -263,21 +278,49 @@ def get_ai_service() -> AIService:
     )
 
 
+def charge_word_formatter_platform_credit(user: User, db: Session, billing_mode: str, reason: str) -> bool:
+    if normalize_word_formatter_billing_mode(billing_mode) == "byok":
+        return False
+
+    CreditService(db).hold_platform_credit(user, reason=reason)
+    db.commit()
+    db.refresh(user)
+    return not user.is_unlimited
+
+
+def refund_word_formatter_platform_credit(user: User, db: Session, charged: bool, reason: str) -> None:
+    if not charged:
+        return
+
+    CreditService(db).refund_platform_credit(user, reason=reason)
+    db.commit()
+    db.refresh(user)
+
+
 @router.get("/usage", response_model=UsageInfoResponse)
 async def get_usage_info(
     user: User = Depends(get_current_user_with_legacy_fallback),
     db: Session = Depends(get_db)
 ):
-    """Get user's usage information (shared with polishing)."""
+    """Get user's word formatter billing information."""
 
     usage_limit = user.usage_limit if user.usage_limit is not None else settings.DEFAULT_USAGE_LIMIT
     usage_count = user.usage_count or 0
     remaining = max(0, usage_limit - usage_count) if usage_limit > 0 else -1
+    has_provider_config = (
+        db.query(UserProviderConfig.id)
+        .filter(UserProviderConfig.user_id == user.id)
+        .first()
+        is not None
+    )
 
     return UsageInfoResponse(
         usage_count=usage_count,
         usage_limit=usage_limit,
         remaining=remaining,
+        credit_balance=user.credit_balance or 0,
+        is_unlimited=bool(user.is_unlimited),
+        has_provider_config=has_provider_config,
     )
 
 
@@ -310,17 +353,21 @@ async def generate_spec(
     db: Session = Depends(get_db)
 ):
     """Generate a formatting spec from user requirements using AI."""
-    check_usage_limit(user)
+    provider_config = get_word_formatter_provider_config(user, db, request.billing_mode)
+    charged = charge_word_formatter_platform_credit(
+        user,
+        db,
+        request.billing_mode,
+        reason="word_formatter_spec_generate",
+    )
 
     print(f"\n[WORD-FORMATTER] ========== AI 规范生成请求 ==========", flush=True)
     print(f"[WORD-FORMATTER] 用户ID: {user.id}", flush=True)
     print(f"[WORD-FORMATTER] 需求长度: {len(request.requirements)} 字符", flush=True)
 
     try:
-        ai_service = get_ai_service()
+        ai_service = get_word_formatter_ai_service(provider_config)
         spec = await ai_generate_spec(request.requirements, ai_service)
-
-        increment_usage(user, db)
 
         print(f"[WORD-FORMATTER] ✅ 规范生成成功: {spec.meta.get('name', 'AI_Generated')}", flush=True)
         print(f"[WORD-FORMATTER] ===========================================\n", flush=True)
@@ -331,6 +378,7 @@ async def generate_spec(
             "spec_name": spec.meta.get("name", "AI_Generated"),
         }
     except Exception as e:
+        refund_word_formatter_platform_credit(user, db, charged, reason="word_formatter_spec_refund")
         print(f"[WORD-FORMATTER] ❌ 规范生成失败: {e}", flush=True)
         print(f"[WORD-FORMATTER] ===========================================\n", flush=True)
         raise HTTPException(status_code=500, detail=f"生成规范失败: {str(e)}")
@@ -344,10 +392,16 @@ async def format_text(
     db: Session = Depends(get_db)
 ):
     """Format text document and return job ID."""
-    check_usage_limit(user)
-
     if not request.text:
         raise HTTPException(status_code=400, detail="文本内容不能为空")
+
+    get_word_formatter_provider_config(user, db, request.billing_mode)
+    charged = charge_word_formatter_platform_credit(
+        user,
+        db,
+        request.billing_mode,
+        reason="word_formatter_format",
+    )
 
     print(f"\n[WORD-FORMATTER] ========== 文本格式化请求 ==========", flush=True)
     print(f"[WORD-FORMATTER] 用户ID: {user.id}", flush=True)
@@ -390,8 +444,11 @@ async def format_text(
 
     # Run job in background
     async def run_job():
-        await job_manager.run_job(job.job_id)
-        increment_usage(user, db)
+        try:
+            await job_manager.run_job(job.job_id)
+        except Exception:
+            refund_word_formatter_platform_credit(user, db, charged, reason="word_formatter_format_refund")
+            raise
 
     background_tasks.add_task(run_job)
 
@@ -411,13 +468,21 @@ async def format_file(
     include_cover: bool = Query(True),
     include_toc: bool = Query(True),
     toc_title: str = Query("目 录"),
+    billing_mode: str = Query("platform"),
     background_tasks: BackgroundTasks = None,
     db: Session = Depends(get_db)
 ):
     """Upload and format a document file (docx, txt, md)."""
-    check_usage_limit(user)
+    get_word_formatter_provider_config(user, db, billing_mode)
+    charged = charge_word_formatter_platform_credit(
+        user,
+        db,
+        billing_mode,
+        reason="word_formatter_format",
+    )
 
     if not file.filename:
+        refund_word_formatter_platform_credit(user, db, charged, reason="word_formatter_format_refund")
         raise HTTPException(status_code=400, detail="文件名不能为空")
 
     print(f"\n[WORD-FORMATTER] ========== 文件格式化请求 ==========", flush=True)
@@ -428,6 +493,7 @@ async def format_file(
     # Check file extension
     ext = file.filename.lower().rsplit(".", 1)[-1] if "." in file.filename else ""
     if ext not in {"docx", "txt", "md", "markdown"}:
+        refund_word_formatter_platform_credit(user, db, charged, reason="word_formatter_format_refund")
         raise HTTPException(status_code=400, detail="仅支持 .docx, .txt, .md 文件")
 
     # Read file content
@@ -441,6 +507,7 @@ async def format_file(
     if max_size_mb > 0:
         file_size_mb = len(content) / (1024 * 1024)
         if file_size_mb > max_size_mb:
+            refund_word_formatter_platform_credit(user, db, charged, reason="word_formatter_format_refund")
             raise HTTPException(
                 status_code=400,
                 detail=f"文件大小 ({file_size_mb:.1f} MB) 超过限制 ({max_size_mb} MB)"
@@ -451,6 +518,7 @@ async def format_file(
         try:
             text = extract_text_from_docx(content)
         except Exception as e:
+            refund_word_formatter_platform_credit(user, db, charged, reason="word_formatter_format_refund")
             raise HTTPException(status_code=400, detail=f"无法解析 docx 文件: {e}")
         detected_format = InputFormat.PLAINTEXT
     else:
@@ -460,6 +528,7 @@ async def format_file(
             try:
                 text = content.decode("gbk")
             except UnicodeDecodeError:
+                refund_word_formatter_platform_credit(user, db, charged, reason="word_formatter_format_refund")
                 raise HTTPException(status_code=400, detail="无法解析文件编码")
 
         if ext in {"md", "markdown"}:
@@ -468,6 +537,7 @@ async def format_file(
             detected_format = InputFormat.AUTO
 
     if not text.strip():
+        refund_word_formatter_platform_credit(user, db, charged, reason="word_formatter_format_refund")
         raise HTTPException(status_code=400, detail="文件内容为空")
 
     # Parse input format
@@ -497,8 +567,11 @@ async def format_file(
 
     # Run job in background
     async def run_job():
-        await job_manager.run_job(job.job_id)
-        increment_usage(user, db)
+        try:
+            await job_manager.run_job(job.job_id)
+        except Exception:
+            refund_word_formatter_platform_credit(user, db, charged, reason="word_formatter_format_refund")
+            raise
 
     background_tasks.add_task(run_job)
 
@@ -563,7 +636,7 @@ async def stream_job_progress(
 
             event_type = event.get("event", "message")
             data = json.dumps(event.get("data", {}), ensure_ascii=False)
-            yield f"event: {event_type}\ndata: {data}\n\n"
+            yield {"event": event_type, "data": data}
 
     return EventSourceResponse(event_generator())
 
@@ -718,7 +791,13 @@ async def preprocess_text(
     db: Session = Depends(get_db)
 ):
     """Start text preprocessing job."""
-    check_usage_limit(user)
+    provider_config = get_word_formatter_provider_config(user, db, request.billing_mode)
+    charged = charge_word_formatter_platform_credit(
+        user,
+        db,
+        request.billing_mode,
+        reason="word_formatter_preprocess",
+    )
 
     print(f"\n[WORD-FORMATTER] ========== 文本预处理请求 ==========", flush=True)
     print(f"[WORD-FORMATTER] 用户ID: {user.id}", flush=True)
@@ -738,11 +817,14 @@ async def preprocess_text(
         preprocess_config=preprocess_config,
     )
 
-    ai_service = get_ai_service()
+    ai_service = get_word_formatter_ai_service(provider_config)
 
     async def run_job():
-        await job_manager.run_job(job.job_id, ai_service)
-        increment_usage(user, db)
+        try:
+            await job_manager.run_job(job.job_id, ai_service)
+        except Exception:
+            refund_word_formatter_platform_credit(user, db, charged, reason="word_formatter_preprocess_refund")
+            raise
 
     background_tasks.add_task(run_job)
 
@@ -760,12 +842,20 @@ async def preprocess_file(
     user: User = Depends(get_current_user_with_legacy_fallback),
     chunk_paragraphs: int = Query(40, ge=10, le=100),
     chunk_chars: int = Query(8000, ge=2000, le=15000),
+    billing_mode: str = Query("platform"),
     db: Session = Depends(get_db)
 ):
     """Upload and preprocess a document file."""
-    check_usage_limit(user)
+    provider_config = get_word_formatter_provider_config(user, db, billing_mode)
+    charged = charge_word_formatter_platform_credit(
+        user,
+        db,
+        billing_mode,
+        reason="word_formatter_preprocess",
+    )
 
     if not file.filename:
+        refund_word_formatter_platform_credit(user, db, charged, reason="word_formatter_preprocess_refund")
         raise HTTPException(status_code=400, detail="文件名不能为空")
 
     print(f"\n[WORD-FORMATTER] ========== 文件预处理请求 ==========", flush=True)
@@ -774,6 +864,7 @@ async def preprocess_file(
 
     ext = file.filename.lower().rsplit(".", 1)[-1] if "." in file.filename else ""
     if ext not in {"docx", "txt", "md", "markdown"}:
+        refund_word_formatter_platform_credit(user, db, charged, reason="word_formatter_preprocess_refund")
         raise HTTPException(status_code=400, detail="仅支持 .docx, .txt, .md 文件")
 
     content = await file.read()
@@ -784,6 +875,7 @@ async def preprocess_file(
     if max_size_mb > 0:
         file_size_mb = len(content) / (1024 * 1024)
         if file_size_mb > max_size_mb:
+            refund_word_formatter_platform_credit(user, db, charged, reason="word_formatter_preprocess_refund")
             raise HTTPException(
                 status_code=400,
                 detail=f"文件大小 ({file_size_mb:.1f} MB) 超过限制 ({max_size_mb} MB)"
@@ -793,6 +885,7 @@ async def preprocess_file(
         try:
             text = extract_text_from_docx(content)
         except Exception as e:
+            refund_word_formatter_platform_credit(user, db, charged, reason="word_formatter_preprocess_refund")
             raise HTTPException(status_code=400, detail=f"无法解析 docx 文件: {e}")
     else:
         try:
@@ -801,9 +894,11 @@ async def preprocess_file(
             try:
                 text = content.decode("gbk")
             except UnicodeDecodeError:
+                refund_word_formatter_platform_credit(user, db, charged, reason="word_formatter_preprocess_refund")
                 raise HTTPException(status_code=400, detail="无法解析文件编码")
 
     if not text.strip():
+        refund_word_formatter_platform_credit(user, db, charged, reason="word_formatter_preprocess_refund")
         raise HTTPException(status_code=400, detail="文件内容为空")
 
     preprocess_config = PreprocessConfig(
@@ -820,11 +915,14 @@ async def preprocess_file(
         preprocess_config=preprocess_config,
     )
 
-    ai_service = get_ai_service()
+    ai_service = get_word_formatter_ai_service(provider_config)
 
     async def run_job():
-        await job_manager.run_job(job.job_id, ai_service)
-        increment_usage(user, db)
+        try:
+            await job_manager.run_job(job.job_id, ai_service)
+        except Exception:
+            refund_word_formatter_platform_credit(user, db, charged, reason="word_formatter_preprocess_refund")
+            raise
 
     background_tasks.add_task(run_job)
 
@@ -863,7 +961,7 @@ async def stream_preprocess_progress(
 
             event_type = event.get("event", "message")
             data = json.dumps(event.get("data", {}), ensure_ascii=False)
-            yield f"event: {event_type}\ndata: {data}\n\n"
+            yield {"event": event_type, "data": data}
 
     return EventSourceResponse(event_generator())
 

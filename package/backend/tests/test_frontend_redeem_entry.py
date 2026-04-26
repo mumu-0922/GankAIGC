@@ -48,6 +48,33 @@ def test_admin_dashboard_preserves_selected_tab_in_url():
     assert "onClick={() => handleAdminTabChange(id)}" in admin_dashboard
 
 
+def test_word_formatter_uses_platform_credits_or_user_api_not_legacy_card_key():
+    routes = (PACKAGE_ROOT / "backend" / "app" / "word_formatter" / "routes.py").read_text(encoding="utf-8")
+    api = (FRONTEND_SRC / "api" / "index.js").read_text(encoding="utf-8")
+    page = (FRONTEND_SRC / "pages" / "WordFormatterPage.jsx").read_text(encoding="utf-8")
+    spec_page = (FRONTEND_SRC / "pages" / "SpecGeneratorPage.jsx").read_text(encoding="utf-8")
+    preprocess_page = (FRONTEND_SRC / "pages" / "ArticlePreprocessorPage.jsx").read_text(encoding="utf-8")
+
+    assert "CreditService" in routes
+    assert "ProviderConfigService" in routes
+    assert "billing_mode" in routes
+    assert "charge_word_formatter_platform_credit" in routes
+    assert "get_word_formatter_ai_service" in routes
+    assert "该卡密已达到使用次数限制" not in routes
+
+    assert "billing_mode: options.billingMode" in api
+    assert "billing_mode: billingMode" in page
+    assert "generateSpec(requirements, { billingMode })" in spec_page
+    assert "preprocessFile(file, {" in preprocess_page
+    assert "billingMode," in preprocess_page
+    for source in (page, spec_page, preprocess_page):
+        assert "平台次数" in source
+        assert "自带 API" in source
+    assert "已使用:" not in page
+    assert "使用量:" not in spec_page
+    assert "使用量:" not in preprocess_page
+
+
 def test_frontend_exposes_profile_page_and_nickname_update():
     app = (FRONTEND_SRC / "App.jsx").read_text(encoding="utf-8")
     user_menu = (FRONTEND_SRC / "components" / "UserMenu.jsx").read_text(encoding="utf-8")

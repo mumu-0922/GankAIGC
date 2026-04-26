@@ -135,8 +135,11 @@ export const wordFormatterAPI = {
     api.post('/word-formatter/specs/validate', null, {
       params: { spec_json: specJson },
     }),
-  generateSpec: (requirements) =>
-    api.post('/word-formatter/specs/generate', { requirements }, {
+  generateSpec: (requirements, options = {}) =>
+    api.post('/word-formatter/specs/generate', {
+      requirements,
+      billing_mode: options.billingMode || 'platform',
+    }, {
       timeout: 120000, // AI generation may take time
     }),
 
@@ -153,7 +156,10 @@ export const wordFormatterAPI = {
 
   // Format text
   formatText: (data) =>
-    api.post('/word-formatter/format/text', data, {
+    api.post('/word-formatter/format/text', {
+      ...data,
+      billing_mode: data.billing_mode || data.billingMode || 'platform',
+    }, {
       timeout: 60000,
     }),
 
@@ -163,7 +169,10 @@ export const wordFormatterAPI = {
     formData.append('file', file);
     return api.post('/word-formatter/format/file', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
-      params: options,
+      params: {
+        ...options,
+        billing_mode: options.billingMode || options.billing_mode || 'platform',
+      },
       timeout: 120000,
     });
   },
@@ -197,6 +206,7 @@ export const wordFormatterAPI = {
       text,
       chunk_paragraphs: options.chunkParagraphs || 40,
       chunk_chars: options.chunkChars || 8000,
+      billing_mode: options.billingMode || 'platform',
     }, {
       timeout: 60000,
     }),
@@ -210,6 +220,7 @@ export const wordFormatterAPI = {
       params: {
         chunk_paragraphs: options.chunkParagraphs || 40,
         chunk_chars: options.chunkChars || 8000,
+        billing_mode: options.billingMode || 'platform',
       },
       timeout: 120000,
     });
