@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import {
@@ -26,14 +26,23 @@ import SessionMonitor from '../components/SessionMonitor';
 import DatabaseManager from '../components/DatabaseManager';
 import BrandLogo from '../components/BrandLogo';
 
+const DEFAULT_ADMIN_TAB = 'dashboard';
+const ADMIN_TAB_IDS = ['dashboard', 'sessions', 'accounts', 'database', 'config'];
+
+const getAdminTabFromSearchParams = (searchParams) => {
+  const requestedTab = searchParams.get('tab');
+  return ADMIN_TAB_IDS.includes(requestedTab) ? requestedTab : DEFAULT_ADMIN_TAB;
+};
+
 const AdminDashboard = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(false);
   const [adminToken, setAdminToken] = useState(localStorage.getItem('adminToken'));
   
   // Tab state
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState(() => getAdminTabFromSearchParams(searchParams));
 
   // Login form state
   const [username, setUsername] = useState('');
@@ -61,6 +70,11 @@ const AdminDashboard = () => {
       verifyToken();
     }
   }, [adminToken]);
+
+  useEffect(() => {
+    const nextTab = getAdminTabFromSearchParams(searchParams);
+    setActiveTab((currentTab) => currentTab === nextTab ? currentTab : nextTab);
+  }, [searchParams]);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -119,6 +133,23 @@ const AdminDashboard = () => {
     setUsername('');
     setPassword('');
     toast.success('已退出登录');
+  };
+
+  const handleAdminTabChange = (tabId) => {
+    if (!ADMIN_TAB_IDS.includes(tabId)) {
+      return;
+    }
+
+    setActiveTab(tabId);
+    setSearchParams((currentParams) => {
+      const nextParams = new URLSearchParams(currentParams);
+      if (tabId === DEFAULT_ADMIN_TAB) {
+        nextParams.delete('tab');
+      } else {
+        nextParams.set('tab', tabId);
+      }
+      return nextParams;
+    }, { replace: true });
   };
 
   const fetchStatistics = async () => {
@@ -394,7 +425,7 @@ const AdminDashboard = () => {
               {adminNavItems.map(({ id, label, icon: Icon, activeClass, inactiveClass }) => (
                 <button
                   key={id}
-                  onClick={() => setActiveTab(id)}
+                  onClick={() => handleAdminTabChange(id)}
                   className={`group flex min-w-max lg:min-w-0 items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-200 ${
                     activeTab === id
                       ? activeClass

@@ -38,6 +38,16 @@ def test_admin_dashboard_uses_left_sidebar_navigation():
     assert "lg:min-h-[calc(100vh-8rem)]" in admin_dashboard
 
 
+def test_admin_dashboard_preserves_selected_tab_in_url():
+    admin_dashboard = (FRONTEND_SRC / "pages" / "AdminDashboard.jsx").read_text(encoding="utf-8")
+
+    assert "useSearchParams" in admin_dashboard
+    assert "searchParams.get('tab')" in admin_dashboard
+    assert "setSearchParams" in admin_dashboard
+    assert "handleAdminTabChange" in admin_dashboard
+    assert "onClick={() => handleAdminTabChange(id)}" in admin_dashboard
+
+
 def test_frontend_exposes_profile_page_and_nickname_update():
     app = (FRONTEND_SRC / "App.jsx").read_text(encoding="utf-8")
     user_menu = (FRONTEND_SRC / "components" / "UserMenu.jsx").read_text(encoding="utf-8")
@@ -179,3 +189,15 @@ def test_served_static_bundle_includes_api_guide_interaction_fix():
     assert "scrollTo" in static_bundle
     assert "https://github.com/mumu-0922/GankAIGC/issues" in static_bundle
     assert "https://github.com/chi111i/GankAIGC/issues" not in static_bundle
+
+
+def test_served_static_bundle_includes_admin_tab_url_persistence():
+    static_index = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+    bundle_match = re.search(r'src="/assets/(index-[^"]+\.js)"', static_index)
+    assert bundle_match
+
+    static_bundle = (STATIC_DIR / "assets" / bundle_match.group(1)).read_text(encoding="utf-8")
+
+    assert "URLSearchParams" in static_bundle
+    assert '"tab"' in static_bundle
+    assert '"dashboard","sessions","accounts","database","config"' in static_bundle
