@@ -1,245 +1,233 @@
-## GankAIGC
+# GankAIGC
 
-专业论文润色与语言优化系统
-<img width="2080" height="1361" alt="图片" src="https://github.com/user-attachments/assets/c11abdc9-4bc4-4d61-bea0-13071dba01cd" />
+GankAIGC 是一个面向论文文本的 AI 降重、学术润色与原创性表达增强工具。项目采用 FastAPI + React/Vite 架构，支持源码运行、Docker 部署和 PyInstaller 打包为单个可执行文件。
 
-<img width="2103" height="1337" alt="图片" src="https://github.com/user-attachments/assets/523da9c2-899d-4739-932e-84af881a1dfd" />
+当前稳定主线聚焦「账号注册 + 用户登录 + 邀请码注册 + 兑换码充值次数 + 降 AI 工作台」。文档排版相关代码仍保留在后端实验模块中，但不是当前主流程功能。
 
+## 主要功能
 
- ## 效果
- 
-示例一
-<img width="1785" height="654" alt="图片" src="https://github.com/user-attachments/assets/4c96dc66-aa43-432e-90a0-57f7d89dd0f2" />
-修改优化后
- <img width="1946" height="672" alt="图片" src="https://github.com/user-attachments/assets/a46f5d62-30ec-4930-b558-18bd24d0e86f" />
-例二
-<img width="1958" height="662" alt="图片" src="https://github.com/user-attachments/assets/de871360-c045-46ec-8e96-7b3c100af147" />
-修改优化后
-<img width="1772" height="665" alt="图片" src="https://github.com/user-attachments/assets/3fd2d052-d62e-41fd-8215-fbc375e0d0e5" />
-gptzero
-<img width="2224" height="547" alt="图片" src="https://github.com/user-attachments/assets/b5daf3cb-6e3f-401c-bdc2-a9a88dcbdb35" />
+- 论文文本降 AI：支持论文润色、原创性增强、润色 + 增强、感情文章润色等处理模式。
+- 账号体系：用户通过邀请码注册，登录后进入工作台；用户可修改昵称并查看个人信息。
+- 邀请机制：管理员可创建多个邀请码，普通用户只能生成一个自己的邀请码用于邀请他人注册。
+- 次数体系：管理员创建兑换码，用户在前台兑换次数；平台次数模式按任务扣除次数。
+- 自带 API：用户可保存自己的 OpenAI 兼容接口配置，使用 BYOK 模式处理任务。
+- 论文项目与历史：支持按论文项目归档任务，查看会话进度、处理结果和改写记录。
+- 结果导出：处理完成后可导出 Word (`.docx`) 或 Markdown (`.md`) 文件。
+- 管理后台：提供数据面板、会话监控、账号与兑换码管理、数据库管理、系统配置等能力。
 
-## 快速开始
+## 技术栈
 
-无需安装任何开发环境，下载即可使用！
-
-1. 从 [Releases](https://github.com/chi111i/GankAIGC/releases) 页面下载对应平台的可执行文件：
-   - Windows: `GankAIGC-Windows-vX.X.X.zip`
-   - macOS: `GankAIGC-macOS-vX.X.X.tar.gz`
-   - Linux: `GankAIGC-Linux-vX.X.X.tar.gz`
-
-2. 解压到任意目录
-
-3. 首次运行会自动创建 `.env` 配置文件模板，编辑配置文件填入：
-   - API Key（POLISH_API_KEY、ENHANCE_API_KEY 等）
-   - 管理员密码（ADMIN_PASSWORD）
-   - JWT 密钥（SECRET_KEY）
-
-4. 再次运行程序，将自动打开浏览器
-
-5. 访问管理后台创建邀请码和次数兑换码
-
-> 💡 提示：数据库文件 `ai_polish.db` 和配置文件 `.env` 都保存在可执行文件同目录，方便备份和迁移。
-
-### 配置文件说明
-
-`.env` 配置文件包含以下重要配置项：
-
-```properties
-# 数据库配置
-DATABASE_URL=sqlite:///./ai_polish.db
-# 或使用 PostgreSQL: postgresql://user:password@IP/ai_polish
-
-# Redis 配置 (用于并发控制和队列)
-REDIS_URL=redis://IP:6379/0
-
-# OpenAI API 配置
-OPENAI_API_KEY=KEY
-OPENAI_BASE_URL=http://IP:PORT/v1
-
-# 第一阶段模型配置 (论文润色) - 推荐使用 gemini-2.5-pro
-POLISH_MODEL=gemini-2.5-pro
-POLISH_API_KEY=KEY
-POLISH_BASE_URL=http://IP:PORT/v1
-
-# 第二阶段模型配置 (原创性增强) - 推荐使用 gemini-2.5-pro
-ENHANCE_MODEL=gemini-2.5-pro
-ENHANCE_API_KEY=KEY
-ENHANCE_BASE_URL=http://IP:PORT/v1
-
-# 感情文章润色模型配置 - 推荐使用 gemini-2.5-pro
-EMOTION_MODEL=gemini-2.5-pro
-EMOTION_API_KEY=KEY
-EMOTION_BASE_URL=http://IP:PORT/v1
-
-# 并发配置
-MAX_CONCURRENT_USERS=7
-
-# 会话压缩配置
-HISTORY_COMPRESSION_THRESHOLD=2000
-COMPRESSION_MODEL=gemini-2.5-pro
-COMPRESSION_API_KEY=KEY
-COMPRESSION_BASE_URL=http://IP:PORT/v1
-
-# 流式输出配置（推荐保持默认值）
-USE_STREAMING=false  # 默认禁用，避免某些API（如Gemini）返回阻止错误
-
-# JWT 密钥
-SECRET_KEY=JWT-key
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=60
-
-# 管理员账户
-ADMIN_USERNAME=admin
-ADMIN_PASSWORD=admin123
-SEGMENT_SKIP_THRESHOLD=15
-```
-
-**注意:** 
-- 推荐使用 Google Gemini 2.5 Pro 模型以获得更好的性能和成本效益
-- BASE_URL 使用 OpenAI 兼容格式，需要配置支持 OpenAI API 格式的代理服务
-- **流式输出默认禁用**：为避免某些 API（如 Gemini）返回阻止错误，系统默认使用非流式模式。可在管理后台的"系统配置"中切换
-
-### 访问地址
-
-- 用户界面: http://localhost:8000
-- 管理后台: http://localhost:8000/admin
-- API 文档: http://localhost:8000/docs
-
-## 功能特性
-
-- **双阶段优化**: 论文润色 + 学术增强
-- **智能分段**: 自动识别标题，跳过短段落
-- **账号体系**: 邀请码注册、用户登录、兑换码充值次数
-- **并发控制**: 队列管理，动态调整并发数
-- **实时配置**: 修改配置无需重启服务
-- **数据管理**: 可视化数据库管理界面
-
-## 管理后台
-
-访问 `http://localhost:8000/admin` 使用管理员账户登录
-
-### 功能模块
-- 📊 **数据面板**: 用户统计、会话分析
-- 👥 **账号次数**: 注册邀请码、次数兑换码、用户余额充值
-- 📡 **会话监控**: 实时会话状态监控
-- 💾 **数据库管理**: 查看、编辑、删除数据记录
-- ⚙️ **系统配置**: 模型配置、并发设置
-
-## 核心配置说明
-
-| 配置项 | 说明 | 默认值 |
-|--------|------|--------|
-| `MAX_CONCURRENT_USERS` | 最大并发用户数 | 5 |
-| `SEGMENT_SKIP_THRESHOLD` | 段落跳过阈值（字符数） | 15 |
-| `HISTORY_COMPRESSION_THRESHOLD` | 历史压缩阈值 | 5000 |
-| `USE_STREAMING` | 启用流式输出模式 | false（推荐）|
+- 后端：FastAPI、SQLAlchemy、SQLite/PostgreSQL、JWT、OpenAI Python SDK
+- 前端：React 18、Vite、Tailwind CSS、React Router、Axios、Lucide React
+- 打包：PyInstaller
+- 部署：Docker Compose + PostgreSQL
 
 ## 项目结构
 
+```text
+GankAIGC/
+├── package/
+│   ├── main.py                  # 一体化启动入口，挂载 API 与前端静态文件
+│   ├── backend/
+│   │   ├── app/
+│   │   │   ├── routes/          # auth、user、admin、optimization 等 API
+│   │   │   ├── services/        # AI 调用、并发、次数、配置等业务逻辑
+│   │   │   ├── models/          # SQLAlchemy 数据模型
+│   │   │   ├── utils/           # 认证、加密等工具
+│   │   │   └── word_formatter/  # 实验性文档工具模块
+│   │   └── tests/               # pytest 测试
+│   ├── frontend/
+│   │   ├── src/pages/           # 页面
+│   │   ├── src/components/      # 组件
+│   │   └── src/api/             # 前端 API 封装
+│   ├── static/                  # 前端生产构建产物，由 main.py 提供服务
+│   ├── requirements.txt         # 打包运行所需 Python 依赖
+│   ├── build.ps1                # Windows 可执行文件构建脚本
+│   └── build.sh                 # Linux/macOS 可执行文件构建脚本
+├── docker-compose.yml
+├── Dockerfile
+├── .env.docker.example
+└── AGENTS.md                    # 贡献者/Agent 开发指南
 ```
-AI_GC/
-├── backend/              # FastAPI 后端
-│   ├── app/
-│   │   ├── routes/      # API 路由
-│   │   ├── services/    # 业务逻辑
-│   │   ├── models/      # 数据模型
-│   │   └── utils/       # 工具函数
-│   └── .env             # 环境配置
-├── frontend/             # React 前端
-│   └── src/
-│       ├── pages/       # 页面组件
-│       └── components/  # 通用组件
-└── README.md            # 本文件
-```
 
+## 快速运行
 
+### 一体化源码运行
 
-**⚠️ 重要提示**: 生产环境部署前，请务必:
-1. 修改 `.env` 中的默认管理员密码
-2. 生成强 SECRET_KEY (至少 32 字节随机字符串)
-3. 填写有效的 OPENAI_API_KEY
+适合直接使用当前已构建的前端静态文件。
 
-## 常见问题
-
-**Q: 端口被占用？**  
-A: 关闭其他占用 8000 端口的程序
-
-**Q: 配置修改后未生效？**  
-A: 重启程序使配置生效
-
-**Q: 登录失败？**  
-A: 检查 `.env` 中的 `ADMIN_USERNAME` 和 `ADMIN_PASSWORD`
-
-**Q: AI 调用失败？**  
-A: 检查 API Key 和 Base URL 配置是否正确
-
-**Q: Gemini API 返回 "Your request was blocked" 错误？**  
-A: 这是因为 Gemini API 可能阻止流式请求。解决方法：
-1. 登录管理后台 (`http://localhost:8000/admin`)
-2. 进入"系统配置"标签页
-3. 找到"流式输出模式"开关，确保它是**禁用**状态（推荐）
-4. 点击"保存配置"按钮
-5. 重新运行优化任务
-
-默认配置已经禁用了流式输出，如果仍然遇到此问题，请检查 `.env` 文件中的 `USE_STREAMING` 设置是否为 `false`
-
-## 自行构建可执行文件
-
-如果需要自行构建可执行文件，请参考 [package/README.md](package/README.md)。
-
-### 本地构建
-
-```bash
-# Linux/macOS
+```powershell
 cd package
-chmod +x build.sh
-./build.sh
+pip install -r requirements.txt
+python main.py
+```
 
-# Windows
+启动后访问：
+
+- 用户首页：http://localhost:9800
+- 管理后台：http://localhost:9800/admin
+- API 文档：http://localhost:9800/docs
+
+### 前端开发模式
+
+适合修改前端页面时使用。后端仍运行在 `9800`，Vite 默认运行在 `5174`，并将 `/api` 代理到后端。
+
+```powershell
+cd package
+python main.py
+```
+
+另开终端：
+
+```powershell
+cd package/frontend
+npm ci
+npm run dev
+```
+
+### 修改前端后更新生产静态文件
+
+```powershell
+cd package/frontend
+npm run build
+cd ../..
+Copy-Item -Path .\package\frontend\dist\* -Destination .\package\static -Recurse -Force
+```
+
+注意：`package/static/` 在 `.gitignore` 中，若确实要提交新的静态 bundle，需要对新增 hash 文件使用 `git add -f`。
+
+## 配置说明
+
+源码运行时，配置文件位于 `package/.env`；打包后的可执行文件会在 exe 同目录读取 `.env`。首次运行会自动按默认值初始化数据库。
+
+核心配置示例：
+
+```properties
+SERVER_HOST=0.0.0.0
+SERVER_PORT=9800
+APP_ENV=development
+ALLOWED_ORIGINS=http://localhost:9800
+
+DATABASE_URL=sqlite:///./ai_polish.db
+REDIS_URL=redis://IP:6379/0
+
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=replace-with-strong-password
+SECRET_KEY=replace-with-random-secret
+ENCRYPTION_KEY=replace-with-fernet-key
+
+POLISH_MODEL=gpt-5.5
+POLISH_API_KEY=KEY
+POLISH_BASE_URL=https://api.openai.com/v1
+
+ENHANCE_MODEL=gpt-5.5
+ENHANCE_API_KEY=KEY
+ENHANCE_BASE_URL=https://api.openai.com/v1
+
+COMPRESSION_MODEL=gpt-5.5
+COMPRESSION_API_KEY=KEY
+COMPRESSION_BASE_URL=https://api.openai.com/v1
+
+MAX_CONCURRENT_USERS=5
+SEGMENT_SKIP_THRESHOLD=15
+API_REQUEST_INTERVAL=6
+USE_STREAMING=false
+```
+
+`ENCRYPTION_KEY` 用于加密用户保存的自带 API 配置，建议使用 Fernet key：
+
+```powershell
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
+
+生产环境必须修改默认 `ADMIN_PASSWORD` 和 `SECRET_KEY`。当 `APP_ENV=production`、`staging` 或 `server` 时，项目会拒绝使用明显的占位密钥。
+
+## 使用流程
+
+1. 管理员访问 `/admin` 登录后台。
+2. 在「账号次数」中创建注册邀请码。
+3. 用户通过邀请码注册并登录。
+4. 管理员创建次数兑换码，用户在前台兑换次数。
+5. 用户进入工作台，选择平台次数模式或自带 API 模式，提交论文文本。
+6. 任务完成后查看分段结果、改写记录，并导出 `.docx` 或 `.md` 文件。
+
+## 管理后台
+
+后台地址为 `http://localhost:9800/admin`。默认账号为 `admin`，默认密码为 `admin123`，仅适合本地开发，部署前必须修改。
+
+后台包含：
+
+- 数据面板：查看用户、任务、完成率等统计。
+- 会话监控：查看任务队列、处理中会话和历史任务。
+- 账号次数：管理用户、邀请码、次数兑换码和用户自带 API 摘要。
+- 数据库管理：查看、编辑、删除允许管理的数据表记录。
+- 系统配置：在线调整模型、Base URL、并发、请求间隔、思考模式等配置。
+
+## Docker 部署
+
+Docker Compose 会启动应用容器和 PostgreSQL。
+
+```powershell
+Copy-Item .env.docker.example .env.docker
+# 编辑 .env.docker，至少修改 POSTGRES_PASSWORD、SECRET_KEY、ADMIN_PASSWORD、ENCRYPTION_KEY
+docker compose up --build -d
+```
+
+默认对外端口为 `9800`，可通过 `.env.docker` 中的 `APP_PORT` 修改。
+
+## 构建可执行文件
+
+Windows：
+
+```powershell
 cd package
 .\build.ps1
 ```
 
-### GitHub Actions 自动构建
+Linux/macOS：
 
-推送以 `v` 开头的标签会自动触发构建：
 ```bash
-git tag v1.0.0
-git push origin v1.0.0
+cd package
+chmod +x build.sh
+./build.sh
 ```
 
-构建完成后，可在 Releases 页面下载各平台的可执行文件。
+构建产物位于 `package/dist/`。推送 `v*` 标签也会触发 GitHub Actions 构建各平台可执行文件。
 
-## License
-未经允许禁止商业使用
+## 测试
 
-Creative Commons (CC BY-NC-SA 4.0)
+后端测试：
 
-[![Star History Chart](https://api.star-history.com/svg?repos=chi111i/GankAIGC&type=Date)](https://star-history.com/#chi111i/GankAIGC)
+```powershell
+cd package/backend
+python -m pytest -q
+```
 
+前端生产构建检查：
 
+```powershell
+cd package/frontend
+npm run build
+```
 
+## 常见问题
 
+**端口被占用**
+修改 `.env` 中的 `SERVER_PORT`，或关闭占用 `9800` 端口的进程。
 
+**管理后台刷新后回到数据面板**
+当前后台通过 URL 参数保存 tab，例如 `/admin?tab=config`。如果手动删除参数，刷新会回到默认数据面板。
 
+**用户无法使用自带 API**
+确认用户已在「API 设置」保存 Base URL、API Key 和模型名称，并且服务端配置了有效的 `ENCRYPTION_KEY`。
 
+**AI 调用失败**
+检查 API Key、Base URL、模型名称和网络连通性。Google AI Studio 等服务商的 Key 在文档中统一写作 `Google API Key`，不要把真实密钥提交到仓库。
 
+## 许可证
 
+未经允许禁止商业使用。
 
+本项目使用 Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License（CC BY-NC-SA 4.0）。
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+[![Star History Chart](https://api.star-history.com/svg?repos=mumu-0922/GankAIGC&type=Date)](https://star-history.com/#mumu-0922/GankAIGC)
