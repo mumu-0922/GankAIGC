@@ -66,16 +66,6 @@ const scenarioCards = [
     stripe: 'from-teal-400 to-emerald-400',
     panel: 'from-teal-50/90 via-white/90 to-emerald-50/80',
   },
-  {
-    step: '阶段 04',
-    label: '自带 API',
-    value: '不消耗平台次数',
-    desc: '有自有模型额度时，可切换为自带 API 模式',
-    icon: KeyRound,
-    iconTone: 'bg-violet-500 text-white shadow-violet-500/25',
-    stripe: 'from-violet-500 to-blue-500',
-    panel: 'from-violet-50/90 via-white/90 to-blue-50/80',
-  },
 ];
 
 const WelcomePage = () => {
@@ -285,11 +275,11 @@ const WelcomePage = () => {
           <div className="mb-5">
             <div>
               <p className="text-sm font-bold text-blue-600">论文处理链路</p>
-              <h2 className="mt-2 text-2xl font-black text-slate-950">从初稿到投稿前的四步优化</h2>
+              <h2 className="mt-2 text-2xl font-black text-slate-950">从初稿到投稿前的三步优化</h2>
             </div>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {scenarioCards.map(({ step, label, value, desc, icon: Icon, iconTone, stripe, panel }) => (
               <article
                 key={label}

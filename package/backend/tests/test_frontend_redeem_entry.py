@@ -26,6 +26,9 @@ def test_welcome_page_focuses_on_ai_reduction_not_word_formatting():
     assert 'data-home-scenarios="workflow"' in welcome_page
     assert "论文处理链路" in welcome_page
     assert "阶段 01" in welcome_page
+    assert "从初稿到投稿前的三步优化" in welcome_page
+    assert "阶段 04" not in welcome_page
+    assert "有自有模型额度时，可切换为自带 API 模式" not in welcome_page
     assert "账号次数与自带 API 双模式" not in welcome_page
     assert "论文原创性工作台" not in welcome_page
     assert "功能介绍" not in welcome_page
@@ -272,6 +275,9 @@ def test_served_static_bundle_includes_ai_reduction_homepage():
     assert "data-home-scenarios" in static_bundle
     assert "论文处理链路" in static_bundle
     assert "阶段 01" in static_bundle
+    assert "从初稿到投稿前的三步优化" in static_bundle
+    assert "阶段 04" not in static_bundle
+    assert "有自有模型额度时，可切换为自带 API 模式" not in static_bundle
     assert "账号次数与自带 API 双模式" not in static_bundle
     assert "论文原创性工作台" not in static_bundle
     assert "功能介绍" not in static_bundle
