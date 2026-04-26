@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  AlertTriangle,
   ArrowRight,
   CheckCircle,
   FileText,
@@ -129,56 +130,105 @@ const WelcomePage = () => {
             </div>
           </div>
 
-          <div className="relative min-h-[430px]">
-            <div className="absolute inset-x-4 top-4 h-[360px] rounded-[2rem] border border-white/70 bg-white/45 shadow-[0_30px_90px_rgba(37,99,235,0.16)] backdrop-blur-2xl" />
+          <div className="relative min-h-[430px] lg:min-h-[460px]">
+            <div className="absolute inset-0 rounded-[2.25rem] border border-white/70 bg-[radial-gradient(circle_at_20%_18%,rgba(244,63,94,0.18),transparent_30%),radial-gradient(circle_at_84%_18%,rgba(37,99,235,0.2),transparent_32%),linear-gradient(135deg,rgba(255,255,255,0.86),rgba(239,246,255,0.78))] shadow-[0_30px_90px_rgba(37,99,235,0.14)] backdrop-blur-2xl" />
 
-            <div className="relative mx-auto max-w-[520px] rounded-[2rem] border border-white/80 bg-white/72 p-5 shadow-[0_34px_90px_rgba(15,23,42,0.14)] backdrop-blur-2xl">
-              <div className="mb-5 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="grid h-12 w-12 place-items-center rounded-2xl bg-blue-600 text-xl font-black text-white shadow-lg">
-                    AI
+            <div className="relative mx-auto flex max-w-[660px] flex-col gap-5 rounded-[2rem] border border-white/80 bg-white/60 p-4 shadow-[0_34px_90px_rgba(15,23,42,0.12)] backdrop-blur-2xl sm:p-6">
+              <div className="grid items-center gap-4 sm:grid-cols-[1fr_auto_1fr]">
+                <div className="space-y-4">
+                  <div className="mx-auto w-fit rounded-full bg-rose-500 px-5 py-2 text-sm font-black text-white shadow-[0_12px_24px_rgba(244,63,94,0.24)]">
+                    优化前
                   </div>
-                  <div>
-                    <p className="text-sm font-bold text-slate-950">论文原创性工作台</p>
-                    <p className="text-xs text-slate-500">润色与增强处理中</p>
+
+                  <div className="rounded-[1.35rem] border border-rose-100 bg-white/90 p-4 shadow-[0_18px_40px_rgba(244,63,94,0.14)]">
+                    <div className="mb-4 flex items-start gap-3">
+                      <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-rose-500 text-xl font-black text-white shadow-lg">
+                        AI
+                      </div>
+                      <div className="flex-1 space-y-2 pt-1">
+                        <div className="h-2.5 w-5/6 rounded-full bg-slate-200" />
+                        <div className="h-2.5 w-2/3 rounded-full bg-slate-200" />
+                      </div>
+                    </div>
+                    <div className="space-y-2.5">
+                      <div className="h-2.5 w-full rounded-full bg-slate-200" />
+                      <div className="h-2.5 w-4/5 rounded-full bg-rose-200" />
+                      <div className="h-2.5 w-11/12 rounded-full bg-slate-200" />
+                      <div className="h-2.5 w-3/4 rounded-full bg-rose-200" />
+                      <div className="h-2.5 w-full rounded-full bg-slate-200" />
+                    </div>
+                    <div className="mt-4 flex items-center justify-between rounded-xl border border-rose-100 bg-white/95 p-3">
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500">AI 率检测结果</p>
+                        <p className="mt-1 text-3xl font-black text-rose-500">99%</p>
+                      </div>
+                      <div
+                        className="h-14 w-14 rounded-full p-1"
+                        style={{ background: 'conic-gradient(#fb3f61 0 80%, #fee2e2 80% 100%)' }}
+                      >
+                        <div className="h-full w-full rounded-full bg-white" />
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <div className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">
-                  运行中
+
+                <div className="flex items-center justify-center py-1 sm:pt-10">
+                  <div className="flex items-center gap-1 text-violet-400">
+                    <span className="h-2 w-2 rounded-full bg-rose-200" />
+                    <span className="h-3 w-3 rounded-sm bg-rose-300" />
+                    <span className="h-4 w-4 rounded-sm bg-violet-300" />
+                    <ArrowRight className="h-10 w-10 text-violet-500 drop-shadow-[0_8px_18px_rgba(124,58,237,0.28)] sm:h-14 sm:w-14" />
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="mx-auto w-fit rounded-full bg-blue-600 px-5 py-2 text-sm font-black text-white shadow-[0_12px_24px_rgba(37,99,235,0.24)]">
+                    优化后
+                  </div>
+
+                  <div className="rounded-[1.35rem] border border-blue-100 bg-white/90 p-4 shadow-[0_18px_40px_rgba(37,99,235,0.16)]">
+                    <div className="mb-4 flex items-start gap-3">
+                      <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-blue-600 text-xl font-black text-white shadow-lg">
+                        AI
+                      </div>
+                      <div className="flex-1 space-y-2 pt-1">
+                        <div className="h-2.5 w-5/6 rounded-full bg-slate-200" />
+                        <div className="h-2.5 w-2/3 rounded-full bg-slate-200" />
+                      </div>
+                    </div>
+                    <div className="space-y-2.5">
+                      <div className="h-2.5 w-full rounded-full bg-slate-200" />
+                      <div className="h-2.5 w-4/5 rounded-full bg-blue-200" />
+                      <div className="h-2.5 w-11/12 rounded-full bg-slate-200" />
+                      <div className="h-2.5 w-3/4 rounded-full bg-blue-200" />
+                      <div className="h-2.5 w-full rounded-full bg-slate-200" />
+                    </div>
+                    <div className="mt-4 flex items-center justify-between rounded-xl border border-blue-100 bg-white/95 p-3">
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500">AI 率检测结果</p>
+                        <p className="mt-1 text-3xl font-black text-blue-600">0%</p>
+                      </div>
+                      <div
+                        className="h-14 w-14 rounded-full p-1"
+                        style={{ background: 'conic-gradient(#2563eb 0 6%, #e5e7eb 6% 100%)' }}
+                      >
+                        <div className="h-full w-full rounded-full bg-white" />
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-3 rounded-[1.35rem] bg-white/80 p-5">
-                <div className="h-4 w-2/3 rounded-full bg-slate-200" />
-                <div className="h-3 w-full rounded-full bg-blue-100" />
-                <div className="h-3 w-11/12 rounded-full bg-blue-100" />
-                <div className="h-3 w-4/5 rounded-full bg-blue-100" />
-                <div className="my-4 h-px bg-slate-100" />
-                <div className="h-3 w-full rounded-full bg-teal-100" />
-                <div className="h-3 w-10/12 rounded-full bg-teal-100" />
-                <div className="h-3 w-8/12 rounded-full bg-teal-100" />
-              </div>
-
-              <div className="mt-5 grid grid-cols-2 gap-3">
-                <div className="rounded-2xl border border-blue-100 bg-white/80 p-4 shadow-sm">
-                  <p className="text-xs font-semibold text-slate-500">示例降幅</p>
-                  <p className="mt-2 text-3xl font-black text-slate-950">68%</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="inline-flex items-center justify-center gap-2 rounded-full bg-rose-50 px-4 py-3 text-sm font-bold text-rose-600">
+                  <AlertTriangle className="h-4 w-4" />
+                  内容疑似由 AI 生成，建议优化处理
                 </div>
-                <div className="rounded-2xl border border-emerald-100 bg-white/80 p-4 shadow-sm">
-                  <p className="text-xs font-semibold text-slate-500">表达自然度</p>
-                  <p className="mt-2 text-3xl font-black text-slate-950">提升</p>
+                <div className="inline-flex items-center justify-center gap-2 rounded-full bg-blue-50 px-4 py-3 text-sm font-bold text-blue-600">
+                  <ShieldCheck className="h-4 w-4" />
+                  原创性高，AI 痕迹低，更安全可靠
                 </div>
               </div>
-            </div>
-
-            <div className="absolute -left-2 top-24 hidden rounded-2xl border border-white/80 bg-white/75 px-5 py-4 shadow-xl backdrop-blur-xl sm:block">
-              <p className="text-xs font-semibold text-slate-500">示例降幅</p>
-              <p className="mt-1 text-2xl font-black text-slate-950">68%</p>
-            </div>
-
-            <div className="absolute -right-1 bottom-20 hidden rounded-2xl border border-white/80 bg-white/75 px-5 py-4 shadow-xl backdrop-blur-xl sm:block">
-              <p className="text-xs font-semibold text-slate-500">安全准确</p>
-              <p className="mt-1 text-2xl font-black text-slate-950">可控</p>
             </div>
           </div>
         </section>
