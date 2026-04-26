@@ -23,10 +23,11 @@ def test_frontend_uses_brand_logo_as_favicon():
     for index_html in (frontend_index, static_index):
         assert 'rel="icon"' in index_html
         assert 'type="image/svg+xml"' in index_html
-        assert 'href="/shiliang.svg"' in index_html
+        assert 'href="/gankaigc-logo.svg"' in index_html
+        assert "/shiliang.svg" not in index_html
         assert "/vite.svg" not in index_html
 
-    for logo_path in (FRONTEND_ROOT / "public" / "shiliang.svg", STATIC_DIR / "shiliang.svg"):
+    for logo_path in (FRONTEND_ROOT / "public" / "gankaigc-logo.svg", STATIC_DIR / "gankaigc-logo.svg"):
         logo_svg = logo_path.read_text(encoding="utf-8")
 
         assert 'viewBox="442 369 1180 1180"' in logo_svg
@@ -34,7 +35,12 @@ def test_frontend_uses_brand_logo_as_favicon():
         assert 'viewBox="0 0 2048 2048"' not in logo_svg
         assert 'preserveAspectRatio="none"' not in logo_svg
 
-    assert 'src="/shiliang.svg"' in brand_logo
+    assert not (FRONTEND_ROOT / "public" / "shiliang.svg").exists()
+    assert not (STATIC_DIR / "shiliang.svg").exists()
+    assert not (FRONTEND_ROOT / "public" / "gankaigc-logo.png").exists()
+    assert not (STATIC_DIR / "gankaigc-logo.png").exists()
+    assert 'src="/gankaigc-logo.svg"' in brand_logo
+    assert "/shiliang.svg" not in brand_logo
     assert "/gankaigc-logo.png" not in brand_logo
 
 
