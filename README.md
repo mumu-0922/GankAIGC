@@ -226,8 +226,10 @@ npm run build
 
 ## 许可证
 
-未经允许禁止商业使用。
+本项目基于 BypassAIGC 深度修改，继续采用 CC BY-NC-SA 4.0 协议发布。
 
-本项目使用 Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License（CC BY-NC-SA 4.0）。
+未经相关版权方授权，禁止商业使用。
+
+完整署名与来源见 [NOTICE](NOTICE)。
 
 [![Star History Chart](https://api.star-history.com/svg?repos=mumu-0922/GankAIGC&type=Date)](https://star-history.com/#mumu-0922/GankAIGC)

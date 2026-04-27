@@ -1,0 +1,21 @@
+Attribution Notice
+
+This project is a modified derivative of BypassAIGC.
+
+Original project:
+https://github.com/chi111i/BypassAIGC
+
+Original author:
+Yan Wenxin
+
+Original license:
+Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International
+(CC BY-NC-SA 4.0)
+
+Modifications:
+Copyright (c) 2026 mumu-0922
+
+This repository contains substantial modifications to the original project,
+including UI redesign, account registration/login, invitation codes, credit
+redemption, BYOK provider configuration, admin management changes, and
+packaging/deployment updates.
