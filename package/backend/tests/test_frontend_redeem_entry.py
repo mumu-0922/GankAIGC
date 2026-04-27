@@ -67,6 +67,16 @@ def test_welcome_page_focuses_on_ai_reduction_not_word_formatting():
     assert "Word 排版" not in welcome_page
 
 
+def test_welcome_page_links_to_github_project_and_requests_star():
+    welcome_page = (FRONTEND_SRC / "pages" / "WelcomePage.jsx").read_text(encoding="utf-8")
+
+    assert "https://github.com/mumu-0922/GankAIGC" in welcome_page
+    assert "GitHub 项目" in welcome_page
+    assert "求 Star" in welcome_page
+    assert 'target="_blank"' in welcome_page
+    assert 'rel="noopener noreferrer"' in welcome_page
+
+
 def test_user_menu_hides_word_formatter_entry_until_feature_is_ready():
     user_menu = (FRONTEND_SRC / "components" / "UserMenu.jsx").read_text(encoding="utf-8")
 
@@ -342,3 +352,6 @@ def test_served_static_bundle_includes_ai_reduction_homepage():
     assert "功能介绍" not in static_bundle
     assert "使用场景" not in static_bundle
     assert "安全保障" not in static_bundle
+    assert "https://github.com/mumu-0922/GankAIGC" in static_bundle
+    assert "GitHub 项目" in static_bundle
+    assert "求 Star" in static_bundle

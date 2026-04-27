@@ -5,14 +5,18 @@ import {
   ArrowRight,
   CheckCircle,
   FileText,
+  Github,
   KeyRound,
   LogIn,
   Shield,
   ShieldCheck,
   Sparkles,
+  Star,
   UserPlus,
 } from 'lucide-react';
 import BrandLogo from '../components/BrandLogo';
+
+const GITHUB_PROJECT_URL = 'https://github.com/mumu-0922/GankAIGC';
 
 const featureCards = [
   {
@@ -144,6 +148,20 @@ const WelcomePage = () => {
                 <UserPlus className="h-5 w-5 text-blue-600" />
                 邀请码注册
               </button>
+              <a
+                href={GITHUB_PROJECT_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex min-h-[52px] items-center justify-center gap-2 rounded-xl border border-white/80 bg-white/75 px-8 text-base font-bold text-slate-800 shadow-sm backdrop-blur-xl transition hover:-translate-y-0.5 hover:text-slate-950 hover:shadow-md active:scale-[0.98]"
+                aria-label="打开 GitHub 项目，求 Star"
+              >
+                <Github className="h-5 w-5" />
+                <span>GitHub 项目</span>
+                <span className="inline-flex items-center gap-1 rounded-full bg-yellow-50 px-2.5 py-1 text-sm text-yellow-700">
+                  <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-500" />
+                  求 Star
+                </span>
+              </a>
             </div>
 
             <div id="security" className="mt-8 flex flex-wrap gap-x-4 gap-y-2 text-sm text-slate-500">
