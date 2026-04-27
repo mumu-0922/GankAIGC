@@ -232,4 +232,6 @@ npm run build
 
 完整署名与来源见 [NOTICE](NOTICE)。
 
-[![Star History Chart](https://api.star-history.com/svg?repos=mumu-0922/GankAIGC&type=Date)](https://star-history.com/#mumu-0922/GankAIGC)
+[![GitHub stars](https://img.shields.io/github/stars/mumu-0922/GankAIGC?style=social)](https://github.com/mumu-0922/GankAIGC/stargazers)
+
+[查看 Star History](https://star-history.com/#mumu-0922/GankAIGC)
