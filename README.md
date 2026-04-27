@@ -232,4 +232,4 @@ npm run build
 
 完整署名与来源见 [NOTICE](NOTICE)。
 
-[![Star History Chart](https://api.star-history.com/svg?repos=mumu-0922/GankAIGC&type=Date)](https://www.star-history.com/?repos=mumu-0922%2FGankAIGC)
+[![Star History Chart](https://api.star-history.com/svg?repos=mumu-0922/GankAIGC&type=date&legend=top-left)](https://www.star-history.com/?repos=mumu-0922%2FGankAIGC&type=date&legend=top-left)
