@@ -225,7 +225,7 @@ const AdminDashboard = () => {
     e.preventDefault();
     const amount = parseInt(newCreditAmount, 10);
     if (!amount || amount < 1) {
-      toast.error('兑换次数必须大于 0');
+      toast.error('兑换额度必须大于 0');
       return;
     }
 
@@ -246,7 +246,7 @@ const AdminDashboard = () => {
   const handleAddCredits = async (userId) => {
     const amount = parseInt(creditTopUps[userId], 10);
     if (!amount || amount < 1) {
-      toast.error('充值次数必须大于 0');
+      toast.error('充值额度必须大于 0');
       return;
     }
 
@@ -256,7 +256,7 @@ const AdminDashboard = () => {
         { headers: { Authorization: `Bearer ${adminToken}` } }
       );
       setCreditTopUps((current) => ({ ...current, [userId]: '' }));
-      toast.success('次数已充值');
+      toast.success('额度已充值');
       fetchAccountData();
     } catch (error) {
       toast.error(error.response?.data?.detail || '充值失败');
@@ -372,7 +372,7 @@ const AdminDashboard = () => {
     },
     {
       id: 'accounts',
-      label: '账号次数',
+      label: '账号额度',
       icon: Users,
       activeClass: 'bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-lg shadow-indigo-500/30',
       inactiveClass: 'text-gray-600 hover:text-indigo-600 hover:bg-indigo-50',
@@ -664,8 +664,8 @@ const AdminDashboard = () => {
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">账号与次数管理</h2>
-                <p className="text-sm text-gray-500 mt-1">管理注册邀请码、兑换码、用户次数和自带 API 配置摘要</p>
+                <h2 className="text-2xl font-bold text-gray-900">账号与额度管理</h2>
+                <p className="text-sm text-gray-500 mt-1">管理注册邀请码、兑换码、用户额度和自带 API 配置摘要</p>
               </div>
               <button
                 onClick={fetchAccountData}
@@ -761,8 +761,8 @@ const AdminDashboard = () => {
                     <TrendingUp className="w-5 h-5 text-emerald-600" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900">次数兑换码</h3>
-                    <p className="text-xs text-gray-500">用户兑换后增加平台调用次数</p>
+                    <h3 className="text-lg font-semibold text-gray-900">额度兑换码</h3>
+                    <p className="text-xs text-gray-500">用户兑换后增加平台处理额度</p>
                   </div>
                 </div>
 
@@ -795,7 +795,7 @@ const AdminDashboard = () => {
                     <thead>
                       <tr className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         <th className="py-3 pr-4">兑换码</th>
-                        <th className="py-3 pr-4">次数</th>
+                        <th className="py-3 pr-4">额度</th>
                         <th className="py-3 pr-4">状态</th>
                         <th className="py-3 pr-4">兑换者</th>
                       </tr>
@@ -840,8 +840,8 @@ const AdminDashboard = () => {
             <div className="bg-white rounded-2xl shadow-ios overflow-hidden">
               <div className="p-6 border-b border-gray-200 flex items-center justify-between">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">用户次数余额</h3>
-                  <p className="text-xs text-gray-500 mt-1">管理员可给平台模式充值次数，或给账号开启无限调用</p>
+                  <h3 className="text-lg font-semibold text-gray-900">用户额度余额</h3>
+                  <p className="text-xs text-gray-500 mt-1">管理员可给平台模式充值额度，或给账号开启无限调用</p>
                 </div>
                 {loadingAccountData && <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />}
               </div>
@@ -850,7 +850,7 @@ const AdminDashboard = () => {
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">用户</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">次数余额</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">额度余额</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">权限</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">登录/使用</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">充值</th>
@@ -865,7 +865,7 @@ const AdminDashboard = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="text-lg font-bold text-gray-900">{user.credit_balance ?? 0}</span>
-                          <span className="ml-1 text-xs text-gray-500">次</span>
+                          <span className="ml-1 text-xs text-gray-500">额度</span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <button
@@ -876,7 +876,7 @@ const AdminDashboard = () => {
                                 : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
                             }`}
                           >
-                            {user.is_unlimited ? '无限调用' : '按次数'}
+                            {user.is_unlimited ? '无限调用' : '按额度'}
                           </button>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -890,7 +890,7 @@ const AdminDashboard = () => {
                               min="1"
                               value={creditTopUps[user.id] || ''}
                               onChange={(e) => setCreditTopUps((current) => ({ ...current, [user.id]: e.target.value }))}
-                              placeholder="次数"
+                              placeholder="额度"
                               className="w-24 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                             />
                             <button

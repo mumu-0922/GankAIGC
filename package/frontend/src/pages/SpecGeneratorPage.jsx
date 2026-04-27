@@ -106,7 +106,7 @@ const SpecGeneratorPage = () => {
     }
 
     if (billingMode === 'platform' && usage && !usage.is_unlimited && (usage.credit_balance || 0) <= 0) {
-      toast.error('平台剩余次数不足，请先兑换次数或切换自带 API 模式');
+      toast.error('平台剩余额度不足，请先兑换额度或切换自带 API 模式');
       return;
     }
 
@@ -352,7 +352,7 @@ const SpecGeneratorPage = () => {
 
           {usage && (
             <div className="hidden sm:block gank-topbar-pill rounded-xl px-3 py-1.5 text-sm text-gray-500">
-              平台次数: {usage.is_unlimited ? '无限' : `${usage.credit_balance ?? 0} 次`}
+              平台额度: {usage.is_unlimited ? '无限' : `${usage.credit_balance ?? 0} 额度`}
             </div>
           )}
         </div>
@@ -432,10 +432,10 @@ const SpecGeneratorPage = () => {
                 >
                   <div className="flex items-center gap-2 font-semibold">
                     <CheckCircle className="w-4 h-4" />
-                    平台次数
+                    平台额度
                   </div>
                   <p className="mt-1 text-[12px] text-gray-500">
-                    剩余 {usage?.is_unlimited ? '无限' : `${usage?.credit_balance ?? '-'} 次`}
+                    剩余 {usage?.is_unlimited ? '无限' : `${usage?.credit_balance ?? '-'} 额度`}
                   </p>
                 </button>
 
@@ -453,7 +453,7 @@ const SpecGeneratorPage = () => {
                     自带 API
                   </div>
                   <p className="mt-1 text-[12px] text-gray-500">
-                    {usage?.has_provider_config ? '已保存配置，不消耗平台次数' : '需要先保存 API 配置'}
+                    {usage?.has_provider_config ? '已保存配置，不消耗平台额度' : '需要先保存 API 配置'}
                   </p>
                 </button>
               </div>

@@ -14,7 +14,7 @@ from app.schemas import (
 )
 from app.services.optimization_service import OptimizationService
 from app.services.concurrency import concurrency_manager
-from app.services.credit_service import CreditService
+from app.services.credit_service import CreditService, calculate_optimization_credits
 from app.services.provider_config_service import ProviderConfigService
 from app.services.stream_manager import stream_manager
 from app.utils.auth import generate_session_id, get_current_user_with_legacy_fallback
@@ -86,6 +86,7 @@ async def start_optimization(
             status_code=400,
             detail=f"无效的处理模式。支持的模式: {', '.join(valid_modes)}"
         )
+    required_credits = calculate_optimization_credits(data.original_text, data.processing_mode)
 
     project = None
     if data.project_id is not None:
@@ -178,9 +179,14 @@ async def start_optimization(
     db.add(session)
     db.flush()
     if data.billing_mode == "platform":
-        CreditService(db).hold_platform_credit(user, reason="optimization_start", session_id=session.id)
+        CreditService(db).hold_platform_credit(
+            user,
+            reason="optimization_start",
+            session_id=session.id,
+            amount=required_credits,
+        )
         session.charge_status = "held"
-        session.charged_credits = 0 if user.is_unlimited else 1
+        session.charged_credits = 0 if user.is_unlimited else required_credits
     elif data.billing_mode == "byok":
         session.charge_status = "not_charged"
         session.charged_credits = 0

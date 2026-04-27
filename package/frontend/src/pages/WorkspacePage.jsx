@@ -9,6 +9,22 @@ import { optimizationAPI, projectAPI, userAPI } from '../api';
 import UserMenu from '../components/UserMenu';
 import BrandLogo from '../components/BrandLogo';
 
+const CREDIT_UNIT_CHARACTERS = 1000;
+const PROCESSING_MODE_STAGE_MULTIPLIERS = {
+  paper_polish: 1,
+  paper_enhance: 1,
+  paper_polish_enhance: 2,
+  emotion_polish: 1,
+};
+
+const countBillableCharacters = (value) => (value.match(/\S/g) || []).length;
+
+const calculateEstimatedCredits = (value, mode) => {
+  const billableCharacters = countBillableCharacters(value);
+  const baseCredits = Math.max(1, Math.ceil(billableCharacters / CREDIT_UNIT_CHARACTERS));
+  return baseCredits * (PROCESSING_MODE_STAGE_MULTIPLIERS[mode] || 1);
+};
+
 // 会话列表项组件 - 使用 memo 避免不必要重渲染
 const SessionItem = memo(({ session, activeSession, onView, onDelete, onRetry }) => {
   const handleDelete = useCallback((e) => {
@@ -137,6 +153,11 @@ const WorkspacePage = () => {
   const navigate = useNavigate();
 
   const activeProject = projects.find((project) => project.id === activeProjectId);
+  const billableCharacterCount = useMemo(() => countBillableCharacters(text), [text]);
+  const estimatedCredits = useMemo(
+    () => calculateEstimatedCredits(text, processingMode),
+    [processingMode, text]
+  );
 
   // 使用显式项目 ID 避免切换项目时读取到旧闭包中的 activeProjectId
   const loadSessions = useCallback(async (projectId = activeProjectId) => {
@@ -355,8 +376,8 @@ const WorkspacePage = () => {
       return;
     }
 
-    if (billingMode === 'platform' && credits && !credits.is_unlimited && credits.credit_balance <= 0) {
-      toast.error('平台剩余次数不足，请先兑换次数或切换自带 API 模式');
+    if (billingMode === 'platform' && credits && !credits.is_unlimited && credits.credit_balance < estimatedCredits) {
+      toast.error(`平台剩余额度不足，本次需要 ${estimatedCredits} 额度，当前剩余 ${credits.credit_balance ?? 0} 额度`);
       return;
     }
 
@@ -387,7 +408,7 @@ const WorkspacePage = () => {
     } finally {
       setIsSubmitting(false);
     }
-  }, [activeProjectId, taskTitle, text, processingMode, billingMode, credits, hasProviderConfig, isSubmitting, loadSessions, loadAccountState, navigate]);
+  }, [activeProjectId, taskTitle, text, processingMode, billingMode, credits, estimatedCredits, hasProviderConfig, isSubmitting, loadSessions, loadAccountState, navigate]);
 
   const handleDeleteSession = useCallback(async (session) => {
     const confirmDelete = window.confirm('确认删除该会话及其结果吗?');
@@ -570,7 +591,12 @@ const WorkspacePage = () => {
                     />
                     <span className="font-semibold text-black">平台模式</span>
                     <p className="text-xs text-gray-500 mt-1">
-                      剩余 {credits?.is_unlimited ? '无限' : `${credits?.credit_balance ?? '-'} 次`}
+                      剩余 {credits?.is_unlimited ? '无限' : `${credits?.credit_balance ?? '-'} 额度`}
+                      {text.trim() && (
+                        <span className="block mt-0.5 text-amber-600">
+                          预计消耗 {estimatedCredits} 额度
+                        </span>
+                      )}
                     </p>
                   </label>
                   <label
@@ -590,7 +616,7 @@ const WorkspacePage = () => {
                     />
                     <span className="font-semibold text-black">自带 API 模式</span>
                     <p className="text-xs text-gray-500 mt-1">
-                      {hasProviderConfig ? '已保存配置，不消耗平台次数' : '需要先保存 API 配置'}
+                      {hasProviderConfig ? '已保存配置，不消耗平台额度' : '需要先保存 API 配置'}
                     </p>
                   </label>
                 </div>
@@ -617,7 +643,7 @@ const WorkspacePage = () => {
                   className="w-full h-64 px-4 py-3 bg-gray-50 rounded-xl focus:bg-white focus:ring-2 focus:ring-ios-blue/20 transition-all text-[16px] leading-relaxed text-black placeholder-gray-400 border-none outline-none resize-none"
                 />
                 <div className="absolute bottom-3 right-3 text-[12px] text-ios-gray bg-white/80 px-2 py-1 rounded-md backdrop-blur-sm">
-                  {text.length} 字
+                  有效 {billableCharacterCount} 字符
                 </div>
               </div>
               

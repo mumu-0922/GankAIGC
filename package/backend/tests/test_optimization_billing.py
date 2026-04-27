@@ -8,6 +8,10 @@ class NoRunBackgroundTasks:
         return None
 
 
+async def _noop_run_optimization(*args, **kwargs):
+    return None
+
+
 def _create_user(credit_balance=0, is_unlimited=False):
     db = SessionLocal()
     try:
@@ -28,17 +32,28 @@ def _create_user(credit_balance=0, is_unlimited=False):
         db.close()
 
 
-def test_platform_mode_holds_one_credit_before_processing(client, monkeypatch):
+def test_calculate_optimization_credits_uses_billable_characters_and_stage_multiplier():
+    from app.services.credit_service import calculate_optimization_credits, count_billable_characters
+
+    assert count_billable_characters("a b\nc") == 3
+    assert calculate_optimization_credits("短文本", "paper_enhance") == 1
+    assert calculate_optimization_credits("汉" * 1000, "paper_enhance") == 1
+    assert calculate_optimization_credits("汉" * 1001, "paper_enhance") == 2
+    assert calculate_optimization_credits("汉" * 3000, "paper_polish_enhance") == 6
+
+
+def test_platform_mode_holds_character_based_credits_before_processing(client, monkeypatch):
     from app.routes import optimization
 
-    user_id, token = _create_user(credit_balance=2)
+    user_id, token = _create_user(credit_balance=8)
     monkeypatch.setattr(optimization, "BackgroundTasks", NoRunBackgroundTasks)
+    monkeypatch.setattr(optimization, "run_optimization", _noop_run_optimization)
 
     response = client.post(
         "/api/optimization/start",
         json={
-            "original_text": "test paragraph",
-            "processing_mode": "paper_polish",
+            "original_text": "汉" * 3000,
+            "processing_mode": "paper_polish_enhance",
             "billing_mode": "platform",
         },
         headers={"Authorization": f"Bearer {token}"},
@@ -46,16 +61,16 @@ def test_platform_mode_holds_one_credit_before_processing(client, monkeypatch):
 
     assert response.status_code == 200
     assert response.json()["charge_status"] == "held"
-    assert response.json()["charged_credits"] == 1
+    assert response.json()["charged_credits"] == 6
 
     db = SessionLocal()
     try:
         user = db.query(User).filter(User.id == user_id).one()
         session = db.query(OptimizationSession).filter(OptimizationSession.user_id == user_id).one()
         transaction = db.query(CreditTransaction).filter(CreditTransaction.user_id == user_id).one()
-        assert user.credit_balance == 1
+        assert user.credit_balance == 2
         assert session.billing_mode == "platform"
-        assert transaction.delta == -1
+        assert transaction.delta == -6
         assert transaction.reason == "optimization_start"
     finally:
         db.close()
@@ -66,6 +81,7 @@ def test_byok_mode_does_not_consume_credits(client, monkeypatch):
 
     user_id, token = _create_user(credit_balance=0)
     monkeypatch.setattr(optimization, "BackgroundTasks", NoRunBackgroundTasks)
+    monkeypatch.setattr(optimization, "run_optimization", _noop_run_optimization)
 
     response = client.post(
         "/api/optimization/start",
@@ -95,30 +111,31 @@ def test_byok_mode_does_not_consume_credits(client, monkeypatch):
         db.close()
 
 
-def test_platform_mode_rejects_user_without_credits(client, monkeypatch):
+def test_platform_mode_rejects_user_with_insufficient_credits(client, monkeypatch):
     from app.routes import optimization
 
-    _, token = _create_user(credit_balance=0)
+    _, token = _create_user(credit_balance=5)
     monkeypatch.setattr(optimization, "BackgroundTasks", NoRunBackgroundTasks)
+    monkeypatch.setattr(optimization, "run_optimization", _noop_run_optimization)
 
     response = client.post(
         "/api/optimization/start",
         json={
-            "original_text": "test paragraph",
-            "processing_mode": "paper_polish",
+            "original_text": "汉" * 3000,
+            "processing_mode": "paper_polish_enhance",
             "billing_mode": "platform",
         },
         headers={"Authorization": f"Bearer {token}"},
     )
 
     assert response.status_code == 403
-    assert response.json()["detail"] == "平台剩余次数不足"
+    assert response.json()["detail"] == "平台剩余额度不足，本次需要 6 额度，当前剩余 5 额度"
 
 
-def test_failed_platform_job_refunds_one_credit_once():
+def test_failed_platform_job_refunds_held_credits_once():
     from app.services.credit_service import CreditService
 
-    user_id, _ = _create_user(credit_balance=2)
+    user_id, _ = _create_user(credit_balance=5)
     db = SessionLocal()
     try:
         user = db.query(User).filter(User.id == user_id).one()
@@ -130,11 +147,11 @@ def test_failed_platform_job_refunds_one_credit_once():
             status="queued",
             billing_mode="platform",
             charge_status="held",
-            charged_credits=1,
+            charged_credits=3,
         )
         db.add(session)
         db.flush()
-        CreditService(db).hold_platform_credit(user, reason="optimization_start", session_id=session.id)
+        CreditService(db).hold_platform_credit(user, reason="optimization_start", session_id=session.id, amount=3)
         db.commit()
 
         CreditService(db).refund_held_platform_credit(session)
@@ -143,9 +160,9 @@ def test_failed_platform_job_refunds_one_credit_once():
         db.commit()
 
         db.refresh(user)
-        assert user.credit_balance == 2
+        assert user.credit_balance == 5
         assert session.charge_status == "refunded"
         transactions = db.query(CreditTransaction).filter(CreditTransaction.user_id == user.id).all()
-        assert [txn.delta for txn in transactions] == [-1, 1]
+        assert [txn.delta for txn in transactions] == [-3, 3]
     finally:
         db.close()

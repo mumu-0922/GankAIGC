@@ -33,7 +33,7 @@ const featureCards = [
   },
   {
     title: '账号体系',
-    desc: '注册登录后按次数使用，也可配置自带 API',
+    desc: '注册登录后按额度使用，也可配置自带 API',
     icon: KeyRound,
     accent: 'text-violet-600 bg-violet-50',
   },
@@ -119,7 +119,7 @@ const WelcomePage = () => {
             </h1>
 
             <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600">
-              GankAIGC 聚焦论文降 AI、学术润色与原创性增强，支持账号登录、邀请码注册、兑换码充值次数和自带 API 使用。
+              GankAIGC 聚焦论文降 AI、学术润色与原创性增强，支持账号登录、邀请码注册、兑换码充值额度和自带 API 使用。
             </p>
 
             <div className="mt-7 flex flex-wrap gap-5 text-sm font-semibold text-slate-600">
@@ -156,7 +156,7 @@ const WelcomePage = () => {
                 账号隔离
               </span>
               <span>隐私严格保护</span>
-              <span>平台次数与自带 API 双模式</span>
+              <span>平台额度与自带 API 双模式</span>
             </div>
           </div>
 

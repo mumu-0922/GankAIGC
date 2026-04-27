@@ -32,11 +32,11 @@ const UserMenu = ({ credits }) => {
     <div className="flex items-center gap-2">
       {credits && (
         <div
-          aria-label="剩余次数"
+          aria-label="剩余额度"
           className="hidden sm:flex items-center gap-1.5 gank-topbar-pill text-slate-700 px-3 py-1.5 rounded-xl text-sm font-semibold"
         >
           <Coins className="w-4 h-4 text-teal-600" />
-          {credits.is_unlimited ? '无限' : `${credits.credit_balance} 次`}
+          {credits.is_unlimited ? '无限' : `${credits.credit_balance} 额度`}
         </div>
       )}
       <Link
@@ -51,7 +51,7 @@ const UserMenu = ({ credits }) => {
         className="flex items-center gap-1.5 gank-primary-button px-3 py-1.5 rounded-xl text-sm font-semibold transition-colors"
       >
         <Coins className="w-4 h-4" />
-        兑换次数
+        兑换额度
       </Link>
       <Link
         to="/api-settings"

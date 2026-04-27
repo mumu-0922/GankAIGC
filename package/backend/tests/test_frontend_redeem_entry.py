@@ -11,7 +11,7 @@ STATIC_DIR = PACKAGE_ROOT / "static"
 def test_user_menu_exposes_explicit_redeem_entry():
     user_menu = (FRONTEND_SRC / "components" / "UserMenu.jsx").read_text(encoding="utf-8")
 
-    assert "兑换次数" in user_menu
+    assert "兑换额度" in user_menu
     assert user_menu.count('to="/credits"') == 1
 
 
@@ -90,13 +90,14 @@ def test_user_menu_hides_word_formatter_entry_until_feature_is_ready():
 def test_admin_dashboard_hides_legacy_card_key_management():
     admin_dashboard = (FRONTEND_SRC / "pages" / "AdminDashboard.jsx").read_text(encoding="utf-8")
 
-    assert "次数兑换码" in admin_dashboard
-    assert "用户次数余额" in admin_dashboard
+    assert "额度兑换码" in admin_dashboard
+    assert "用户额度余额" in admin_dashboard
     assert "邀请码、兑换码和用户余额统一在这里管理。" not in admin_dashboard
     assert "前往管理" not in admin_dashboard
     assert "生成卡密" not in admin_dashboard
     assert "批量生成" not in admin_dashboard
     assert "使用次数" not in admin_dashboard
+    assert "账号次数" not in admin_dashboard
     assert "/api/admin/card-keys" not in admin_dashboard
     assert "/api/admin/batch-generate-keys" not in admin_dashboard
     assert "/api/admin/users/${userId}/usage" not in admin_dashboard
@@ -141,7 +142,7 @@ def test_word_formatter_uses_platform_credits_or_user_api_not_legacy_card_key():
     assert "preprocessFile(file, {" in preprocess_page
     assert "billingMode," in preprocess_page
     for source in (page, spec_page, preprocess_page):
-        assert "平台次数" in source
+        assert "平台额度" in source
         assert "自带 API" in source
     assert "已使用:" not in page
     assert "使用量:" not in spec_page

@@ -1,9 +1,31 @@
+import math
+import re
 from datetime import datetime, timezone
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.models.models import CreditCode, CreditTransaction, OptimizationSession, User
+
+
+CREDIT_UNIT_CHARACTERS = 1000
+PROCESSING_MODE_STAGE_MULTIPLIERS = {
+    "paper_polish": 1,
+    "paper_enhance": 1,
+    "emotion_polish": 1,
+    "paper_polish_enhance": 2,
+}
+
+
+def count_billable_characters(text: str) -> int:
+    return len(re.findall(r"\S", text or ""))
+
+
+def calculate_optimization_credits(text: str, processing_mode: str) -> int:
+    billable_characters = count_billable_characters(text)
+    base_credits = max(1, math.ceil(billable_characters / CREDIT_UNIT_CHARACTERS))
+    stage_multiplier = PROCESSING_MODE_STAGE_MULTIPLIERS.get(processing_mode, 1)
+    return base_credits * stage_multiplier
 
 
 class CreditService:
@@ -15,15 +37,23 @@ class CreditService:
         user: User,
         reason: str,
         session_id: int | None = None,
+        amount: int = 1,
     ) -> CreditTransaction:
-        if not user.is_unlimited and (user.credit_balance or 0) <= 0:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="平台剩余次数不足")
+        if amount <= 0:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="扣除额度必须大于 0")
+
+        current_balance = user.credit_balance or 0
+        if not user.is_unlimited and current_balance < amount:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"平台剩余额度不足，本次需要 {amount} 额度，当前剩余 {current_balance} 额度",
+            )
 
         if user.is_unlimited:
             delta = 0
         else:
-            user.credit_balance = (user.credit_balance or 0) - 1
-            delta = -1
+            user.credit_balance = current_balance - amount
+            delta = -amount
 
         transaction = CreditTransaction(
             user_id=user.id,
@@ -40,12 +70,16 @@ class CreditService:
         user: User,
         reason: str,
         session_id: int | None = None,
+        amount: int = 1,
     ) -> CreditTransaction:
+        if amount <= 0:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="退回额度必须大于 0")
+
         if user.is_unlimited:
             delta = 0
         else:
-            user.credit_balance = (user.credit_balance or 0) + 1
-            delta = 1
+            user.credit_balance = (user.credit_balance or 0) + amount
+            delta = amount
 
         transaction = CreditTransaction(
             user_id=user.id,
@@ -65,7 +99,12 @@ class CreditService:
         if not user:
             return None
 
-        transaction = self.refund_platform_credit(user, reason="optimization_refund", session_id=session.id)
+        transaction = self.refund_platform_credit(
+            user,
+            reason="optimization_refund",
+            session_id=session.id,
+            amount=session.charged_credits,
+        )
         session.charge_status = "refunded"
         session.charged_credits = 0
         return transaction
@@ -78,7 +117,7 @@ class CreditService:
         code_id: int | None = None,
     ) -> CreditTransaction:
         if amount <= 0:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="充值次数必须大于 0")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="充值额度必须大于 0")
 
         user.credit_balance = (user.credit_balance or 0) + amount
         transaction = CreditTransaction(

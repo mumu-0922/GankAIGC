@@ -83,7 +83,7 @@ def test_word_formatter_platform_mode_requires_credit_balance(client):
     response = _format_text(client, token, billing_mode="platform")
 
     assert response.status_code == 403
-    assert response.json()["detail"] == "平台剩余次数不足"
+    assert response.json()["detail"] == "平台剩余额度不足，本次需要 1 额度，当前剩余 0 额度"
 
 
 def test_word_formatter_spec_generation_platform_mode_requires_credit_balance(client):
@@ -92,7 +92,7 @@ def test_word_formatter_spec_generation_platform_mode_requires_credit_balance(cl
     response = _generate_spec(client, token, billing_mode="platform")
 
     assert response.status_code == 403
-    assert response.json()["detail"] == "平台剩余次数不足"
+    assert response.json()["detail"] == "平台剩余额度不足，本次需要 1 额度，当前剩余 0 额度"
 
 
 def test_word_formatter_preprocess_platform_mode_requires_credit_balance(client):
@@ -101,7 +101,7 @@ def test_word_formatter_preprocess_platform_mode_requires_credit_balance(client)
     response = _preprocess_text(client, token, billing_mode="platform")
 
     assert response.status_code == 403
-    assert response.json()["detail"] == "平台剩余次数不足"
+    assert response.json()["detail"] == "平台剩余额度不足，本次需要 1 额度，当前剩余 0 额度"
 
 
 def test_word_formatter_platform_mode_consumes_one_credit(client):
