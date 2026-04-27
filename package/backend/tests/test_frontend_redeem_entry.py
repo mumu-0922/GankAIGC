@@ -73,6 +73,9 @@ def test_welcome_page_links_to_github_project_and_requests_star():
     assert "https://github.com/mumu-0922/GankAIGC" in welcome_page
     assert "GitHub 项目" in welcome_page
     assert "求 Star" in welcome_page
+    assert 'data-home-github-star="footer"' in welcome_page
+    assert welcome_page.count("GitHub 项目") == 1
+    assert welcome_page.index('data-home-scenarios="workflow"') < welcome_page.index("GitHub 项目")
     assert 'target="_blank"' in welcome_page
     assert 'rel="noopener noreferrer"' in welcome_page
 
@@ -355,3 +358,4 @@ def test_served_static_bundle_includes_ai_reduction_homepage():
     assert "https://github.com/mumu-0922/GankAIGC" in static_bundle
     assert "GitHub 项目" in static_bundle
     assert "求 Star" in static_bundle
+    assert "data-home-github-star" in static_bundle

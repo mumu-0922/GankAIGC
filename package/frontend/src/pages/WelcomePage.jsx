@@ -148,20 +148,6 @@ const WelcomePage = () => {
                 <UserPlus className="h-5 w-5 text-blue-600" />
                 邀请码注册
               </button>
-              <a
-                href={GITHUB_PROJECT_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex min-h-[52px] items-center justify-center gap-2 rounded-xl border border-white/80 bg-white/75 px-8 text-base font-bold text-slate-800 shadow-sm backdrop-blur-xl transition hover:-translate-y-0.5 hover:text-slate-950 hover:shadow-md active:scale-[0.98]"
-                aria-label="打开 GitHub 项目，求 Star"
-              >
-                <Github className="h-5 w-5" />
-                <span>GitHub 项目</span>
-                <span className="inline-flex items-center gap-1 rounded-full bg-yellow-50 px-2.5 py-1 text-sm text-yellow-700">
-                  <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-500" />
-                  求 Star
-                </span>
-              </a>
             </div>
 
             <div id="security" className="mt-8 flex flex-wrap gap-x-4 gap-y-2 text-sm text-slate-500">
@@ -322,6 +308,32 @@ const WelcomePage = () => {
                 </div>
               </article>
             ))}
+          </div>
+        </section>
+
+        <section data-home-github-star="footer" className="mt-10">
+          <div className="flex flex-col gap-4 rounded-[1.5rem] border border-white/80 bg-white/70 p-5 shadow-[0_18px_48px_rgba(15,23,42,0.08)] backdrop-blur-2xl sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <div className="grid h-11 w-11 place-items-center rounded-2xl bg-slate-950 text-white shadow-lg">
+                <Github className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-base font-black text-slate-950">GitHub 项目</p>
+                <p className="mt-1 text-sm leading-6 text-slate-600">项目持续迭代中，觉得有用欢迎点个 Star。</p>
+              </div>
+            </div>
+
+            <a
+              href={GITHUB_PROJECT_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-[46px] items-center justify-center gap-2 rounded-xl border border-white/80 bg-white/85 px-5 text-sm font-bold text-slate-800 shadow-sm transition hover:-translate-y-0.5 hover:text-slate-950 hover:shadow-md active:scale-[0.98]"
+              aria-label="打开项目仓库，求 Star"
+            >
+              <Star className="h-4 w-4 fill-yellow-400 text-yellow-500" />
+              求 Star
+              <ArrowRight className="h-4 w-4 text-slate-500" />
+            </a>
           </div>
         </section>
       </main>
