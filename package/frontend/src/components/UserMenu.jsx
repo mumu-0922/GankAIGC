@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Beer, KeyRound, LogOut, UserCircle } from 'lucide-react';
+import { KeyRound, LogOut, UserCircle } from 'lucide-react';
 import { authAPI } from '../api';
+import BeerIcon from './BeerIcon';
 
 const UserMenu = ({ credits }) => {
   const navigate = useNavigate();
@@ -35,7 +36,7 @@ const UserMenu = ({ credits }) => {
           aria-label="剩余啤酒"
           className="hidden sm:flex items-center gap-1.5 gank-topbar-pill text-slate-700 px-3 py-1.5 rounded-xl text-sm font-semibold"
         >
-          <Beer className="w-4 h-4 text-amber-500" />
+          <BeerIcon className="w-4 h-4" />
           {credits.is_unlimited ? '无限啤酒' : `${credits.credit_balance} 啤酒`}
         </div>
       )}
@@ -50,7 +51,7 @@ const UserMenu = ({ credits }) => {
         to="/credits"
         className="flex items-center gap-1.5 gank-primary-button px-3 py-1.5 rounded-xl text-sm font-semibold transition-colors"
       >
-        <Beer className="w-4 h-4" />
+        <BeerIcon className="w-4 h-4" />
         兑换啤酒
       </Link>
       <Link

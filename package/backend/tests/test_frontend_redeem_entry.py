@@ -10,12 +10,17 @@ STATIC_DIR = PACKAGE_ROOT / "static"
 
 def test_user_menu_exposes_explicit_redeem_entry():
     user_menu = (FRONTEND_SRC / "components" / "UserMenu.jsx").read_text(encoding="utf-8")
+    beer_icon = (FRONTEND_SRC / "components" / "BeerIcon.jsx").read_text(encoding="utf-8")
+    beer_asset = (FRONTEND_SRC / "assets" / "beer-mug-twemoji.svg").read_text(encoding="utf-8")
 
     assert "兑换啤酒" in user_menu
-    assert "Beer" in user_menu
-    assert '<Beer className="w-4 h-4 text-amber-500" />' in user_menu
+    assert "BeerIcon" in user_menu
+    assert '<BeerIcon className="w-4 h-4" />' in user_menu
     assert '<KeyRound className="w-4 h-4 text-amber-500" />' in user_menu
     assert user_menu.count('to="/credits"') == 1
+    assert "beer-mug-twemoji.svg" in beer_icon
+    assert 'viewBox="0 0 36 36"' in beer_asset
+    assert "#FFCC4D" in beer_asset
 
 
 def test_credit_transactions_render_backend_utc_as_china_time():
@@ -242,10 +247,10 @@ def test_workspace_and_credits_explain_character_based_credit_billing():
     assert "预计消耗 {estimatedCredits} 啤酒" in workspace
     assert "平台啤酒不足" in workspace
     assert "平台啤酒" in credits_page
-    assert "Beer" in credits_page
+    assert "BeerIcon" in credits_page
     assert "1000 个非空白字符" in credits_page
     assert "剩余啤酒" in profile_page
-    assert "Beer" in profile_page
+    assert "BeerIcon" in profile_page
     assert "按啤酒使用" in welcome_page
     assert "兑换码充值啤酒" in readme
     assert "平台模式按字符折算啤酒" in readme

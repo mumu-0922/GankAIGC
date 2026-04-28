@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { ArrowLeft, Beer, Copy, Loader2, Save, ShieldCheck, UserCircle, UserPlus } from 'lucide-react';
+import { ArrowLeft, Copy, Loader2, Save, ShieldCheck, UserCircle, UserPlus } from 'lucide-react';
 import { authAPI, userAPI } from '../api';
 import BrandLogo from '../components/BrandLogo';
+import BeerIcon from '../components/BeerIcon';
 import { formatChinaDateTime } from '../utils/dateTime';
 
 const ProfilePage = () => {
@@ -135,7 +136,7 @@ const ProfilePage = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="gank-card rounded-2xl p-5">
                   <div className="flex items-center gap-2 text-teal-700 mb-3">
-                    <Beer className="w-5 h-5" />
+                    <BeerIcon className="w-5 h-5" />
                     <span className="font-semibold">剩余啤酒</span>
                   </div>
                   <p className="text-3xl font-bold text-gray-950">

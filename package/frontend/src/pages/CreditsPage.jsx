@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { ArrowLeft, Beer } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { userAPI } from '../api';
 import BrandLogo from '../components/BrandLogo';
+import BeerIcon from '../components/BeerIcon';
 import { formatChinaDateTime } from '../utils/dateTime';
 
 const CreditsPage = () => {
@@ -64,7 +65,7 @@ const CreditsPage = () => {
         <div className="grid lg:grid-cols-[0.85fr_1.15fr] gap-6">
           <section className="gank-glass-card rounded-[2rem] p-6">
             <div className="gank-icon-tile w-12 h-12 rounded-2xl flex items-center justify-center mb-4">
-              <Beer className="w-6 h-6" />
+              <BeerIcon className="w-7 h-7" />
             </div>
             <p className="text-slate-500 text-sm">当前剩余啤酒</p>
             <h1 className="text-5xl font-black text-slate-950 mt-2">

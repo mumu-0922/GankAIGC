@@ -19,3 +19,9 @@ This repository contains substantial modifications to the original project,
 including UI redesign, account registration/login, invitation codes, credit
 redemption, BYOK provider configuration, admin management changes, and
 packaging/deployment updates.
+
+Third-party graphics:
+Twemoji beer mug SVG (1f37a) is used as the beer unit icon.
+Copyright 2020 Twitter, Inc and other contributors.
+Licensed under Creative Commons Attribution 4.0 International (CC-BY 4.0).
+Source: https://github.com/twitter/twemoji
