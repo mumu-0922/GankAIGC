@@ -316,6 +316,15 @@ def test_config_manager_hides_word_formatter_file_size_setting_until_feature_is_
     assert "0 表示无限制" not in config_manager
 
 
+def test_config_manager_exposes_registration_enabled_switch():
+    config_manager = (FRONTEND_SRC / "components" / "ConfigManager.jsx").read_text(encoding="utf-8")
+
+    assert "REGISTRATION_ENABLED" in config_manager
+    assert "账号注册控制" in config_manager
+    assert "允许新用户通过邀请码注册" in config_manager
+    assert "response.data.system.registration_enabled" in config_manager
+
+
 def test_api_config_guide_keeps_previous_sections_open_when_expanding_next():
     api_guide = (FRONTEND_SRC / "components" / "ApiConfigGuide.jsx").read_text(encoding="utf-8")
 

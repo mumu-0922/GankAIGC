@@ -101,6 +101,41 @@ def test_register_with_invite_creates_user_and_disables_invite(client):
         db.close()
 
 
+def test_register_is_blocked_when_registration_is_disabled(client, monkeypatch):
+    from app.database import SessionLocal
+    from app.models.models import RegistrationInvite, User
+
+    monkeypatch.setattr(config_module.settings, "REGISTRATION_ENABLED", False, raising=False)
+
+    db = SessionLocal()
+    try:
+        db.add(RegistrationInvite(code="INVITE123", is_active=True))
+        db.commit()
+    finally:
+        db.close()
+
+    response = client.post(
+        "/api/auth/register",
+        json={
+            "invite_code": "INVITE123",
+            "username": "alice",
+            "password": "Password123!",
+        },
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "当前已关闭新用户注册"
+
+    db = SessionLocal()
+    try:
+        assert db.query(User).filter(User.username == "alice").first() is None
+        invite = db.query(RegistrationInvite).filter(RegistrationInvite.code == "INVITE123").one()
+        assert invite.is_active is True
+        assert invite.used_by_user_id is None
+    finally:
+        db.close()
+
+
 def test_user_me_returns_profile_for_bearer_token(client):
     from app.database import SessionLocal
     from app.models.models import User
@@ -356,6 +391,15 @@ def test_admin_config_updates_runtime_env_file_from_override(client, monkeypatch
     assert response.status_code == 200
     assert "POLISH_MODEL=new-model" in env_file.read_text(encoding="utf-8")
     assert config_module.settings.POLISH_MODEL == "new-model"
+
+
+def test_admin_config_exposes_registration_enabled(client, monkeypatch):
+    monkeypatch.setattr(config_module.settings, "REGISTRATION_ENABLED", False, raising=False)
+
+    response = client.get("/api/admin/config", headers=_admin_auth_headers(client))
+
+    assert response.status_code == 200
+    assert response.json()["system"]["registration_enabled"] is False
 
 
 def test_admin_config_rollback_restores_env_file_and_live_settings_on_invalid_update(client, monkeypatch, tmp_path):

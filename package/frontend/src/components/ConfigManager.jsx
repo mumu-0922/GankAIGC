@@ -25,6 +25,7 @@ const ConfigManager = ({ adminToken }) => {
     COMPRESSION_BASE_URL: '',
     SEGMENT_SKIP_THRESHOLD: '',
     API_REQUEST_INTERVAL: '',
+    REGISTRATION_ENABLED: true,
     THINKING_MODE_ENABLED: true,
     THINKING_MODE_EFFORT: 'high'
   });
@@ -58,6 +59,7 @@ const ConfigManager = ({ adminToken }) => {
         COMPRESSION_BASE_URL: response.data.compression?.base_url || '',
         SEGMENT_SKIP_THRESHOLD: response.data.system.segment_skip_threshold?.toString() || '',
         API_REQUEST_INTERVAL: response.data.system.api_request_interval?.toString() || '6',
+        REGISTRATION_ENABLED: response.data.system.registration_enabled ?? true,
         THINKING_MODE_ENABLED: response.data.thinking?.enabled ?? true,
         THINKING_MODE_EFFORT: response.data.thinking?.effort || 'high'
       });
@@ -351,6 +353,47 @@ const ConfigManager = ({ adminToken }) => {
               更高的强度会增加推理 token 消耗和响应时间，但可能获得更好的结果
             </p>
           </div>
+        </div>
+      </div>
+
+      {/* 账号注册控制 */}
+      <div className="bg-white rounded-2xl shadow-ios p-6">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center">
+            <Settings className="w-5 h-5 text-emerald-600" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-gray-900">账号注册控制</h3>
+            <p className="text-xs text-gray-400">控制新用户是否可以通过邀请码创建账号</p>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between gap-6 rounded-2xl border border-gray-100 bg-gray-50/70 p-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              允许新用户通过邀请码注册
+            </label>
+            <p className="text-xs text-gray-400 mt-1">
+              关闭后已有账号仍可登录，所有邀请码注册请求会被拒绝。
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setFormData({
+              ...formData,
+              REGISTRATION_ENABLED: !formData.REGISTRATION_ENABLED
+            })}
+            className={`relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 ${formData.REGISTRATION_ENABLED
+              ? 'bg-emerald-600'
+              : 'bg-gray-200'
+              }`}
+            aria-pressed={formData.REGISTRATION_ENABLED}
+          >
+            <span className={`absolute left-0.5 top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${formData.REGISTRATION_ENABLED
+              ? 'translate-x-5'
+              : 'translate-x-0'
+              }`} />
+          </button>
         </div>
       </div>
 

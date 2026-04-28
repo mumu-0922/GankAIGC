@@ -1,9 +1,10 @@
 import secrets
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.database import get_db
 from app.models.models import CreditTransaction, PaperProject, RegistrationInvite, User
 from app.routes.auth import get_current_user_from_bearer
@@ -53,6 +54,9 @@ async def create_my_registration_invite(
     current_user: User = Depends(get_current_user_from_bearer),
     db: Session = Depends(get_db),
 ) -> RegistrationInvite:
+    if not settings.REGISTRATION_ENABLED:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="当前已关闭新用户注册")
+
     existing_invite = (
         db.query(RegistrationInvite)
         .filter(

@@ -122,6 +122,7 @@ class Settings(BaseSettings):
     ADMIN_PASSWORD: str = DEFAULT_ADMIN_PASSWORD
     AUTH_RATE_LIMIT_PER_MINUTE: int = 10
     REDEEM_RATE_LIMIT_PER_MINUTE: int = 20
+    REGISTRATION_ENABLED: bool = True
     
     class Config:
         env_file = get_env_file_path()

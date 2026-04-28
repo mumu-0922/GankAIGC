@@ -43,6 +43,19 @@ def test_user_can_create_only_one_registration_invite(client):
     assert repeat_response.json()["code"] == invite["code"]
 
 
+def test_user_invite_creation_is_blocked_when_registration_is_disabled(client, monkeypatch):
+    import app.config as config_module
+
+    monkeypatch.setattr(config_module.settings, "REGISTRATION_ENABLED", False, raising=False)
+    token = _create_user_token("alice")
+    headers = {"Authorization": f"Bearer {token}"}
+
+    create_response = client.post("/api/user/invites", headers=headers)
+
+    assert create_response.status_code == 403
+    assert create_response.json()["detail"] == "当前已关闭新用户注册"
+
+
 def test_user_created_invite_can_register_another_user_but_not_regenerate(client):
     token = _create_user_token("alice")
     headers = {"Authorization": f"Bearer {token}"}

@@ -4,6 +4,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.database import get_db
 from app.models.models import RegistrationInvite, User
 from app.schemas import LoginRequest, RegisterRequest, UserProfileResponse, UserProfileUpdateRequest
@@ -41,6 +42,9 @@ def get_current_user_from_bearer(
 
 @router.post("/register", response_model=UserProfileResponse)
 async def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> User:
+    if not settings.REGISTRATION_ENABLED:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="当前已关闭新用户注册")
+
     now = datetime.now(timezone.utc)
     invite = (
         db.query(RegistrationInvite)

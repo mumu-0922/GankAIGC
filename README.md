@@ -132,6 +132,7 @@ MAX_CONCURRENT_USERS=5
 SEGMENT_SKIP_THRESHOLD=15
 API_REQUEST_INTERVAL=6
 USE_STREAMING=false
+REGISTRATION_ENABLED=true
 ```
 
 `ENCRYPTION_KEY` 用于加密用户保存的自带 API 配置，建议使用 Fernet key：
@@ -141,6 +142,7 @@ python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().d
 ```
 
 生产环境必须修改默认 `ADMIN_PASSWORD` 和 `SECRET_KEY`。当 `APP_ENV=production`、`staging` 或 `server` 时，项目会拒绝使用明显的占位密钥。
+`REGISTRATION_ENABLED=false` 会关闭所有邀请码注册和普通用户生成邀请码，已有用户仍可登录使用。
 
 ## 使用流程
 
