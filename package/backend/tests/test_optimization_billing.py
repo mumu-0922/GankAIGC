@@ -129,7 +129,34 @@ def test_platform_mode_rejects_user_with_insufficient_credits(client, monkeypatc
     )
 
     assert response.status_code == 403
-    assert response.json()["detail"] == "平台剩余额度不足，本次需要 6 额度，当前剩余 5 额度"
+    assert response.json()["detail"] == "平台剩余啤酒不足，本次需要 6 啤酒，当前剩余 5 啤酒"
+
+
+def test_credit_service_public_error_messages_use_beer_unit():
+    from fastapi import HTTPException
+    from app.services.credit_service import CreditService
+
+    user_id, _ = _create_user(credit_balance=0)
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.id == user_id).one()
+        service = CreditService(db)
+
+        error_checks = [
+            (lambda: service.hold_platform_credit(user, reason="test", amount=0), "扣除啤酒必须大于 0"),
+            (lambda: service.refund_platform_credit(user, reason="test", amount=0), "退回啤酒必须大于 0"),
+            (lambda: service.add_credits(user, amount=0, reason="test"), "充值啤酒必须大于 0"),
+        ]
+
+        for action, expected_detail in error_checks:
+            try:
+                action()
+            except HTTPException as exc:
+                assert exc.detail == expected_detail
+            else:
+                raise AssertionError("expected HTTPException")
+    finally:
+        db.close()
 
 
 def test_failed_platform_job_refunds_held_credits_once():

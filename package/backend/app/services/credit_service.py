@@ -40,13 +40,13 @@ class CreditService:
         amount: int = 1,
     ) -> CreditTransaction:
         if amount <= 0:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="扣除额度必须大于 0")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="扣除啤酒必须大于 0")
 
         current_balance = user.credit_balance or 0
         if not user.is_unlimited and current_balance < amount:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"平台剩余额度不足，本次需要 {amount} 额度，当前剩余 {current_balance} 额度",
+                detail=f"平台剩余啤酒不足，本次需要 {amount} 啤酒，当前剩余 {current_balance} 啤酒",
             )
 
         if user.is_unlimited:
@@ -73,7 +73,7 @@ class CreditService:
         amount: int = 1,
     ) -> CreditTransaction:
         if amount <= 0:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="退回额度必须大于 0")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="退回啤酒必须大于 0")
 
         if user.is_unlimited:
             delta = 0
@@ -117,7 +117,7 @@ class CreditService:
         code_id: int | None = None,
     ) -> CreditTransaction:
         if amount <= 0:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="充值额度必须大于 0")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="充值啤酒必须大于 0")
 
         user.credit_balance = (user.credit_balance or 0) + amount
         transaction = CreditTransaction(
