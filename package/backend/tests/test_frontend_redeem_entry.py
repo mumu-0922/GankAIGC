@@ -133,6 +133,21 @@ def test_admin_dashboard_hides_word_formatter_statistics_until_feature_is_ready(
     assert "Word 排版任务" not in admin_dashboard
 
 
+def test_admin_dashboard_uses_real_session_status_metrics():
+    admin_dashboard = (FRONTEND_SRC / "pages" / "AdminDashboard.jsx").read_text(encoding="utf-8")
+
+    assert "data-admin-session-status" in admin_dashboard
+    assert "会话状态" in admin_dashboard
+    assert "完成会话" in admin_dashboard
+    assert "处理中" in admin_dashboard
+    assert "排队等待" in admin_dashboard
+    assert "失败会话" in admin_dashboard
+    assert "平均字符 / 完成会话" in admin_dashboard
+    assert "sessionStats.completed" in admin_dashboard
+    assert "sessionStats.queued" in admin_dashboard
+    assert "sessionStats.failed" in admin_dashboard
+
+
 def test_admin_dashboard_uses_left_sidebar_navigation():
     admin_dashboard = (FRONTEND_SRC / "pages" / "AdminDashboard.jsx").read_text(encoding="utf-8")
 
