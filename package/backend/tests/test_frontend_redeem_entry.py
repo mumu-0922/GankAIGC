@@ -11,8 +11,10 @@ STATIC_DIR = PACKAGE_ROOT / "static"
 def test_user_menu_exposes_explicit_redeem_entry():
     user_menu = (FRONTEND_SRC / "components" / "UserMenu.jsx").read_text(encoding="utf-8")
 
-    assert "兑换额度" in user_menu
-    assert "千字额度" in user_menu
+    assert "兑换啤酒" in user_menu
+    assert "Beer" in user_menu
+    assert '<Beer className="w-4 h-4 text-amber-500" />' in user_menu
+    assert '<KeyRound className="w-4 h-4 text-amber-500" />' in user_menu
     assert user_menu.count('to="/credits"') == 1
 
 
@@ -121,16 +123,18 @@ def test_user_menu_hides_word_formatter_entry_until_feature_is_ready():
 def test_admin_dashboard_hides_legacy_card_key_management():
     admin_dashboard = (FRONTEND_SRC / "pages" / "AdminDashboard.jsx").read_text(encoding="utf-8")
 
-    assert "额度兑换码" in admin_dashboard
-    assert "用户额度余额" in admin_dashboard
-    assert "按千字额度" in admin_dashboard
-    assert "无限额度" in admin_dashboard
+    assert "啤酒兑换码" in admin_dashboard
+    assert "用户啤酒余额" in admin_dashboard
+    assert "按啤酒" in admin_dashboard
+    assert "无限啤酒" in admin_dashboard
     assert "邀请码、兑换码和用户余额统一在这里管理。" not in admin_dashboard
     assert "前往管理" not in admin_dashboard
     assert "生成卡密" not in admin_dashboard
     assert "批量生成" not in admin_dashboard
     assert "使用次数" not in admin_dashboard
     assert "账号次数" not in admin_dashboard
+    assert "额度兑换码" not in admin_dashboard
+    assert "用户额度余额" not in admin_dashboard
     assert "无限调用" not in admin_dashboard
     assert "/api/admin/card-keys" not in admin_dashboard
     assert "/api/admin/batch-generate-keys" not in admin_dashboard
@@ -220,7 +224,7 @@ def test_word_formatter_uses_platform_credits_or_user_api_not_legacy_card_key():
     assert "preprocessFile(file, {" in preprocess_page
     assert "billingMode," in preprocess_page
     for source in (page, spec_page, preprocess_page):
-        assert "平台额度" in source
+        assert "平台啤酒" in source
         assert "自带 API" in source
     assert "已使用:" not in page
     assert "使用量:" not in spec_page
@@ -234,15 +238,21 @@ def test_workspace_and_credits_explain_character_based_credit_billing():
     welcome_page = (FRONTEND_SRC / "pages" / "WelcomePage.jsx").read_text(encoding="utf-8")
     readme = (PACKAGE_ROOT.parent / "README.md").read_text(encoding="utf-8")
 
-    assert "1000 非空白字符 = 1 额度" in workspace
-    assert "预计消耗 {estimatedCredits} 千字额度" in workspace
-    assert "平台千字额度不足" in workspace
-    assert "平台千字额度" in credits_page
+    assert "1 啤酒 = 1000 非空白字符" in workspace
+    assert "预计消耗 {estimatedCredits} 啤酒" in workspace
+    assert "平台啤酒不足" in workspace
+    assert "平台啤酒" in credits_page
+    assert "Beer" in credits_page
     assert "1000 个非空白字符" in credits_page
-    assert "剩余千字额度" in profile_page
-    assert "按千字额度使用" in welcome_page
-    assert "兑换码充值额度" in readme
-    assert "平台模式按字符折算额度" in readme
+    assert "剩余啤酒" in profile_page
+    assert "Beer" in profile_page
+    assert "按啤酒使用" in welcome_page
+    assert "兑换码充值啤酒" in readme
+    assert "平台模式按字符折算啤酒" in readme
+    assert "千字额度" not in workspace
+    assert "千字额度" not in credits_page
+    assert "千字额度" not in profile_page
+    assert "千字额度" not in welcome_page
     assert "兑换码充值次数" not in readme
     assert "平台次数模式" not in readme
 
@@ -462,6 +472,10 @@ def test_served_static_bundle_includes_ai_reduction_homepage():
     assert "阶段 01" in static_bundle
     assert "从初稿到投稿前的三步优化" in static_bundle
     assert "阶段 04" not in static_bundle
+    assert "兑换码充值啤酒" in static_bundle
+    assert "啤酒与自带 API 双模式" in static_bundle
+    assert "千字额度" not in static_bundle
+    assert "兑换码充值额度" not in static_bundle
     assert "有自有模型额度时，可切换为自带 API 模式" not in static_bundle
     assert "账号次数与自带 API 双模式" not in static_bundle
     assert "论文原创性工作台" not in static_bundle

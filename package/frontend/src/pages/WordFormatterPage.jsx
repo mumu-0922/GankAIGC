@@ -224,7 +224,7 @@ const WordFormatterPage = () => {
       return;
     }
     if (billingMode === 'platform' && usage && !usage.is_unlimited && (usage.credit_balance || 0) <= 0) {
-      toast.error('平台剩余额度不足，请先兑换额度或切换自带 API 模式');
+      toast.error('平台啤酒不足，请先兑换啤酒或切换自带 API 模式');
       return;
     }
     if (billingMode === 'byok' && usage && !usage.has_provider_config) {
@@ -377,8 +377,8 @@ const WordFormatterPage = () => {
             <div className="flex items-center gap-3">
               {usage && (
                 <div className="hidden sm:block gank-topbar-pill rounded-xl px-3 py-1.5 text-[13px] text-slate-600">
-                  平台额度: <span className="font-medium text-black">
-                    {usage.is_unlimited ? '无限额度' : `${usage.credit_balance ?? 0} 千字额度`}
+                  平台啤酒: <span className="font-medium text-black">
+                    {usage.is_unlimited ? '无限啤酒' : `${usage.credit_balance ?? 0} 啤酒`}
                   </span>
                 </div>
               )}
@@ -677,10 +677,10 @@ Deep Learning; Image Recognition; Convolutional Neural Network
                 >
                   <div className="flex items-center gap-2 font-semibold">
                     <CheckCircle className="w-4 h-4" />
-                    平台额度
+                    平台啤酒
                   </div>
                   <p className="mt-1 text-[12px] text-gray-500">
-                    剩余 {usage?.is_unlimited ? '无限额度' : `${usage?.credit_balance ?? '-'} 千字额度`}
+                    剩余 {usage?.is_unlimited ? '无限啤酒' : `${usage?.credit_balance ?? '-'} 啤酒`}
                   </p>
                 </button>
 
@@ -698,7 +698,7 @@ Deep Learning; Image Recognition; Convolutional Neural Network
                     自带 API
                   </div>
                   <p className="mt-1 text-[12px] text-gray-500">
-                    {usage?.has_provider_config ? '已保存配置，不消耗平台额度' : '需要先保存 API 配置'}
+                    {usage?.has_provider_config ? '已保存配置，不消耗啤酒' : '需要先保存 API 配置'}
                   </p>
                 </button>
               </div>

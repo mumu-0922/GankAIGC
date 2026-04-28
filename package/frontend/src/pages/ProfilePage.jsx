@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { ArrowLeft, Coins, Copy, Loader2, Save, ShieldCheck, UserCircle, UserPlus } from 'lucide-react';
+import { ArrowLeft, Beer, Copy, Loader2, Save, ShieldCheck, UserCircle, UserPlus } from 'lucide-react';
 import { authAPI, userAPI } from '../api';
 import BrandLogo from '../components/BrandLogo';
 import { formatChinaDateTime } from '../utils/dateTime';
@@ -135,11 +135,11 @@ const ProfilePage = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="gank-card rounded-2xl p-5">
                   <div className="flex items-center gap-2 text-teal-700 mb-3">
-                    <Coins className="w-5 h-5" />
-                    <span className="font-semibold">剩余千字额度</span>
+                    <Beer className="w-5 h-5" />
+                    <span className="font-semibold">剩余啤酒</span>
                   </div>
                   <p className="text-3xl font-bold text-gray-950">
-                    {profile?.is_unlimited ? '无限额度' : profile?.credit_balance ?? 0}
+                    {profile?.is_unlimited ? '无限啤酒' : profile?.credit_balance ?? 0}
                   </p>
                 </div>
                 <div className="gank-card rounded-2xl p-5">

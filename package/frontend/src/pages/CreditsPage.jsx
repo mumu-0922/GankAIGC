@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { ArrowLeft, Coins } from 'lucide-react';
+import { ArrowLeft, Beer } from 'lucide-react';
 import { userAPI } from '../api';
 import BrandLogo from '../components/BrandLogo';
 import { formatChinaDateTime } from '../utils/dateTime';
@@ -22,8 +22,8 @@ const CreditsPage = () => {
 
   useEffect(() => {
     loadData().catch((error) => {
-      console.error('加载额度数据失败:', error);
-      toast.error('加载额度数据失败');
+      console.error('加载啤酒数据失败:', error);
+      toast.error('加载啤酒数据失败');
     });
   }, []);
 
@@ -55,20 +55,20 @@ const CreditsPage = () => {
 
       <main className="max-w-5xl mx-auto px-4 py-8">
         <div className="mb-6">
-          <p className="text-sm font-semibold text-teal-600">兑换额度</p>
-          <h1 className="text-3xl font-bold text-slate-950 mt-1">平台千字额度</h1>
+          <p className="text-sm font-semibold text-teal-600">兑换啤酒</p>
+          <h1 className="text-3xl font-bold text-slate-950 mt-1">平台啤酒</h1>
           <p className="text-sm text-slate-500 mt-2">
-            1 额度约处理 1000 个非空白字符；润色 + 增强按两阶段消耗。
+            1 啤酒约处理 1000 个非空白字符；润色 + 增强按两阶段消耗。
           </p>
         </div>
         <div className="grid lg:grid-cols-[0.85fr_1.15fr] gap-6">
           <section className="gank-glass-card rounded-[2rem] p-6">
             <div className="gank-icon-tile w-12 h-12 rounded-2xl flex items-center justify-center mb-4">
-              <Coins className="w-6 h-6" />
+              <Beer className="w-6 h-6" />
             </div>
-            <p className="text-slate-500 text-sm">当前剩余千字额度</p>
+            <p className="text-slate-500 text-sm">当前剩余啤酒</p>
             <h1 className="text-5xl font-black text-slate-950 mt-2">
-              {credits?.is_unlimited ? '无限额度' : credits?.credit_balance ?? '-'}
+              {credits?.is_unlimited ? '无限啤酒' : credits?.credit_balance ?? '-'}
             </h1>
 
             <form onSubmit={handleRedeem} className="mt-6 space-y-3">
@@ -79,13 +79,13 @@ const CreditsPage = () => {
                 className="gank-input px-4 py-3 rounded-2xl"
               />
               <button className="gank-primary-button w-full py-3 rounded-2xl text-white font-semibold">
-                兑换额度
+                兑换啤酒
               </button>
             </form>
           </section>
 
           <section className="gank-card rounded-[2rem] p-6">
-            <h2 className="text-xl font-bold text-slate-950 mb-4">额度流水</h2>
+            <h2 className="text-xl font-bold text-slate-950 mb-4">啤酒流水</h2>
             <div className="space-y-3">
               {transactions.length === 0 && (
                 <p className="text-slate-500 text-sm">暂无流水记录</p>

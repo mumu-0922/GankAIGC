@@ -41,10 +41,10 @@ const RegisterPage = () => {
             <BrandLogo size="sm" showText={false} className="mb-4" />
             <p className="text-sm text-teal-600 font-semibold">邀请码注册</p>
             <h1 className="text-3xl font-bold text-slate-950 mt-1">创建用户账号</h1>
-            <p className="text-slate-500 text-sm mt-2">注册后可兑换额度，或后续配置自己的 API 使用。</p>
+            <p className="text-slate-500 text-sm mt-2">注册后可兑换啤酒，或后续配置自己的 API 使用。</p>
           </div>
           <div className="gank-icon-tile w-12 h-12 rounded-2xl flex items-center justify-center">
-            <KeyRound className="w-6 h-6" />
+            <KeyRound className="w-6 h-6 text-amber-500" />
           </div>
         </div>
 

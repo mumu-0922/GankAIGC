@@ -90,7 +90,7 @@ const ApiSettingsPage = () => {
         <div className="gank-card rounded-[2rem] p-6 sm:p-8">
           <div className="flex items-center gap-3 mb-6">
             <div className="gank-icon-tile w-12 h-12 rounded-2xl flex items-center justify-center">
-              <KeyRound className="w-6 h-6" />
+              <KeyRound className="w-6 h-6 text-amber-500" />
             </div>
             <div>
               <h1 className="text-2xl font-bold text-slate-950">自带 API 配置</h1>

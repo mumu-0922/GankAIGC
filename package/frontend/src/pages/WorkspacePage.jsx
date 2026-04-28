@@ -378,7 +378,7 @@ const WorkspacePage = () => {
     }
 
     if (billingMode === 'platform' && credits && !credits.is_unlimited && credits.credit_balance < estimatedCredits) {
-      toast.error(`平台千字额度不足，本次需要 ${estimatedCredits} 千字额度，当前剩余 ${credits.credit_balance ?? 0} 千字额度`);
+      toast.error(`平台啤酒不足，本次需要 ${estimatedCredits} 啤酒，当前剩余 ${credits.credit_balance ?? 0} 啤酒`);
       return;
     }
 
@@ -592,14 +592,14 @@ const WorkspacePage = () => {
                     />
                     <span className="font-semibold text-black">平台模式</span>
                     <p className="text-xs text-gray-500 mt-1">
-                      剩余 {credits?.is_unlimited ? '无限额度' : `${credits?.credit_balance ?? '-'} 千字额度`}
+                      剩余 {credits?.is_unlimited ? '无限啤酒' : `${credits?.credit_balance ?? '-'} 啤酒`}
                       {text.trim() && (
                         <span className="block mt-0.5 text-amber-600">
-                          预计消耗 {estimatedCredits} 千字额度
+                          预计消耗 {estimatedCredits} 啤酒
                         </span>
                       )}
                       <span className="block mt-0.5 text-gray-400">
-                        1000 非空白字符 = 1 额度，综合模式按两阶段计费
+                        1 啤酒 = 1000 非空白字符，综合模式按两阶段计费
                       </span>
                     </p>
                   </label>
@@ -620,7 +620,7 @@ const WorkspacePage = () => {
                     />
                     <span className="font-semibold text-black">自带 API 模式</span>
                     <p className="text-xs text-gray-500 mt-1">
-                      {hasProviderConfig ? '已保存配置，不消耗平台额度' : '需要先保存 API 配置'}
+                      {hasProviderConfig ? '已保存配置，不消耗啤酒' : '需要先保存 API 配置'}
                     </p>
                   </label>
                 </div>

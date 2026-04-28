@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Coins, KeyRound, LogOut, UserCircle } from 'lucide-react';
+import { Beer, KeyRound, LogOut, UserCircle } from 'lucide-react';
 import { authAPI } from '../api';
 
 const UserMenu = ({ credits }) => {
@@ -32,11 +32,11 @@ const UserMenu = ({ credits }) => {
     <div className="flex items-center gap-2">
       {credits && (
         <div
-          aria-label="剩余额度"
+          aria-label="剩余啤酒"
           className="hidden sm:flex items-center gap-1.5 gank-topbar-pill text-slate-700 px-3 py-1.5 rounded-xl text-sm font-semibold"
         >
-          <Coins className="w-4 h-4 text-teal-600" />
-          {credits.is_unlimited ? '无限额度' : `${credits.credit_balance} 千字额度`}
+          <Beer className="w-4 h-4 text-amber-500" />
+          {credits.is_unlimited ? '无限啤酒' : `${credits.credit_balance} 啤酒`}
         </div>
       )}
       <Link
@@ -50,14 +50,14 @@ const UserMenu = ({ credits }) => {
         to="/credits"
         className="flex items-center gap-1.5 gank-primary-button px-3 py-1.5 rounded-xl text-sm font-semibold transition-colors"
       >
-        <Coins className="w-4 h-4" />
-        兑换额度
+        <Beer className="w-4 h-4" />
+        兑换啤酒
       </Link>
       <Link
         to="/api-settings"
         className="hidden sm:flex items-center gap-1.5 gank-topbar-pill text-slate-700 px-3 py-1.5 rounded-xl text-sm font-medium hover:text-slate-950"
       >
-        <KeyRound className="w-4 h-4" />
+        <KeyRound className="w-4 h-4 text-amber-500" />
         API
       </Link>
       <button
