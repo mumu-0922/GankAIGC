@@ -240,6 +240,16 @@ cd package/frontend
 npm run build
 ```
 
+前端主流程 e2e 检查：
+
+```powershell
+cd package/frontend
+npm run test:e2e
+```
+
+e2e 测试会启动 Vite 开发服务器，并通过 Playwright 拦截 API 响应，覆盖首页、用户工作台入口、兑换啤酒提示和后台核心导航。
+本地默认使用系统 Chrome；如果要使用 Playwright 自带 Chromium，先执行 `npx playwright install chromium`，再设置 `PLAYWRIGHT_CHANNEL=chromium` 运行。
+
 ## 常见问题
 
 **端口被占用**

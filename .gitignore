@@ -30,6 +30,10 @@ dist/
 build/
 *.log
 npm-debug.log*
+playwright-report/
+test-results/
+package/frontend/playwright-report/
+package/frontend/test-results/
 
 # OS
 .DS_Store

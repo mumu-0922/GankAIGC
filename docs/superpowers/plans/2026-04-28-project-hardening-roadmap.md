@@ -160,7 +160,7 @@ git push
 - Create: `package/frontend/e2e/admin-flow.spec.js`
 - Docs: `README.md`
 
-- [ ] **Step 1: 安装 Playwright**
+- [x] **Step 1: 安装 Playwright**
 
 ```powershell
 cd package/frontend
@@ -168,7 +168,9 @@ npm install -D @playwright/test
 npx playwright install chromium
 ```
 
-- [ ] **Step 2: 增加测试脚本**
+Current implementation uses `@playwright/test` with the system Chrome channel by default, so local runs do not require downloading Playwright's bundled Chromium. Set `PLAYWRIGHT_CHANNEL=chromium` if a CI environment installs the bundled browser.
+
+- [x] **Step 2: 增加测试脚本**
 
 在 `package.json` 增加：
 
@@ -177,7 +179,7 @@ npx playwright install chromium
 "test:e2e:headed": "playwright test --headed"
 ```
 
-- [ ] **Step 3: 编写用户主流程**
+- [x] **Step 3: 编写用户主流程**
 
 `main-flow.spec.js` 覆盖：
 
@@ -187,7 +189,7 @@ npx playwright install chromium
 - 兑换码入口展示“啤酒”。
 - 论文排版入口不可见。
 
-- [ ] **Step 4: 编写后台主流程**
+- [x] **Step 4: 编写后台主流程**
 
 `admin-flow.spec.js` 覆盖：
 
@@ -196,7 +198,7 @@ npx playwright install chromium
 - 数据面板、会话监控、账号啤酒、系统配置可切换。
 - 不显示卡密管理和排版任务。
 
-- [ ] **Step 5: 运行验证**
+- [x] **Step 5: 运行验证**
 
 ```powershell
 cd package
@@ -211,7 +213,7 @@ npm run test:e2e
 npm run build
 ```
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```powershell
 git add package/frontend/package.json package/frontend/package-lock.json package/frontend/playwright.config.js package/frontend/e2e README.md
