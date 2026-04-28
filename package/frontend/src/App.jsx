@@ -10,10 +10,6 @@ import ProfilePage from './pages/ProfilePage';
 import WorkspacePage from './pages/WorkspacePage';
 import SessionDetailPage from './pages/SessionDetailPage';
 import AdminDashboard from './pages/AdminDashboard';
-import WordFormatterPage from './pages/WordFormatterPage';
-import SpecGeneratorPage from './pages/SpecGeneratorPage';
-import ArticlePreprocessorPage from './pages/ArticlePreprocessorPage';
-import FormatCheckerPage from './pages/FormatCheckerPage';
 import AuthGuard from './components/AuthGuard';
 import './index.css';
 
@@ -92,42 +88,6 @@ function App() {
           element={
             <AuthGuard>
               <SessionDetailPage />
-            </AuthGuard>
-          }
-        />
-
-        <Route
-          path="/word-formatter"
-          element={
-            <AuthGuard>
-              <WordFormatterPage />
-            </AuthGuard>
-          }
-        />
-
-        <Route
-          path="/spec-generator"
-          element={
-            <AuthGuard>
-              <SpecGeneratorPage />
-            </AuthGuard>
-          }
-        />
-
-        <Route
-          path="/article-preprocessor"
-          element={
-            <AuthGuard>
-              <ArticlePreprocessorPage />
-            </AuthGuard>
-          }
-        />
-
-        <Route
-          path="/format-checker"
-          element={
-            <AuthGuard>
-              <FormatCheckerPage />
             </AuthGuard>
           }
         />

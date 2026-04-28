@@ -293,7 +293,7 @@ git push
 - Test: `package/backend/tests/test_frontend_redeem_entry.py`
 - Docs: `README.md`, `AGENTS.md`
 
-- [ ] **Step 1: 确认入口清单**
+- [x] **Step 1: 确认入口清单**
 
 搜索：
 
@@ -301,15 +301,15 @@ git push
 rg -n "WordFormatter|word-formatter|论文排版|Word 排版|文档排版" package/frontend/src package/backend/app
 ```
 
-- [ ] **Step 2: 删除前端路由和菜单入口**
+- [x] **Step 2: 删除前端路由和菜单入口**
 
 移除 `WordFormatterPage` 的 import、route、按钮、菜单项。后端模块继续由 `WORD_FORMATTER_ENABLED=false` 条件挂载保护，不在本任务中删除后端模块。
 
-- [ ] **Step 3: 保留测试断言**
+- [x] **Step 3: 保留测试断言**
 
 确保 `test_frontend_redeem_entry.py` 继续断言前台和后台不出现排版入口。
 
-- [ ] **Step 4: 构建前端并同步静态包**
+- [x] **Step 4: 构建前端并同步静态包**
 
 ```powershell
 cd package/frontend
@@ -318,7 +318,7 @@ cd ../..
 Copy-Item -Path .\package\frontend\dist\* -Destination .\package\static -Recurse -Force
 ```
 
-- [ ] **Step 5: 测试并提交**
+- [x] **Step 5: 测试并提交**
 
 ```powershell
 cd package/backend

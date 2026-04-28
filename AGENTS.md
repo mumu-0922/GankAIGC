@@ -2,7 +2,7 @@
 
 ## 项目结构与模块组织
 
-GankAIGC 是一个打包式 FastAPI 与 React/Vite 应用。运行时打包入口位于 `package/`，其中 `package/main.py` 会在 `9800` 端口提供前后端一体化服务。后端源码在 `package/backend/app/`：`routes/` 放 API 端点，`services/` 放业务逻辑，`models/` 放 SQLAlchemy 模型，`utils/` 放共享工具，`word_formatter/` 放文档格式化功能。后端测试在 `package/backend/tests/`。前端源码在 `package/frontend/src/`，按 `pages/`、`components/`、`api/` 组织；静态示例在 `package/frontend/public/`。`package/frontend/dist/`、`package/static/`、数据库、日志和环境文件都属于生成产物。
+GankAIGC 是一个打包式 FastAPI 与 React/Vite 应用。运行时打包入口位于 `package/`，其中 `package/main.py` 会在 `9800` 端口提供前后端一体化服务。后端源码在 `package/backend/app/`：`routes/` 放 API 端点，`services/` 放业务逻辑，`models/` 放 SQLAlchemy 模型，`utils/` 放共享工具，`word_formatter/` 保留文档格式化实验模块但默认不挂载。后端测试在 `package/backend/tests/`。前端源码在 `package/frontend/src/`，按 `pages/`、`components/`、`api/` 组织；当前前端只暴露降 AI 主流程，不重新添加排版入口。`package/frontend/dist/`、`package/static/`、数据库、日志和环境文件都属于生成产物。
 
 ## 构建、测试与开发命令
 
