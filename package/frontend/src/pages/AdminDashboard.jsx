@@ -8,7 +8,6 @@ import {
   Users,
   Key,
   CheckCircle,
-  XCircle,
   Shield,
   Plus,
   TrendingUp,
@@ -581,76 +580,6 @@ const AdminDashboard = () => {
                       <p className="text-sm font-medium text-gray-500 mb-1">润色 + 增强</p>
                       <p className="text-2xl font-bold text-gray-900 tracking-tight">
                         {statistics.processing.paper_polish_enhance_count}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {/* 第三行：Word Formatter 统计 */}
-                {statistics.word_formatter && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-                    {/* Total Word Formatter Jobs */}
-                    <div className="bg-white rounded-2xl shadow-ios p-6">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
-                          <FileText className="w-5 h-5 text-blue-600" />
-                        </div>
-                      </div>
-                      <p className="text-sm font-medium text-gray-500 mb-1">排版任务</p>
-                      <p className="text-2xl font-bold text-gray-900 tracking-tight">
-                        {statistics.word_formatter.total}
-                      </p>
-                    </div>
-
-                    {/* Completed */}
-                    <div className="bg-white rounded-2xl shadow-ios p-6">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center">
-                          <CheckCircle className="w-5 h-5 text-green-600" />
-                        </div>
-                      </div>
-                      <p className="text-sm font-medium text-gray-500 mb-1">已完成</p>
-                      <p className="text-2xl font-bold text-gray-900 tracking-tight">
-                        {statistics.word_formatter.completed}
-                      </p>
-                    </div>
-
-                    {/* Running */}
-                    <div className="bg-white rounded-2xl shadow-ios p-6">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
-                          <Loader2 className="w-5 h-5 text-blue-600" />
-                        </div>
-                      </div>
-                      <p className="text-sm font-medium text-gray-500 mb-1">运行中</p>
-                      <p className="text-2xl font-bold text-gray-900 tracking-tight">
-                        {statistics.word_formatter.running}
-                      </p>
-                    </div>
-
-                    {/* Pending */}
-                    <div className="bg-white rounded-2xl shadow-ios p-6">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="w-10 h-10 bg-yellow-50 rounded-xl flex items-center justify-center">
-                          <Clock className="w-5 h-5 text-yellow-600" />
-                        </div>
-                      </div>
-                      <p className="text-sm font-medium text-gray-500 mb-1">等待中</p>
-                      <p className="text-2xl font-bold text-gray-900 tracking-tight">
-                        {statistics.word_formatter.pending}
-                      </p>
-                    </div>
-
-                    {/* Failed */}
-                    <div className="bg-white rounded-2xl shadow-ios p-6">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center">
-                          <XCircle className="w-5 h-5 text-red-600" />
-                        </div>
-                      </div>
-                      <p className="text-sm font-medium text-gray-500 mb-1">失败</p>
-                      <p className="text-2xl font-bold text-gray-900 tracking-tight">
-                        {statistics.word_formatter.failed}
                       </p>
                     </div>
                   </div>

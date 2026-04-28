@@ -125,6 +125,14 @@ def test_admin_dashboard_hides_legacy_card_key_management():
     assert "/api/admin/users/${userId}/usage" not in admin_dashboard
 
 
+def test_admin_dashboard_hides_word_formatter_statistics_until_feature_is_ready():
+    admin_dashboard = (FRONTEND_SRC / "pages" / "AdminDashboard.jsx").read_text(encoding="utf-8")
+
+    assert "statistics.word_formatter" not in admin_dashboard
+    assert "排版任务" not in admin_dashboard
+    assert "Word 排版任务" not in admin_dashboard
+
+
 def test_admin_dashboard_uses_left_sidebar_navigation():
     admin_dashboard = (FRONTEND_SRC / "pages" / "AdminDashboard.jsx").read_text(encoding="utf-8")
 
@@ -353,6 +361,7 @@ def test_served_static_bundle_includes_admin_tab_url_persistence():
     assert "Word 排版文件大小限制" not in static_bundle
     assert "MAX_UPLOAD_FILE_SIZE_MB" not in static_bundle
     assert "max_upload_file_size_mb" not in static_bundle
+    assert "排版任务" not in static_bundle
 
 
 def test_served_static_bundle_includes_ai_reduction_homepage():
