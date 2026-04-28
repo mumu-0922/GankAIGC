@@ -158,6 +158,17 @@ python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().d
 - 使用 `.env.docker` 时，`DATABASE_URL` 密码是否与 `POSTGRES_PASSWORD` 一致。
 - 新机器首次部署时，是否已经创建 `ai_polish` 用户和 `ai_polish` 数据库。
 
+### 数据库迁移
+
+项目已接入 Alembic 管理 PostgreSQL 表结构。新库或部署升级时可执行：
+
+```powershell
+cd package/backend
+python -m alembic upgrade head
+```
+
+`migrations/env.py` 会优先读取 `package/.env` 中的 `DATABASE_URL`。如果是已经由旧版本自动建表的数据库，先备份数据，再执行 `python -m alembic stamp head` 标记当前结构，后续版本再使用 `upgrade head`。
+
 ## 使用流程
 
 1. 管理员访问 `/admin` 登录后台。

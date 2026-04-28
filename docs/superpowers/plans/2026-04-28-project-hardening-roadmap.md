@@ -107,7 +107,7 @@ git push
 - Test: `package/backend/tests/test_alembic_migrations.py`
 - Docs: `README.md`
 
-- [ ] **Step 1: 添加 Alembic 依赖**
+- [x] **Step 1: 添加 Alembic 依赖**
 
 在 `requirements.txt` 加 `alembic`，安装依赖后验证：
 
@@ -117,19 +117,19 @@ pip install -r requirements.txt
 python -m alembic --version
 ```
 
-- [ ] **Step 2: 建立迁移目录**
+- [x] **Step 2: 建立迁移目录**
 
 配置 `migrations/env.py` 从 `app.config.settings.DATABASE_URL` 读取 PostgreSQL 连接，并导入 `app.models.models` 的 `Base.metadata`。
 
-- [ ] **Step 3: 生成初始迁移**
+- [x] **Step 3: 生成初始迁移**
 
 将当前核心表写入 `0001_initial_postgresql_schema.py`，覆盖用户、邀请码、兑换码、会话、分段、改写记录、系统配置、用户 API 配置、论文项目等当前表。
 
-- [ ] **Step 4: 调整启动策略**
+- [x] **Step 4: 调整启动策略**
 
 短期保留 `create_all` 作为兼容保护，但新增 README 说明：生产部署以 `alembic upgrade head` 为准。后续确认无旧库后，再删除手写迁移函数。
 
-- [ ] **Step 5: 测试迁移**
+- [x] **Step 5: 测试迁移**
 
 ```powershell
 cd package/backend
@@ -139,7 +139,7 @@ python -m alembic upgrade head
 
 Expected: 测试库可从空库升级到最新结构。
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```powershell
 git add package/backend/requirements.txt package/backend/alembic.ini package/backend/migrations package/backend/app/database.py package/backend/tests/test_alembic_migrations.py README.md
