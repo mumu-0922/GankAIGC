@@ -8,7 +8,6 @@ import {
   Users,
   Key,
   CheckCircle,
-  AlertCircle,
   Shield,
   Plus,
   TrendingUp,
@@ -396,19 +395,11 @@ const AdminDashboard = () => {
     },
   ];
 
-  const sessionStats = statistics?.sessions || {};
   const processingStats = statistics?.processing || {};
-  const totalSessions = Number(sessionStats.total || 0);
-  const completedSessions = Number(sessionStats.completed || 0);
-  const processingSessions = Number(sessionStats.processing || 0);
-  const queuedSessions = Number(sessionStats.queued || 0);
-  const failedSessions = Number(sessionStats.failed || 0);
+  const completedTaskCount = Number(statistics?.sessions?.completed || 0);
   const totalCharsProcessed = Number(processingStats.total_chars_processed || 0);
-  const completionRate = totalSessions > 0
-    ? Math.round((completedSessions / totalSessions) * 100)
-    : 0;
-  const avgCharsPerCompletedSession = completedSessions > 0
-    ? Math.round(totalCharsProcessed / completedSessions)
+  const avgCharsPerTask = completedTaskCount > 0
+    ? Math.round(totalCharsProcessed / completedTaskCount)
     : 0;
 
   // Admin Dashboard
@@ -541,66 +532,6 @@ const AdminDashboard = () => {
                   </div>
                 </div>
 
-                <div className="bg-white rounded-2xl shadow-ios p-6 mb-6" data-admin-session-status>
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold text-gray-500">会话状态</p>
-                      <h2 className="text-xl font-bold text-gray-900 mt-1">降 AI 任务运行概览</h2>
-                    </div>
-                    <span className="inline-flex w-fit items-center rounded-full bg-blue-50 px-3 py-1 text-sm font-semibold text-blue-700">
-                      {completionRate}% 完成率
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 mt-5">
-                    <div className="rounded-2xl border border-green-100 bg-green-50/70 p-4">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium text-green-700">完成会话</p>
-                        <CheckCircle className="w-5 h-5 text-green-600" />
-                      </div>
-                      <p className="text-2xl font-bold text-gray-900 mt-3">{formatAdminNumber(completedSessions)}</p>
-                    </div>
-
-                    <div className="rounded-2xl border border-blue-100 bg-blue-50/70 p-4">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium text-blue-700">处理中</p>
-                        <Activity className="w-5 h-5 text-blue-600" />
-                      </div>
-                      <p className="text-2xl font-bold text-gray-900 mt-3">{formatAdminNumber(processingSessions)}</p>
-                      <p className="text-xs text-gray-500 mt-1">实时执行</p>
-                    </div>
-
-                    <div className="rounded-2xl border border-amber-100 bg-amber-50/70 p-4">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium text-amber-700">排队等待</p>
-                        <Clock className="w-5 h-5 text-amber-600" />
-                      </div>
-                      <p className="text-2xl font-bold text-gray-900 mt-3">{formatAdminNumber(queuedSessions)}</p>
-                    </div>
-
-                    <div className="rounded-2xl border border-rose-100 bg-rose-50/70 p-4">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium text-rose-700">失败会话</p>
-                        <AlertCircle className="w-5 h-5 text-rose-600" />
-                      </div>
-                      <p className="text-2xl font-bold text-gray-900 mt-3">{formatAdminNumber(failedSessions)}</p>
-                    </div>
-                  </div>
-
-                  <div className="mt-5">
-                    <div className="flex items-center justify-between text-xs font-medium text-gray-500 mb-2">
-                      <span>完成进度</span>
-                      <span>{formatAdminNumber(completedSessions)} / {formatAdminNumber(totalSessions)}</span>
-                    </div>
-                    <div className="h-2 overflow-hidden rounded-full bg-gray-100">
-                      <div
-                        className="h-full rounded-full bg-gradient-to-r from-blue-600 to-teal-500 transition-all duration-500"
-                        style={{ width: `${completionRate}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
-
                 {/* 第二行：处理统计 - 统一使用白色背景，更专业 */}
                 {statistics.processing && (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -659,16 +590,16 @@ const AdminDashboard = () => {
                       </p>
                     </div>
 
-                    <div className="bg-white rounded-2xl shadow-ios p-6 md:col-span-2 lg:col-span-4">
+                    <div className="bg-white rounded-2xl shadow-ios p-6 md:col-span-2 lg:col-span-4" data-admin-processing-summary>
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                         <div>
-                          <p className="text-sm font-medium text-gray-500 mb-1">平均字符 / 完成会话</p>
+                          <p className="text-sm font-medium text-gray-500 mb-1">平均输入规模</p>
                           <p className="text-2xl font-bold text-gray-900 tracking-tight">
-                            {formatAdminNumber(avgCharsPerCompletedSession)}
+                            {formatAdminNumber(avgCharsPerTask)}
                           </p>
                         </div>
                         <p className="text-sm text-gray-500">
-                          基于已完成会话计算，用来观察单次降 AI 任务的平均文本规模。
+                          按已完成降 AI 任务统计，辅助判断单次处理文本量。
                         </p>
                       </div>
                     </div>
