@@ -144,6 +144,23 @@ python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().d
 生产环境必须修改默认 `ADMIN_PASSWORD` 和 `SECRET_KEY`。当 `APP_ENV=production`、`staging` 或 `server` 时，项目会拒绝使用明显的占位密钥。
 `REGISTRATION_ENABLED=false` 会关闭所有邀请码注册和普通用户生成邀请码，已有用户仍可登录使用。
 
+## SQLite 迁移到 PostgreSQL
+
+默认数据库是 `package/ai_polish.db`。迁移前先停止后端服务并备份该文件，再准备一个空 PostgreSQL 数据库。
+
+```powershell
+Copy-Item .\package\ai_polish.db .\package\ai_polish.backup.db
+
+cd package\backend
+python migrate_sqlite_to_postgres.py `
+  --source ..\ai_polish.db `
+  --target "postgresql://ai_polish:数据库密码@localhost:5432/ai_polish" `
+  --replace-target `
+  --yes
+```
+
+脚本会按外键顺序迁移用户、邀请码、兑换码、论文项目、会话、段落、交易记录和系统配置等项目表，并在 PostgreSQL 中重置自增序列。确认数据无误后，再把 `package/.env` 的 `DATABASE_URL` 改为 PostgreSQL 地址。
+
 ## 使用流程
 
 1. 管理员访问 `/admin` 登录后台。
