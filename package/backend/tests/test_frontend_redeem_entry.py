@@ -15,6 +15,28 @@ def test_user_menu_exposes_explicit_redeem_entry():
     assert user_menu.count('to="/credits"') == 1
 
 
+def test_credit_transactions_render_backend_utc_as_china_time():
+    date_utils = (FRONTEND_SRC / "utils" / "dateTime.js").read_text(encoding="utf-8")
+    credits_page = (FRONTEND_SRC / "pages" / "CreditsPage.jsx").read_text(encoding="utf-8")
+
+    assert "Asia/Shanghai" in date_utils
+    assert "endsWith('Z')" in date_utils
+    assert "formatChinaDateTime" in credits_page
+    assert "formatChinaDateTime(transaction.created_at)" in credits_page
+    assert "new Date(transaction.created_at).toLocaleString()" not in credits_page
+
+
+def test_served_static_bundle_includes_china_time_formatter():
+    static_index = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+    bundle_match = re.search(r'src="/assets/(index-[^"]+\.js)"', static_index)
+    assert bundle_match
+
+    static_bundle = (STATIC_DIR / "assets" / bundle_match.group(1)).read_text(encoding="utf-8")
+
+    assert "Asia/Shanghai" in static_bundle
+    assert "hour12" in static_bundle
+
+
 def test_frontend_uses_brand_logo_as_favicon():
     frontend_index = (FRONTEND_ROOT / "index.html").read_text(encoding="utf-8")
     static_index = (STATIC_DIR / "index.html").read_text(encoding="utf-8")

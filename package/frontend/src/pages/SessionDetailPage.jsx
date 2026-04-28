@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { optimizationAPI } from '../api';
 import BrandLogo from '../components/BrandLogo';
+import { formatChinaDate } from '../utils/dateTime';
 
 const SessionDetailPage = () => {
   const { sessionId } = useParams();
@@ -245,7 +246,7 @@ const SessionDetailPage = () => {
                   会话详情
                 </h1>
                 <span className="text-[13px] text-ios-gray font-normal">
-                  {new Date(session.created_at).toLocaleDateString()}
+                  {formatChinaDate(session.created_at)}
                 </span>
               </div>
             </div>

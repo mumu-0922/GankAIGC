@@ -8,6 +8,7 @@ import {
 import { optimizationAPI, projectAPI, userAPI } from '../api';
 import UserMenu from '../components/UserMenu';
 import BrandLogo from '../components/BrandLogo';
+import { formatChinaDate } from '../utils/dateTime';
 
 const CREDIT_UNIT_CHARACTERS = 1000;
 const PROCESSING_MODE_STAGE_MULTIPLIERS = {
@@ -77,7 +78,7 @@ const SessionItem = memo(({ session, activeSession, onView, onDelete, onRetry })
         </div>
 
         <span className="text-[11px] text-ios-gray/70 font-medium">
-          {new Date(session.created_at).toLocaleDateString()}
+          {formatChinaDate(session.created_at)}
         </span>
       </div>
 

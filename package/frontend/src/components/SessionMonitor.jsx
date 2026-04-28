@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import { Activity, RefreshCw, Clock, User, FileText, TrendingUp, BarChart3, Zap, History, Square } from 'lucide-react';
+import { formatChinaDateTime } from '../utils/dateTime';
 
 const SessionMonitor = ({ adminToken }) => {
   const [activeSessions, setActiveSessions] = useState([]);
@@ -387,7 +388,7 @@ const SessionMonitor = ({ adminToken }) => {
                 <div className="flex items-center gap-4 text-xs text-gray-500 flex-wrap">
                   <span className="flex items-center gap-1">
                     <Clock className="w-3 h-3" />
-                    {new Date(session.created_at).toLocaleString('zh-CN')}
+                    {formatChinaDateTime(session.created_at)}
                   </span>
                   {session.processing_time && (
                     <span className="flex items-center gap-1">
@@ -396,7 +397,7 @@ const SessionMonitor = ({ adminToken }) => {
                     </span>
                   )}
                   {session.completed_at && (
-                    <span>完成: {new Date(session.completed_at).toLocaleString('zh-CN')}</span>
+                    <span>完成: {formatChinaDateTime(session.completed_at)}</span>
                   )}
                   {session.error_message && (
                     <span className="text-red-600">错误: {session.error_message}</span>
@@ -463,7 +464,7 @@ const SessionMonitor = ({ adminToken }) => {
                         </span>
                       </div>
                       <div className="text-xs text-gray-500">
-                        {new Date(session.created_at).toLocaleString('zh-CN')}
+                        {formatChinaDateTime(session.created_at)}
                       </div>
                     </div>
 
@@ -538,7 +539,7 @@ const SessionMonitor = ({ adminToken }) => {
                         </span>
                       )}
                       {session.completed_at && (
-                        <span>完成: {new Date(session.completed_at).toLocaleString('zh-CN')}</span>
+                        <span>完成: {formatChinaDateTime(session.completed_at)}</span>
                       )}
                     </div>
                   </div>

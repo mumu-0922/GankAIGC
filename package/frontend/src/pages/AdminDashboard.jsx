@@ -25,6 +25,7 @@ import ConfigManager from '../components/ConfigManager';
 import SessionMonitor from '../components/SessionMonitor';
 import DatabaseManager from '../components/DatabaseManager';
 import BrandLogo from '../components/BrandLogo';
+import { formatChinaDateTime } from '../utils/dateTime';
 
 const DEFAULT_ADMIN_TAB = 'dashboard';
 const ADMIN_TAB_IDS = ['dashboard', 'sessions', 'accounts', 'database', 'config'];
@@ -880,8 +881,8 @@ const AdminDashboard = () => {
                           </button>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          <div>登录：{user.last_login_at ? new Date(user.last_login_at).toLocaleString('zh-CN') : '从未登录'}</div>
-                          <div>使用：{user.last_used ? new Date(user.last_used).toLocaleString('zh-CN') : '从未使用'}</div>
+                          <div>登录：{user.last_login_at ? formatChinaDateTime(user.last_login_at) : '从未登录'}</div>
+                          <div>使用：{user.last_used ? formatChinaDateTime(user.last_used) : '从未使用'}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-2">
@@ -943,7 +944,7 @@ const AdminDashboard = () => {
                           <div>情感：{config.emotion_model || '-'}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {config.updated_at ? new Date(config.updated_at).toLocaleString('zh-CN') : '-'}
+                          {formatChinaDateTime(config.updated_at)}
                         </td>
                       </tr>
                     ))}

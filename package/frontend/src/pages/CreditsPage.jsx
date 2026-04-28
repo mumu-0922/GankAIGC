@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { ArrowLeft, Coins } from 'lucide-react';
 import { userAPI } from '../api';
 import BrandLogo from '../components/BrandLogo';
+import { formatChinaDateTime } from '../utils/dateTime';
 
 const CreditsPage = () => {
   const [credits, setCredits] = useState(null);
@@ -90,7 +91,7 @@ const CreditsPage = () => {
                 <div key={transaction.id} className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
                   <div>
                     <p className="font-semibold text-slate-900">{transaction.reason}</p>
-                    <p className="text-xs text-slate-500">{new Date(transaction.created_at).toLocaleString()}</p>
+                    <p className="text-xs text-slate-500">{formatChinaDateTime(transaction.created_at)}</p>
                   </div>
                   <div className={transaction.delta >= 0 ? 'text-emerald-600 font-bold' : 'text-red-600 font-bold'}>
                     {transaction.delta > 0 ? '+' : ''}{transaction.delta}

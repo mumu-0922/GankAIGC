@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { wordFormatterAPI } from '../api';
 import BrandLogo from '../components/BrandLogo';
+import { formatChinaDateTime } from '../utils/dateTime';
 
 // Preset templates for common document types
 const PRESET_TEMPLATES = [
@@ -486,7 +487,7 @@ const SpecGeneratorPage = () => {
                           <div className="text-sm text-gray-500">{spec.description}</div>
                         )}
                         <div className="text-xs text-gray-400 mt-1">
-                          更新于 {new Date(spec.updated_at).toLocaleString()}
+                          更新于 {formatChinaDateTime(spec.updated_at)}
                         </div>
                       </div>
                       <button

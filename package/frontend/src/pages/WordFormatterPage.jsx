@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { wordFormatterAPI } from '../api';
 import BrandLogo from '../components/BrandLogo';
+import { formatChinaDate } from '../utils/dateTime';
 
 const WordFormatterPage = () => {
   const navigate = useNavigate();
@@ -1019,7 +1020,7 @@ Deep Learning; Image Recognition; Convolutional Neural Network
                         </div>
 
                         <span className="text-[11px] text-ios-gray/70 font-medium">
-                          {new Date(job.created_at).toLocaleDateString()}
+                          {formatChinaDate(job.created_at)}
                         </span>
                       </div>
 

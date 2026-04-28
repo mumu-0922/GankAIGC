@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { ArrowLeft, Coins, Copy, Loader2, Save, ShieldCheck, UserCircle, UserPlus } from 'lucide-react';
 import { authAPI, userAPI } from '../api';
 import BrandLogo from '../components/BrandLogo';
+import { formatChinaDateTime } from '../utils/dateTime';
 
 const ProfilePage = () => {
   const [profile, setProfile] = useState(null);
@@ -118,13 +119,13 @@ const ProfilePage = () => {
                 <div className="flex items-center justify-between border-t border-gray-100 pt-3">
                   <span className="text-gray-500">注册时间</span>
                   <span className="text-gray-900">
-                    {profile?.created_at ? new Date(profile.created_at).toLocaleString('zh-CN') : '-'}
+                    {formatChinaDateTime(profile?.created_at)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between border-t border-gray-100 pt-3">
                   <span className="text-gray-500">最近登录</span>
                   <span className="text-gray-900">
-                    {profile?.last_login_at ? new Date(profile.last_login_at).toLocaleString('zh-CN') : '-'}
+                    {formatChinaDateTime(profile?.last_login_at)}
                   </span>
                 </div>
               </div>
