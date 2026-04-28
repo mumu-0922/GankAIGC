@@ -404,7 +404,7 @@ git push
 - Frontend: `package/frontend/src/pages/WorkspacePage.jsx`
 - Docs: `README.md`
 
-- [ ] **Step 1: 明确任务状态模型**
+- [x] **Step 1: 明确任务状态模型**
 
 会话状态至少包含：
 
@@ -416,19 +416,19 @@ git push
 
 保留现有会话表，必要时增加 `queued_at`、`started_at`、`finished_at`、`worker_id`。
 
-- [ ] **Step 2: 后端提交任务只入队**
+- [x] **Step 2: 后端提交任务只入队**
 
 `POST /api/optimization/start` 创建会话后立即返回 `session_id` 和 `queued` 状态，不在请求中直接跑完整降 AI。
 
-- [ ] **Step 3: Worker 消费任务**
+- [x] **Step 3: Worker 消费任务**
 
 `package/backend/worker.py` 读取队列并调用现有优化服务。异常写入会话 `error_message`，并释放或修正啤酒扣费状态。
 
-- [ ] **Step 4: 前端轮询状态**
+- [x] **Step 4: 前端轮询状态**
 
 工作台提交后进入任务状态页或当前结果区域轮询 `/api/optimization/sessions/{id}`，显示排队、处理中、完成、失败。
 
-- [ ] **Step 5: 并发和恢复测试**
+- [x] **Step 5: 并发和恢复测试**
 
 pytest 覆盖：
 
@@ -438,11 +438,11 @@ pytest 覆盖：
 - 用户只能查看自己的任务。
 - 平台啤酒扣费不会重复扣。
 
-- [ ] **Step 6: Docker 增加 worker 服务**
+- [x] **Step 6: Docker 增加 worker 服务**
 
 `docker-compose.yml` 增加 `worker`，与 web 共用镜像和环境变量。
 
-- [ ] **Step 7: 提交**
+- [x] **Step 7: 提交**
 
 ```powershell
 git add package/backend package/frontend/src/pages/WorkspacePage.jsx docker-compose.yml README.md

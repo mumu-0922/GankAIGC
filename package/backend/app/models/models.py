@@ -85,6 +85,10 @@ class OptimizationSession(Base):
     total_segments = Column(Integer, default=0)  # 总段落数
     error_message = Column(Text, nullable=True)
     failed_segment_index = Column(Integer, nullable=True)
+    queued_at = Column(DateTime, default=datetime.utcnow, index=True)
+    started_at = Column(DateTime, nullable=True)
+    finished_at = Column(DateTime, nullable=True)
+    worker_id = Column(String(100), nullable=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     completed_at = Column(DateTime, nullable=True)

@@ -121,6 +121,8 @@ class Settings(BaseSettings):
     REGISTRATION_ENABLED: bool = True
     ADMIN_DATABASE_MANAGER_ENABLED: bool = True
     ADMIN_DATABASE_WRITE_ENABLED: bool = False
+    INLINE_TASK_WORKER_ENABLED: bool = True
+    TASK_WORKER_POLL_INTERVAL: float = 2.0
     
     class Config:
         env_file = get_env_file_path()

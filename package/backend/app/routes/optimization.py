@@ -12,11 +12,11 @@ from app.schemas import (
     OptimizationCreate, SessionResponse, SessionDetailResponse,
     QueueStatusResponse, ProgressUpdate, ChangeLogResponse, ExportConfirmation
 )
-from app.services.optimization_service import OptimizationService
 from app.services.concurrency import concurrency_manager
 from app.services.credit_service import CreditService, calculate_optimization_credits
 from app.services.provider_config_service import ProviderConfigService
 from app.services.stream_manager import stream_manager
+from app.services.task_queue import process_session_by_id
 from app.utils.auth import generate_session_id, get_current_user_with_legacy_fallback
 from datetime import datetime
 import asyncio
@@ -56,17 +56,9 @@ def _build_docx_base64(text: str) -> str:
     return base64.b64encode(buffer.getvalue()).decode("ascii")
 
 
-async def run_optimization(session_id: int, db: Session, runtime_provider_config: Optional[dict] = None):
-    """后台运行优化任务"""
-    session_obj = db.query(OptimizationSession).filter(
-        OptimizationSession.id == session_id
-    ).first()
-    
-    if not session_obj:
-        return
-    
-    service = OptimizationService(db, session_obj, runtime_provider_config=runtime_provider_config)
-    await service.start_optimization()
+async def run_optimization(session_id: int):
+    """后台运行已入队的优化任务。"""
+    await process_session_by_id(session_id)
 
 
 @router.post("/start", response_model=SessionResponse)
@@ -163,6 +155,7 @@ async def start_optimization(
         current_stage=initial_stage,
         status="queued",
         progress=0.0,
+        queued_at=datetime.utcnow(),
         polish_model=polish_model,
         polish_api_key=polish_api_key,
         polish_base_url=polish_base_url,
@@ -197,8 +190,8 @@ async def start_optimization(
     if project:
         session.project = project
     
-    # 添加后台任务
-    background_tasks.add_task(run_optimization, session.id, db, provider_config)
+    if settings.INLINE_TASK_WORKER_ENABLED:
+        background_tasks.add_task(run_optimization, session.id)
     
     return session
 
@@ -513,10 +506,15 @@ async def retry_session(
     # 保留历史错误信息
     old_error = session.error_message or "未知错误"
     session.status = "queued"
+    session.queued_at = datetime.utcnow()
+    session.started_at = None
+    session.finished_at = None
+    session.worker_id = None
     session.error_message = f"[重试中] 上次失败原因: {old_error}"
     db.commit()
 
-    background_tasks.add_task(run_optimization, session.id, db)
+    if settings.INLINE_TASK_WORKER_ENABLED:
+        background_tasks.add_task(run_optimization, session.id)
 
     return {"message": "已重新排队处理未完成段落"}
 

@@ -51,9 +51,22 @@ def test_alembic_upgrade_creates_current_schema():
     }.issubset(tables)
 
     session_columns = {column["name"] for column in inspector.get_columns("optimization_sessions")}
-    assert {"billing_mode", "project_id", "task_title", "charged_credits"}.issubset(session_columns)
+    assert {
+        "billing_mode",
+        "project_id",
+        "task_title",
+        "charged_credits",
+        "queued_at",
+        "started_at",
+        "finished_at",
+        "worker_id",
+    }.issubset(session_columns)
 
     session_indexes = {index["name"] for index in inspector.get_indexes("optimization_sessions")}
-    assert {"idx_opt_session_user_id", "idx_opt_session_status", "idx_opt_session_created_at"}.issubset(
-        session_indexes
-    )
+    assert {
+        "idx_opt_session_user_id",
+        "idx_opt_session_status",
+        "idx_opt_session_created_at",
+        "ix_optimization_sessions_queued_at",
+        "ix_optimization_sessions_worker_id",
+    }.issubset(session_indexes)

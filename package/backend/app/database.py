@@ -119,6 +119,8 @@ def _add_performance_indexes():
             ("idx_opt_session_user_id", "optimization_sessions", "user_id"),
             ("idx_opt_session_status", "optimization_sessions", "status"),
             ("idx_opt_session_created_at", "optimization_sessions", "created_at"),
+            ("idx_opt_session_queued_at", "optimization_sessions", "queued_at"),
+            ("idx_opt_session_worker_id", "optimization_sessions", "worker_id"),
             
             # OptimizationSegment indexes
             ("idx_opt_segment_session_id", "optimization_segments", "session_id"),
@@ -242,6 +244,22 @@ def _migrate_database_schema():
                     _add_column_safely(conn, "optimization_sessions", "emotion_base_url", "VARCHAR(255)")
                     if added:
                         print("  ✓ 添加字段: optimization_sessions.emotion_* 字段")
+
+                if "queued_at" not in columns:
+                    if _add_column_safely(conn, "optimization_sessions", "queued_at", "TIMESTAMP"):
+                        print("  ✓ 添加字段: optimization_sessions.queued_at")
+
+                if "started_at" not in columns:
+                    if _add_column_safely(conn, "optimization_sessions", "started_at", "TIMESTAMP"):
+                        print("  ✓ 添加字段: optimization_sessions.started_at")
+
+                if "finished_at" not in columns:
+                    if _add_column_safely(conn, "optimization_sessions", "finished_at", "TIMESTAMP"):
+                        print("  ✓ 添加字段: optimization_sessions.finished_at")
+
+                if "worker_id" not in columns:
+                    if _add_column_safely(conn, "optimization_sessions", "worker_id", "VARCHAR(100)"):
+                        print("  ✓ 添加字段: optimization_sessions.worker_id")
 
             if "users" in tables:
                 user_columns = {column["name"]: column for column in inspector.get_columns("users")}

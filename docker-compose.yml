@@ -15,9 +15,30 @@ services:
       APP_ENV: production
       AUTO_OPEN_BROWSER: "false"
       DATABASE_URL: postgresql://ai_polish:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.docker}@postgres:5432/ai_polish
+      INLINE_TASK_WORKER_ENABLED: "false"
     command: python main.py
     ports:
       - "${APP_PORT:-9800}:9800"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        DOCKER_IMAGE_PREFIX: ${DOCKER_IMAGE_PREFIX:-docker.m.daocloud.io/}
+    env_file:
+      - .env.docker
+    environment:
+      APP_ENV: production
+      AUTO_OPEN_BROWSER: "false"
+      DATABASE_URL: postgresql://ai_polish:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.docker}@postgres:5432/ai_polish
+      INLINE_TASK_WORKER_ENABLED: "false"
+      TASK_WORKER_ID: docker-worker-1
+    command: python backend/worker.py
     depends_on:
       postgres:
         condition: service_healthy

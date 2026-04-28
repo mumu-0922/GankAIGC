@@ -147,6 +147,7 @@ python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().d
 生产环境必须修改默认 `ADMIN_PASSWORD` 和 `SECRET_KEY`。当 `APP_ENV=production`、`staging` 或 `server` 时，项目会拒绝使用明显的占位密钥。
 `REGISTRATION_ENABLED=false` 会关闭所有邀请码注册和普通用户生成邀请码，已有用户仍可登录使用。
 `WORD_FORMATTER_ENABLED=false` 时，Word 排版相关 API 不会挂载到后端和 OpenAPI 文档。数据库管理器默认可查看但不可编辑；只有同时设置 `ADMIN_DATABASE_MANAGER_ENABLED=true` 与 `ADMIN_DATABASE_WRITE_ENABLED=true` 才会开放写入操作。数据库管理器只暴露白名单表，敏感字段和长文本会脱敏，单页最多返回 100 条记录。
+降 AI 任务会先进入 PostgreSQL 队列。本地 `python main.py` 默认启用 `INLINE_TASK_WORKER_ENABLED=true`，会在 Web 进程内处理队列；Docker 部署默认关闭 inline worker，并由独立 `worker` 服务消费队列。
 
 ### 启动失败排查
 
@@ -194,7 +195,7 @@ PostgreSQL 备份、恢复、换机器部署和常见错误排查见 [PostgreSQL
 
 ## Docker 部署
 
-Docker Compose 会启动应用容器和 PostgreSQL。
+Docker Compose 会启动应用容器、独立任务 worker 和 PostgreSQL。
 
 ```powershell
 Copy-Item .env.docker.example .env.docker
