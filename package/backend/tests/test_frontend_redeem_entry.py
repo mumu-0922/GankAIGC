@@ -102,6 +102,14 @@ def test_welcome_page_links_to_github_project_and_requests_star():
     assert 'rel="noopener noreferrer"' in welcome_page
 
 
+def test_workspace_queue_status_uses_processing_task_label():
+    workspace = (FRONTEND_SRC / "pages" / "WorkspacePage.jsx").read_text(encoding="utf-8")
+
+    assert "ListChecks" in workspace
+    assert "处理中 {queueStatus.current_users}/{queueStatus.max_users}" in workspace
+    assert "Users className" not in workspace
+
+
 def test_user_menu_hides_word_formatter_entry_until_feature_is_ready():
     user_menu = (FRONTEND_SRC / "components" / "UserMenu.jsx").read_text(encoding="utf-8")
 

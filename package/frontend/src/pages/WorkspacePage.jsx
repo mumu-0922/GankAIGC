@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
   FileText, History, Play,
-  Users, Clock, AlertCircle, CheckCircle, Trash2, Info, Pencil
+  ListChecks, Clock, AlertCircle, CheckCircle, Trash2, Info, Pencil
 } from 'lucide-react';
 import { optimizationAPI, projectAPI, userAPI } from '../api';
 import UserMenu from '../components/UserMenu';
@@ -474,9 +474,9 @@ const WorkspacePage = () => {
               {queueStatus && (
                 <div className="hidden md:flex items-center gap-2 text-[13px]">
                   <div className="flex items-center gap-1.5 gank-topbar-pill px-2.5 py-1.5 rounded-xl">
-                    <Users className="w-3.5 h-3.5 text-slate-500" />
+                    <ListChecks className="w-3.5 h-3.5 text-slate-500" />
                     <span className="text-slate-600 font-medium">
-                      {queueStatus.current_users}/{queueStatus.max_users}
+                      处理中 {queueStatus.current_users}/{queueStatus.max_users}
                     </span>
                   </div>
                   {queueStatus.queue_length > 0 && (
