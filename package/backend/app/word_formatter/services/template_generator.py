@@ -11,7 +11,7 @@ reference.docx 生成器：StyleSpec → 可复用模板
 from __future__ import annotations
 
 import io
-import random
+import secrets
 from typing import Optional
 
 from docx import Document
@@ -46,7 +46,7 @@ def _chars_to_100(chars: float) -> int:
 
 
 def _rand_hex(n: int = 8) -> str:
-    return "".join(random.choice("0123456789ABCDEF") for _ in range(n))
+    return "".join(secrets.choice("0123456789ABCDEF") for _ in range(n))
 
 
 def generate_reference_docx(spec: StyleSpec) -> bytes:

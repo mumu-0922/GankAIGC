@@ -12,6 +12,7 @@ const DatabaseManager = ({ adminToken }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [editingRecord, setEditingRecord] = useState(null);
   const [editFormData, setEditFormData] = useState({});
+  const [canWrite, setCanWrite] = useState(false);
 
   useEffect(() => {
     fetchTables();
@@ -30,6 +31,7 @@ const DatabaseManager = ({ adminToken }) => {
         headers: { Authorization: `Bearer ${adminToken}` }
       });
       setTables(response.data.tables);
+      setCanWrite(Boolean(response.data.can_write));
       if (response.data.tables.length > 0 && !selectedTable) {
         setSelectedTable(response.data.tables[0]);
       }
@@ -64,11 +66,19 @@ const DatabaseManager = ({ adminToken }) => {
   };
 
   const handleEditRecord = (record) => {
+    if (!canWrite) {
+      toast.error('数据库管理器当前为只读模式');
+      return;
+    }
     setEditingRecord(record);
     setEditFormData({ ...record });
   };
 
   const handleSaveEdit = async () => {
+    if (!canWrite) {
+      toast.error('数据库管理器当前为只读模式');
+      return;
+    }
     if (!editingRecord || !editingRecord.id) {
       toast.error('无效的记录ID');
       return;
@@ -77,7 +87,7 @@ const DatabaseManager = ({ adminToken }) => {
     try {
       await axios.put(
         `/api/admin/database/${selectedTable}/${editingRecord.id}`,
-        editFormData,
+        { data: editFormData },
         { headers: { Authorization: `Bearer ${adminToken}` } }
       );
       toast.success('记录更新成功');
@@ -90,6 +100,10 @@ const DatabaseManager = ({ adminToken }) => {
   };
 
   const handleDeleteRecord = async (recordId) => {
+    if (!canWrite) {
+      toast.error('数据库管理器当前为只读模式');
+      return;
+    }
     if (!window.confirm('确定要删除这条记录吗?此操作不可撤销。')) {
       return;
     }
@@ -149,6 +163,11 @@ const DatabaseManager = ({ adminToken }) => {
             <Database className="w-5 h-5 text-blue-600" />
           </div>
           <h3 className="text-lg font-bold text-gray-900">数据库管理</h3>
+          {!canWrite && (
+            <span className="ml-auto px-3 py-1 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-100 rounded-full">
+              只读模式
+            </span>
+          )}
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4 items-end mb-4">
@@ -214,9 +233,11 @@ const DatabaseManager = ({ adminToken }) => {
                       {column}
                     </th>
                   ))}
-                  <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider sticky right-0 bg-gray-50/95 backdrop-blur-sm border-l border-gray-100">
-                    操作
-                  </th>
+                  {canWrite && (
+                    <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider sticky right-0 bg-gray-50/95 backdrop-blur-sm border-l border-gray-100">
+                      操作
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -227,22 +248,24 @@ const DatabaseManager = ({ adminToken }) => {
                         {formatValue(record[column])}
                       </td>
                     ))}
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium sticky right-0 bg-white/95 backdrop-blur-sm border-l border-gray-100 group-hover:bg-blue-50/30 transition-colors">
-                      <button
-                        onClick={() => handleEditRecord(record)}
-                        className="text-blue-600 hover:text-blue-800 p-1.5 hover:bg-blue-50 rounded-lg transition-colors mr-2"
-                        title="编辑"
-                      >
-                        <Edit3 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteRecord(record.id)}
-                        className="text-red-600 hover:text-red-800 p-1.5 hover:bg-red-50 rounded-lg transition-colors"
-                        title="删除"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </td>
+                    {canWrite && (
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium sticky right-0 bg-white/95 backdrop-blur-sm border-l border-gray-100 group-hover:bg-blue-50/30 transition-colors">
+                        <button
+                          onClick={() => handleEditRecord(record)}
+                          className="text-blue-600 hover:text-blue-800 p-1.5 hover:bg-blue-50 rounded-lg transition-colors mr-2"
+                          title="编辑"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteRecord(record.id)}
+                          className="text-red-600 hover:text-red-800 p-1.5 hover:bg-red-50 rounded-lg transition-colors"
+                          title="删除"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -256,7 +279,7 @@ const DatabaseManager = ({ adminToken }) => {
       </div>
 
       {/* 编辑弹窗 */}
-      {editingRecord && (
+      {canWrite && editingRecord && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
             <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">

@@ -63,8 +63,6 @@ from app.database import init_db
 from app.routes import admin, auth, prompts, optimization, user
 from app.runtime import refresh_cors_middleware
 from app.services.rate_limit import SlidingWindowLimiter
-from app.word_formatter import router as word_formatter_router
-from app.word_formatter.services import get_job_manager
 from app.models.models import CustomPrompt
 from app.database import SessionLocal
 from app.services.ai_service import get_default_polish_prompt, get_default_enhance_prompt
@@ -125,7 +123,10 @@ app.include_router(auth.router, prefix="/api")
 app.include_router(user.router, prefix="/api")
 app.include_router(prompts.router, prefix="/api")
 app.include_router(optimization.router, prefix="/api")
-app.include_router(word_formatter_router, prefix="/api")
+if settings.WORD_FORMATTER_ENABLED:
+    from app.word_formatter import router as word_formatter_router
+
+    app.include_router(word_formatter_router, prefix="/api")
 
 
 def _get_rate_limit_key(request: Request, scope: str) -> str:
@@ -218,8 +219,11 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     """关闭时清理资源"""
-    job_manager = get_job_manager()
-    await job_manager.shutdown()
+    if settings.WORD_FORMATTER_ENABLED:
+        from app.word_formatter.services import get_job_manager
+
+        job_manager = get_job_manager()
+        await job_manager.shutdown()
 
 
 @app.get("/health")
@@ -495,6 +499,9 @@ ENCRYPTION_KEY=
 AUTH_RATE_LIMIT_PER_MINUTE=10
 REDEEM_RATE_LIMIT_PER_MINUTE=20
 REGISTRATION_ENABLED=true
+WORD_FORMATTER_ENABLED=false
+ADMIN_DATABASE_MANAGER_ENABLED=true
+ADMIN_DATABASE_WRITE_ENABLED=false
 
 # OpenAI API 配置
 OPENAI_API_KEY=your-api-key-here

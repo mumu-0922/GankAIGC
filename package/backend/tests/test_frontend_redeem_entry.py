@@ -141,6 +141,16 @@ def test_admin_dashboard_hides_word_formatter_statistics_until_feature_is_ready(
     assert "Word 排版任务" not in admin_dashboard
 
 
+def test_database_manager_honors_backend_read_only_flag():
+    database_manager = (FRONTEND_SRC / "components" / "DatabaseManager.jsx").read_text(encoding="utf-8")
+
+    assert "canWrite" in database_manager
+    assert "response.data.can_write" in database_manager
+    assert "只读模式" in database_manager
+    assert "canWrite && (" in database_manager
+    assert "{canWrite && editingRecord && (" in database_manager
+
+
 def test_admin_dashboard_does_not_duplicate_session_monitor_status_metrics():
     admin_dashboard = (FRONTEND_SRC / "pages" / "AdminDashboard.jsx").read_text(encoding="utf-8")
 

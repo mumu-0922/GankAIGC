@@ -87,6 +87,8 @@ class Settings(BaseSettings):
     DEFAULT_USAGE_LIMIT: int = 1
     SEGMENT_SKIP_THRESHOLD: int = 15
 
+    # 实验性 Word Formatter 默认关闭，开启后才注册后端路由
+    WORD_FORMATTER_ENABLED: bool = False
     # Word Formatter 文件上传限制 (MB)，0 表示无限制
     MAX_UPLOAD_FILE_SIZE_MB: int = 0
     
@@ -123,6 +125,8 @@ class Settings(BaseSettings):
     AUTH_RATE_LIMIT_PER_MINUTE: int = 10
     REDEEM_RATE_LIMIT_PER_MINUTE: int = 20
     REGISTRATION_ENABLED: bool = True
+    ADMIN_DATABASE_MANAGER_ENABLED: bool = True
+    ADMIN_DATABASE_WRITE_ENABLED: bool = False
     
     class Config:
         env_file = get_env_file_path()

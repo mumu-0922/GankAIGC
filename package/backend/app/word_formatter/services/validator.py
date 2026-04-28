@@ -10,7 +10,7 @@ from lxml import etree
 
 from ..models.stylespec import StyleSpec
 from ..models.validation import FixSuggestion, Location, ValidationReport, ValidationSummary, Violation
-from ..utils.ooxml import DocxPackage
+from ..utils.ooxml import DocxPackage, parse_ooxml
 
 
 W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
@@ -89,7 +89,7 @@ def _docx_has_page_field(pkg: DocxPackage) -> bool:
         if not name.startswith("word/footer") or not name.endswith(".xml"):
             continue
         try:
-            root = etree.fromstring(content)
+            root = parse_ooxml(content)
         except Exception:
             continue
         for fld in root.findall(".//w:fldSimple", namespaces=NSMAP):

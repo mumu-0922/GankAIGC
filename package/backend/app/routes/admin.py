@@ -33,7 +33,6 @@ from app.schemas import (
 )
 from app.services.concurrency import concurrency_manager
 from app.services.credit_service import CreditService
-from app.word_formatter.services.job_manager import get_job_manager
 from app.utils.auth import (
     create_access_token,
     verify_token,
@@ -93,6 +92,33 @@ ALLOWED_TABLES: Dict[str, Type] = {
     "system_settings": SystemSetting,
 }
 
+SENSITIVE_DB_FIELDS = {
+    "access_link",
+    "password_hash",
+    "api_key",
+    "api_key_encrypted",
+    "polish_api_key",
+    "enhance_api_key",
+    "emotion_api_key",
+    "compression_api_key",
+    "original_text",
+    "polished_text",
+    "enhanced_text",
+    "before_text",
+    "after_text",
+    "changes_detail",
+    "history_data",
+    "error_message",
+    "spec_json",
+}
+SENSITIVE_SYSTEM_SETTING_MARKERS = (
+    "api_key",
+    "password",
+    "secret",
+    "token",
+    "encryption_key",
+)
+
 
 def verify_admin_credentials(username: str, password: str) -> bool:
     return username == settings.ADMIN_USERNAME and password == settings.ADMIN_PASSWORD
@@ -121,6 +147,32 @@ def _model_to_dict(record: Any) -> Dict[str, Any]:
     for column in mapper.columns:
         data[column.key] = getattr(record, column.key)
     return data
+
+
+def sanitize_db_record(record: Dict[str, Any]) -> Dict[str, Any]:
+    setting_key = str(record.get("key", "")).lower()
+    sanitized: Dict[str, Any] = {}
+
+    for key, value in record.items():
+        normalized_key = key.lower()
+        if normalized_key in SENSITIVE_DB_FIELDS:
+            continue
+        if normalized_key == "value" and any(marker in setting_key for marker in SENSITIVE_SYSTEM_SETTING_MARKERS):
+            continue
+        sanitized[key] = value
+
+    return sanitized
+
+
+def _ensure_database_manager_enabled() -> None:
+    if not settings.ADMIN_DATABASE_MANAGER_ENABLED:
+        raise HTTPException(status_code=404, detail="数据库管理器已关闭")
+
+
+def _ensure_database_write_enabled() -> None:
+    _ensure_database_manager_enabled()
+    if not settings.ADMIN_DATABASE_WRITE_ENABLED:
+        raise HTTPException(status_code=403, detail="数据库管理器当前为只读模式")
 
 
 @router.post("/login", response_model=AdminLoginResponse)
@@ -437,7 +489,7 @@ async def get_statistics(_: str = Depends(get_admin_from_token), db: Session = D
         )
         avg_processing_time = total_time / len(completed_with_time)
 
-    return {
+    statistics = {
         "users": {
             "total": total_users,
             "active": active_users,
@@ -469,8 +521,14 @@ async def get_statistics(_: str = Depends(get_admin_from_token), db: Session = D
             "paper_polish_enhance_count": paper_polish_enhance_count,
             "emotion_polish_count": emotion_polish_count,
         },
-        "word_formatter": get_job_manager().get_stats(),
     }
+
+    if settings.WORD_FORMATTER_ENABLED:
+        from app.word_formatter.services.job_manager import get_job_manager
+
+        statistics["word_formatter"] = get_job_manager().get_stats()
+
+    return statistics
 
 
 @router.get("/users/{user_id}/details")
@@ -892,8 +950,12 @@ async def update_config(
 
 
 @router.get("/database/tables")
-async def list_tables(_: str = Depends(get_admin_from_token)) -> Dict[str, List[str]]:
-    return {"tables": list(ALLOWED_TABLES.keys())}
+async def list_tables(_: str = Depends(get_admin_from_token)) -> Dict[str, Any]:
+    _ensure_database_manager_enabled()
+    return {
+        "tables": list(ALLOWED_TABLES.keys()),
+        "can_write": settings.ADMIN_DATABASE_WRITE_ENABLED,
+    }
 
 
 @router.get("/database/{table_name}")
@@ -904,13 +966,14 @@ async def fetch_table_records(
     _: str = Depends(get_admin_from_token),
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
+    _ensure_database_manager_enabled()
     if table_name not in ALLOWED_TABLES:
         raise HTTPException(status_code=404, detail="表不存在或不允许访问")
 
     model = ALLOWED_TABLES[table_name]
     page_size = max(min(limit, 200), 1)
     query = db.query(model).offset(max(skip, 0)).limit(page_size)
-    records = [_model_to_dict(row) for row in query.all()]
+    records = [sanitize_db_record(_model_to_dict(row)) for row in query.all()]
     total = db.query(model).count()
     return {"total": total, "items": records}
 
@@ -923,6 +986,7 @@ async def update_table_record(
     _: str = Depends(get_admin_from_token),
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
+    _ensure_database_write_enabled()
     if table_name not in ALLOWED_TABLES:
         raise HTTPException(status_code=404, detail="表不存在或不允许访问")
 
@@ -932,7 +996,11 @@ async def update_table_record(
         raise HTTPException(status_code=404, detail="记录不存在")
 
     mapper = inspect(model)
-    allowed_columns = {column.key for column in mapper.columns if not column.primary_key}
+    allowed_columns = {
+        column.key
+        for column in mapper.columns
+        if not column.primary_key and column.key.lower() not in SENSITIVE_DB_FIELDS
+    }
 
     for key, value in payload.data.items():
         if key in allowed_columns:
@@ -940,7 +1008,7 @@ async def update_table_record(
 
     db.commit()
     db.refresh(record)
-    return {"message": "记录已更新", "record": _model_to_dict(record)}
+    return {"message": "记录已更新", "record": sanitize_db_record(_model_to_dict(record))}
 
 
 @router.delete("/database/{table_name}/{record_id}")
@@ -950,6 +1018,7 @@ async def delete_table_record(
     _: str = Depends(get_admin_from_token),
     db: Session = Depends(get_db),
 ) -> Dict[str, str]:
+    _ensure_database_write_enabled()
     if table_name not in ALLOWED_TABLES:
         raise HTTPException(status_code=404, detail="表不存在或不允许访问")
 

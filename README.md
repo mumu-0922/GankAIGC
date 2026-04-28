@@ -133,6 +133,9 @@ SEGMENT_SKIP_THRESHOLD=15
 API_REQUEST_INTERVAL=6
 USE_STREAMING=false
 REGISTRATION_ENABLED=true
+WORD_FORMATTER_ENABLED=false
+ADMIN_DATABASE_MANAGER_ENABLED=true
+ADMIN_DATABASE_WRITE_ENABLED=false
 ```
 
 `ENCRYPTION_KEY` 用于加密用户保存的自带 API 配置，建议使用 Fernet key：
@@ -143,6 +146,7 @@ python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().d
 
 生产环境必须修改默认 `ADMIN_PASSWORD` 和 `SECRET_KEY`。当 `APP_ENV=production`、`staging` 或 `server` 时，项目会拒绝使用明显的占位密钥。
 `REGISTRATION_ENABLED=false` 会关闭所有邀请码注册和普通用户生成邀请码，已有用户仍可登录使用。
+`WORD_FORMATTER_ENABLED=false` 时，Word 排版相关 API 不会挂载到后端和 OpenAPI 文档。数据库管理器默认可查看但不可编辑；只有同时设置 `ADMIN_DATABASE_MANAGER_ENABLED=true` 与 `ADMIN_DATABASE_WRITE_ENABLED=true` 才会开放写入操作。
 
 ## SQLite 迁移到 PostgreSQL
 
@@ -179,7 +183,7 @@ python migrate_sqlite_to_postgres.py `
 - 数据面板：查看用户、任务、完成率等统计。
 - 会话监控：查看任务队列、处理中会话和历史任务。
 - 账号次数：管理用户、邀请码、次数兑换码和用户自带 API 摘要。
-- 数据库管理：查看、编辑、删除允许管理的数据表记录。
+- 数据库管理：默认只读查看允许管理的数据表记录，敏感字段会脱敏。
 - 系统配置：在线调整模型、Base URL、并发、请求间隔、思考模式等配置。
 
 ## Docker 部署

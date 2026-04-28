@@ -11,6 +11,11 @@ from typing import Dict
 from lxml import etree
 
 
+def parse_ooxml(content: bytes) -> etree._Element:
+    parser = etree.XMLParser(resolve_entities=False, no_network=True, huge_tree=False)
+    return etree.XML(content, parser=parser)
+
+
 @dataclass
 class DocxPackage:
     files: Dict[str, bytes]
@@ -42,7 +47,7 @@ class DocxPackage:
     def read_xml(self, name: str) -> etree._Element:
         if name not in self.files:
             raise KeyError(f"missing file in docx: {name}")
-        return etree.fromstring(self.files[name])
+        return parse_ooxml(self.files[name])
 
     def write_xml(self, name: str, root: etree._Element) -> None:
         self.files[name] = etree.tostring(root, xml_declaration=True, encoding="UTF-8", standalone="yes")

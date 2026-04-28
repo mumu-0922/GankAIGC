@@ -402,6 +402,110 @@ def test_admin_config_exposes_registration_enabled(client, monkeypatch):
     assert response.json()["system"]["registration_enabled"] is False
 
 
+def test_admin_database_manager_reports_read_only_and_sanitizes_records(client):
+    from app.database import SessionLocal
+    from app.models.models import OptimizationSession, User
+    from app.utils.auth import get_password_hash
+
+    db = SessionLocal()
+    try:
+        user = User(
+            username="alice",
+            nickname="Alice",
+            password_hash=get_password_hash("Password123!"),
+            access_link="http://testserver/access/alice",
+            is_active=True,
+            credit_balance=0,
+        )
+        db.add(user)
+        db.flush()
+        db.add(
+            OptimizationSession(
+                user_id=user.id,
+                session_id="secure-db-view",
+                original_text="敏感论文原文",
+                error_message="敏感错误堆栈",
+                status="failed",
+                processing_mode="paper_polish",
+            )
+        )
+        db.commit()
+    finally:
+        db.close()
+
+    headers = _admin_auth_headers(client)
+
+    tables_response = client.get("/api/admin/database/tables", headers=headers)
+    assert tables_response.status_code == 200
+    assert tables_response.json()["can_write"] is False
+
+    users_response = client.get("/api/admin/database/users", headers=headers)
+    assert users_response.status_code == 200
+    user_record = users_response.json()["items"][0]
+    assert user_record["username"] == "alice"
+    assert "password_hash" not in user_record
+
+    sessions_response = client.get("/api/admin/database/optimization_sessions", headers=headers)
+    assert sessions_response.status_code == 200
+    session_record = sessions_response.json()["items"][0]
+    assert session_record["session_id"] == "secure-db-view"
+    assert "original_text" not in session_record
+    assert "error_message" not in session_record
+
+
+def test_admin_database_write_endpoints_are_disabled_by_default(client):
+    from app.database import SessionLocal
+    from app.models.models import User
+    from app.utils.auth import get_password_hash
+
+    db = SessionLocal()
+    try:
+        user = User(
+            username="alice",
+            nickname="Alice",
+            password_hash=get_password_hash("Password123!"),
+            access_link="http://testserver/access/alice",
+            is_active=True,
+            credit_balance=0,
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        user_id = user.id
+    finally:
+        db.close()
+
+    headers = _admin_auth_headers(client)
+
+    update_response = client.put(
+        f"/api/admin/database/users/{user_id}",
+        json={"data": {"nickname": "Changed"}},
+        headers=headers,
+    )
+    assert update_response.status_code == 403
+
+    delete_response = client.delete(f"/api/admin/database/users/{user_id}", headers=headers)
+    assert delete_response.status_code == 403
+
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.id == user_id).one()
+        assert user.nickname == "Alice"
+    finally:
+        db.close()
+
+
+def test_word_formatter_routes_are_not_mounted_when_disabled(client):
+    usage_response = client.get("/api/word-formatter/usage")
+    assert usage_response.status_code == 404
+
+    openapi_response = client.get("/openapi.json")
+    assert openapi_response.status_code == 200
+    paths = openapi_response.json()["paths"]
+    assert "/api/word-formatter/usage" not in paths
+    assert "/api/word-formatter/specs/generate" not in paths
+
+
 def test_admin_config_rollback_restores_env_file_and_live_settings_on_invalid_update(client, monkeypatch, tmp_path):
     env_file = tmp_path / ".env"
     original_env = "\n".join(
@@ -604,6 +708,13 @@ def test_admin_statistics_count_all_processing_modes(client):
     assert processing["paper_enhance_count"] == 1
     assert processing["paper_polish_enhance_count"] == 1
     assert processing["emotion_polish_count"] == 1
+
+
+def test_admin_statistics_omits_word_formatter_when_feature_disabled(client):
+    response = client.get("/api/admin/statistics", headers=_admin_auth_headers(client))
+
+    assert response.status_code == 200
+    assert "word_formatter" not in response.json()
 
 
 def test_crypto_helpers_round_trip_with_test_fernet_key(monkeypatch):

@@ -52,27 +52,25 @@ def test_bearer_token_is_preferred_over_invalid_card_key(client):
     assert response.json() == []
 
 
-def test_user_token_can_access_word_formatter_usage(client):
+def test_word_formatter_usage_route_is_unavailable_when_feature_disabled(client):
     _, token = _create_user()
 
     response = client.get("/api/word-formatter/usage", headers={"Authorization": f"Bearer {token}"})
 
-    assert response.status_code == 200
-    assert response.json()["usage_count"] == 0
+    assert response.status_code == 404
 
 
-def test_legacy_card_key_no_longer_authenticates_word_formatter_usage(client):
+def test_legacy_card_key_cannot_reach_disabled_word_formatter_usage(client):
     _create_user(username="legacy")
 
     response = client.get("/api/word-formatter/usage", params={"card_key": "legacy-demo-key"})
 
-    assert response.status_code == 401
+    assert response.status_code == 404
 
 
-def test_query_access_token_supports_browser_direct_urls(client):
+def test_query_access_token_cannot_reach_disabled_word_formatter_usage(client):
     _, token = _create_user()
 
     response = client.get("/api/word-formatter/usage", params={"access_token": token})
 
-    assert response.status_code == 200
-    assert response.json()["usage_count"] == 0
+    assert response.status_code == 404
