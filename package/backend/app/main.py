@@ -13,7 +13,7 @@ from app.config import (
     is_placeholder_secret,
     settings,
 )
-from app.database import init_db
+from app.database import check_database_connection, init_db
 from app.routes import admin, auth, prompts, optimization, user
 from app.runtime import refresh_cors_middleware
 from app.services.rate_limit import SlidingWindowLimiter
@@ -144,7 +144,8 @@ async def enforce_sensitive_endpoint_rate_limits(request: Request, call_next):
 @app.on_event("startup")
 async def startup_event():
     """启动时初始化"""
-    # 初始化数据库
+    # 先检查连接，再初始化数据库结构
+    check_database_connection()
     init_db()
 
     # 创建系统默认提示词

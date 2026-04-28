@@ -1,4 +1,5 @@
 from sqlalchemy import create_engine, inspect, text
+from sqlalchemy.engine import make_url
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from app.config import settings
@@ -17,6 +18,32 @@ def normalize_database_url(database_url: str) -> str:
     raise ValueError("Only PostgreSQL DATABASE_URL values are supported")
 
 
+def _safe_database_url(database_url: str | None = None) -> str:
+    active_url = database_url or settings.DATABASE_URL
+    try:
+        return make_url(active_url).render_as_string(hide_password=True)
+    except Exception:
+        return "<invalid DATABASE_URL>"
+
+
+def build_database_connection_error(error: Exception, database_url: str | None = None) -> str:
+    safe_url = _safe_database_url(database_url)
+    return "\n".join(
+        [
+            "PostgreSQL 数据库连接失败，GankAIGC 无法启动。",
+            f"当前 DATABASE_URL: {safe_url}",
+            f"底层错误: {error}",
+            "",
+            "排查步骤:",
+            "1. 确认 package/.env 中 DATABASE_URL 使用 postgresql:// 或 postgresql+psycopg://。",
+            "2. 确认 PostgreSQL 已启动，Docker 用户可先运行: docker compose up -d postgres。",
+            "3. 确认 DATABASE_URL 中的用户名、密码、数据库名和端口正确。",
+            "4. 如果同时使用 .env.docker，确认 DATABASE_URL 密码与 POSTGRES_PASSWORD 一致。",
+            "5. 新机器首次部署时，先创建 ai_polish 用户和 ai_polish 数据库。",
+        ]
+    )
+
+
 DATABASE_URL = normalize_database_url(settings.DATABASE_URL)
 
 engine = create_engine(DATABASE_URL, connect_args={"connect_timeout": 10})
@@ -33,6 +60,17 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+def check_database_connection():
+    """检查 PostgreSQL 可连接，并在失败时给出可执行的启动提示。"""
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        print("✓ 数据库连接成功")
+        return True
+    except Exception as e:
+        raise RuntimeError(build_database_connection_error(e)) from e
 
 
 def init_db():

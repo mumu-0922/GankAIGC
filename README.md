@@ -148,6 +148,16 @@ python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().d
 `REGISTRATION_ENABLED=false` 会关闭所有邀请码注册和普通用户生成邀请码，已有用户仍可登录使用。
 `WORD_FORMATTER_ENABLED=false` 时，Word 排版相关 API 不会挂载到后端和 OpenAPI 文档。数据库管理器默认可查看但不可编辑；只有同时设置 `ADMIN_DATABASE_MANAGER_ENABLED=true` 与 `ADMIN_DATABASE_WRITE_ENABLED=true` 才会开放写入操作。
 
+### 启动失败排查
+
+启动时会先检查 PostgreSQL 连接，再初始化数据表。若提示 `PostgreSQL 数据库连接失败`，优先检查：
+
+- `package/.env` 中 `DATABASE_URL` 是否是 `postgresql://` 或 `postgresql+psycopg://`。
+- PostgreSQL 是否已启动；Docker 部署可先运行 `docker compose up -d postgres`。
+- `DATABASE_URL` 的用户名、密码、数据库名和端口是否正确。
+- 使用 `.env.docker` 时，`DATABASE_URL` 密码是否与 `POSTGRES_PASSWORD` 一致。
+- 新机器首次部署时，是否已经创建 `ai_polish` 用户和 `ai_polish` 数据库。
+
 ## 使用流程
 
 1. 管理员访问 `/admin` 登录后台。

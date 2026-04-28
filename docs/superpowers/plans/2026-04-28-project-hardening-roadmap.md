@@ -32,7 +32,7 @@
 - Test: `package/backend/tests/test_startup_config.py`
 - Docs: `README.md`
 
-- [ ] **Step 1: 增加配置校验测试**
+- [x] **Step 1: 增加配置校验测试**
 
 新增 `package/backend/tests/test_startup_config.py`，覆盖：
 
@@ -58,7 +58,7 @@ def test_normalize_database_url_accepts_postgresql():
     ).startswith("postgresql+psycopg://")
 ```
 
-- [ ] **Step 2: 增加可读启动错误**
+- [x] **Step 2: 增加可读启动错误**
 
 在 `package/backend/app/database.py` 中新增 `check_database_connection()`，使用 `SELECT 1` 验证连接。捕获连接失败时抛出 `RuntimeError`，提示：
 
@@ -67,11 +67,11 @@ def test_normalize_database_url_accepts_postgresql():
 - Docker 用户先运行 `docker compose up -d postgres`。
 - 密码需与 `.env.docker` 的 `POSTGRES_PASSWORD` 一致。
 
-- [ ] **Step 3: 启动时先自检再建表**
+- [x] **Step 3: 启动时先自检再建表**
 
 在 `package/main.py` 和 `package/backend/app/main.py` 的 startup 流程中，`init_db()` 前调用数据库连接自检。生产环境仍保留默认密钥强校验。
 
-- [ ] **Step 4: 运行测试**
+- [x] **Step 4: 运行测试**
 
 ```powershell
 cd package/backend
@@ -81,7 +81,7 @@ python -m pytest tests -q
 
 Expected: 全部通过。
 
-- [ ] **Step 5: 更新 README 并提交**
+- [x] **Step 5: 更新 README 并提交**
 
 README 的配置说明补一段“启动失败排查”。提交：
 
