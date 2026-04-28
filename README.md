@@ -171,6 +171,7 @@ python -m alembic upgrade head
 `migrations/env.py` 会优先读取 `package/.env` 中的 `DATABASE_URL`。如果是已经由旧版本自动建表的数据库，先备份数据，再执行 `python -m alembic stamp head` 标记当前结构，后续版本再使用 `upgrade head`。
 
 PostgreSQL 备份、恢复、换机器部署和常见错误排查见 [PostgreSQL 运维指南](docs/postgresql-operations.md)。
+发布前检查见 [维护发布清单](docs/maintenance-checklist.md)。
 
 ## 使用流程
 

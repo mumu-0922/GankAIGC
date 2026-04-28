@@ -462,7 +462,7 @@ git push
 - Modify: `package/README.md`
 - Create: `docs/maintenance-checklist.md`
 
-- [ ] **Step 1: 修正 AGENTS 不准确描述**
+- [x] **Step 1: 修正 AGENTS 不准确描述**
 
 移除或改写：
 
@@ -476,7 +476,7 @@ git push
 - 测试库用 `GANKAIGC_TEST_DATABASE_URL`。
 - 前端构建后如需提交静态 bundle，要 `git add -f package/static`。
 
-- [ ] **Step 2: 更新 README 与 package README**
+- [x] **Step 2: 更新 README 与 package README**
 
 保证二者都说明当前主线：
 
@@ -486,7 +486,7 @@ git push
 
 并说明 Word 排版是关闭的实验模块。
 
-- [ ] **Step 3: 新增维护清单**
+- [x] **Step 3: 新增维护清单**
 
 `docs/maintenance-checklist.md` 包含发布前检查：
 
@@ -497,7 +497,7 @@ git push
 - PostgreSQL 备份已完成。
 - README 与配置项同步。
 
-- [ ] **Step 4: 文档检索校验**
+- [x] **Step 4: 文档检索校验**
 
 ```powershell
 rg -n -i "sqlite|card_key|卡密|临时 SQLite|ai_polish.db" AGENTS.md README.md package/README.md docs package/backend package/frontend/src
@@ -505,7 +505,7 @@ rg -n -i "sqlite|card_key|卡密|临时 SQLite|ai_polish.db" AGENTS.md README.md
 
 Expected: 只允许出现在兼容测试、历史说明或明确“已移除”的上下文中。
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```powershell
 git add AGENTS.md README.md package/README.md docs/maintenance-checklist.md
