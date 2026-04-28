@@ -92,6 +92,9 @@ ALLOWED_TABLES: Dict[str, Type] = {
     "system_settings": SystemSetting,
 }
 
+DATABASE_MANAGER_MAX_PAGE_SIZE = 100
+DATABASE_MANAGER_MAX_TEXT_LENGTH = 240
+
 SENSITIVE_DB_FIELDS = {
     "access_link",
     "password_hash",
@@ -159,9 +162,17 @@ def sanitize_db_record(record: Dict[str, Any]) -> Dict[str, Any]:
             continue
         if normalized_key == "value" and any(marker in setting_key for marker in SENSITIVE_SYSTEM_SETTING_MARKERS):
             continue
+        if isinstance(value, str) and len(value) > DATABASE_MANAGER_MAX_TEXT_LENGTH:
+            sanitized[key] = f"{value[:DATABASE_MANAGER_MAX_TEXT_LENGTH]}..."
+            continue
         sanitized[key] = value
 
     return sanitized
+
+
+def _is_sensitive_system_setting_key(key: str) -> bool:
+    normalized_key = key.lower()
+    return any(marker in normalized_key for marker in SENSITIVE_SYSTEM_SETTING_MARKERS)
 
 
 def _ensure_database_manager_enabled() -> None:
@@ -955,6 +966,7 @@ async def list_tables(_: str = Depends(get_admin_from_token)) -> Dict[str, Any]:
     return {
         "tables": list(ALLOWED_TABLES.keys()),
         "can_write": settings.ADMIN_DATABASE_WRITE_ENABLED,
+        "max_page_size": DATABASE_MANAGER_MAX_PAGE_SIZE,
     }
 
 
@@ -971,11 +983,21 @@ async def fetch_table_records(
         raise HTTPException(status_code=404, detail="表不存在或不允许访问")
 
     model = ALLOWED_TABLES[table_name]
-    page_size = max(min(limit, 200), 1)
-    query = db.query(model).offset(max(skip, 0)).limit(page_size)
+    page_size = max(min(limit, DATABASE_MANAGER_MAX_PAGE_SIZE), 1)
+    safe_skip = max(skip, 0)
+    query = db.query(model)
+    if hasattr(model, "id"):
+        query = query.order_by(getattr(model, "id").desc())
+    query = query.offset(safe_skip).limit(page_size)
     records = [sanitize_db_record(_model_to_dict(row)) for row in query.all()]
     total = db.query(model).count()
-    return {"total": total, "items": records}
+    return {
+        "total": total,
+        "items": records,
+        "skip": safe_skip,
+        "limit": page_size,
+        "can_write": settings.ADMIN_DATABASE_WRITE_ENABLED,
+    }
 
 
 @router.put("/database/{table_name}/{record_id}")
@@ -1003,6 +1025,8 @@ async def update_table_record(
     }
 
     for key, value in payload.data.items():
+        if isinstance(record, SystemSetting) and key == "value" and _is_sensitive_system_setting_key(record.key):
+            raise HTTPException(status_code=400, detail="敏感系统配置不能通过数据库管理器修改")
         if key in allowed_columns:
             setattr(record, key, value)
 

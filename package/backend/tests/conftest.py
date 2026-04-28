@@ -28,10 +28,29 @@ def _restore_env():
 
 atexit.register(_restore_env)
 
-TEST_DATABASE_URL = os.environ.get(
-    "GANKAIGC_TEST_DATABASE_URL",
-    "postgresql://ai_polish:postgres@127.0.0.1:5432/gankaigc_test",
-)
+
+def _read_package_database_url() -> str | None:
+    env_file = BACKEND_DIR.parent / ".env"
+    if not env_file.exists():
+        return None
+
+    for line in env_file.read_text(encoding="utf-8").splitlines():
+        key, separator, value = line.partition("=")
+        if separator and key.strip() == "DATABASE_URL":
+            return value.strip().strip('"').strip("'")
+    return None
+
+
+def _build_default_test_database_url() -> str:
+    app_database_url = (
+        os.environ.get("DATABASE_URL")
+        or _read_package_database_url()
+        or "postgresql://ai_polish:postgres@127.0.0.1:5432/ai_polish"
+    )
+    return make_url(app_database_url).set(database="gankaigc_test").render_as_string(hide_password=False)
+
+
+TEST_DATABASE_URL = os.environ.get("GANKAIGC_TEST_DATABASE_URL") or _build_default_test_database_url()
 test_database_name = make_url(TEST_DATABASE_URL).database or ""
 if "test" not in test_database_name.lower():
     raise RuntimeError("GANKAIGC_TEST_DATABASE_URL must point to a dedicated PostgreSQL test database")

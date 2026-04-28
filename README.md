@@ -146,7 +146,7 @@ python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().d
 
 生产环境必须修改默认 `ADMIN_PASSWORD` 和 `SECRET_KEY`。当 `APP_ENV=production`、`staging` 或 `server` 时，项目会拒绝使用明显的占位密钥。
 `REGISTRATION_ENABLED=false` 会关闭所有邀请码注册和普通用户生成邀请码，已有用户仍可登录使用。
-`WORD_FORMATTER_ENABLED=false` 时，Word 排版相关 API 不会挂载到后端和 OpenAPI 文档。数据库管理器默认可查看但不可编辑；只有同时设置 `ADMIN_DATABASE_MANAGER_ENABLED=true` 与 `ADMIN_DATABASE_WRITE_ENABLED=true` 才会开放写入操作。
+`WORD_FORMATTER_ENABLED=false` 时，Word 排版相关 API 不会挂载到后端和 OpenAPI 文档。数据库管理器默认可查看但不可编辑；只有同时设置 `ADMIN_DATABASE_MANAGER_ENABLED=true` 与 `ADMIN_DATABASE_WRITE_ENABLED=true` 才会开放写入操作。数据库管理器只暴露白名单表，敏感字段和长文本会脱敏，单页最多返回 100 条记录。
 
 ### 启动失败排查
 
@@ -226,12 +226,11 @@ chmod +x build.sh
 后端测试：
 
 ```powershell
-$env:GANKAIGC_TEST_DATABASE_URL="postgresql://ai_polish:数据库密码@127.0.0.1:5432/gankaigc_test"
 cd package/backend
 python -m pytest -q
 ```
 
-测试库名称必须包含 `test`，测试运行会清空并重建该库中的项目表。
+默认会读取 `package/.env` 的 `DATABASE_URL`，并自动把数据库名切换为 `gankaigc_test`。也可以手动设置 `GANKAIGC_TEST_DATABASE_URL` 覆盖。测试库名称必须包含 `test`，测试运行会清空并重建该库中的项目表。
 
 前端生产构建检查：
 

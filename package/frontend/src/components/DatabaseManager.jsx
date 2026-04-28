@@ -13,6 +13,9 @@ const DatabaseManager = ({ adminToken }) => {
   const [editingRecord, setEditingRecord] = useState(null);
   const [editFormData, setEditFormData] = useState({});
   const [canWrite, setCanWrite] = useState(false);
+  const [maxPageSize, setMaxPageSize] = useState(100);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [currentLimit, setCurrentLimit] = useState(0);
 
   useEffect(() => {
     fetchTables();
@@ -32,6 +35,7 @@ const DatabaseManager = ({ adminToken }) => {
       });
       setTables(response.data.tables);
       setCanWrite(Boolean(response.data.can_write));
+      setMaxPageSize(response.data.max_page_size || 100);
       if (response.data.tables.length > 0 && !selectedTable) {
         setSelectedTable(response.data.tables[0]);
       }
@@ -47,11 +51,14 @@ const DatabaseManager = ({ adminToken }) => {
     setLoading(true);
     try {
       const response = await axios.get(`/api/admin/database/${tableName}`, {
-        headers: { Authorization: `Bearer ${adminToken}` }
+        headers: { Authorization: `Bearer ${adminToken}` },
+        params: { limit: maxPageSize }
       });
       // 后端返回的是 items，不是 records
       const records = response.data.items || response.data.records || [];
       setTableData(records);
+      setTotalRecords(response.data.total || records.length);
+      setCurrentLimit(response.data.limit || records.length);
       if (records.length > 0) {
         setTableColumns(Object.keys(records[0]));
       } else {
@@ -163,12 +170,20 @@ const DatabaseManager = ({ adminToken }) => {
             <Database className="w-5 h-5 text-blue-600" />
           </div>
           <h3 className="text-lg font-bold text-gray-900">数据库管理</h3>
-          {!canWrite && (
+          {canWrite ? (
+            <span className="ml-auto px-3 py-1 text-xs font-semibold text-red-700 bg-red-50 border border-red-100 rounded-full">
+              写入已启用
+            </span>
+          ) : (
             <span className="ml-auto px-3 py-1 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-100 rounded-full">
               只读模式
             </span>
           )}
         </div>
+
+        <p className="mb-4 text-xs leading-5 text-gray-500">
+          仅展示允许查看的数据表，敏感字段和长文本会被后端脱敏；单页最多返回 {maxPageSize} 条记录。
+        </p>
 
         <div className="flex flex-col sm:flex-row gap-4 items-end mb-4">
           <div className="flex-1 w-full">
@@ -274,7 +289,10 @@ const DatabaseManager = ({ adminToken }) => {
         )}
 
         <div className="px-6 py-4 bg-gray-50/50 border-t border-gray-100 text-sm font-medium text-gray-500 flex justify-between items-center">
-          <span>共 {filteredData.length} 条记录</span>
+          <span>
+            当前显示 {filteredData.length} 条，本表共 {totalRecords} 条
+            {currentLimit ? `，单页上限 ${currentLimit} 条` : ''}
+          </span>
         </div>
       </div>
 

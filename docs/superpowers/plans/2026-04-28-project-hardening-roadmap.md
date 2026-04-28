@@ -234,7 +234,7 @@ git push
 - Test: `package/backend/tests/test_admin_database_manager.py`
 - Docs: `README.md`
 
-- [ ] **Step 1: 补安全测试**
+- [x] **Step 1: 补安全测试**
 
 覆盖：
 
@@ -245,7 +245,7 @@ git push
 - `password_hash`、`api_key`、长文本内容统一脱敏。
 - 单次查询页大小超过上限时被截断。
 
-- [ ] **Step 2: 统一脱敏函数**
+- [x] **Step 2: 统一脱敏函数**
 
 在 `admin.py` 保留一个公共函数：
 
@@ -256,15 +256,15 @@ def sanitize_db_record(record: dict) -> dict:
 
 所有数据库管理器读接口都从这个函数返回，新增敏感字段只改一处。
 
-- [ ] **Step 3: 增加查询限制**
+- [x] **Step 3: 增加查询限制**
 
 限制 `page_size` 最大值，例如 100；默认按 `id desc` 或创建时间倒序。禁止用户从前端指定任意 SQL。
 
-- [ ] **Step 4: 前端提示只读状态**
+- [x] **Step 4: 前端提示只读状态**
 
 `DatabaseManager.jsx` 显示“只读模式”或“写入已启用”，但不要展示敏感配置值。
 
-- [ ] **Step 5: 运行测试并提交**
+- [x] **Step 5: 运行测试并提交**
 
 ```powershell
 cd package/backend
