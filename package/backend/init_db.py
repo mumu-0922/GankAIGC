@@ -198,19 +198,10 @@ def main():
     print("=" * 60)
     print("\n数据库已就绪，可以启动应用")
     
-    # 显示数据库文件位置
+    # 显示数据库类型
     from app.config import settings
-    if settings.DATABASE_URL.startswith("sqlite:///"):
-        db_path = settings.DATABASE_URL.replace("sqlite:///", "", 1)
-        if db_path.startswith("./"):
-            db_path = backend_dir / db_path[2:]
-        else:
-            db_path = Path(db_path)
-        
-        if db_path.exists():
-            size_mb = db_path.stat().st_size / (1024 * 1024)
-            print(f"\n📁 数据库文件: {db_path}")
-            print(f"   大小: {size_mb:.2f} MB")
+    if settings.DATABASE_URL.startswith("postgresql"):
+        print("\n📁 数据库: PostgreSQL")
 
 
 if __name__ == "__main__":

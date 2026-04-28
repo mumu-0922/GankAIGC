@@ -67,6 +67,7 @@ cd package
 2. 解压到任意目录
 3. 首次运行会自动创建 `.env` 配置文件模板
 4. 编辑 `.env` 文件，填入必要的配置：
+   - PostgreSQL 连接地址（DATABASE_URL）
    - API Key（OPENAI_API_KEY、POLISH_API_KEY 等）
    - 管理员密码（ADMIN_PASSWORD）
    - JWT 密钥（SECRET_KEY）
@@ -75,7 +76,7 @@ cd package
 
 ### 配置文件说明
 
-`.env` 文件和数据库文件 (`ai_polish.db`) 都会保存在可执行文件同目录下，方便备份和迁移。
+`.env` 文件会保存在可执行文件同目录下。数据库只支持 PostgreSQL，请在 `.env` 中配置 `DATABASE_URL`。
 
 ### 访问地址
 
@@ -86,7 +87,7 @@ cd package
 ## 与原项目的区别
 
 1. **运行方式**：原项目需要分别启动前端和后端服务，exe 版本一键启动
-2. **配置位置**：exe 版本的 `.env` 和数据库文件在 exe 同目录
+2. **配置位置**：exe 版本的 `.env` 在 exe 同目录，数据库连接由 `DATABASE_URL` 指向 PostgreSQL
 3. **前端访问**：exe 版本前后端在同一端口，无需代理
 
 ## 技术细节
@@ -97,7 +98,7 @@ cd package
 
 ### 后端修改
 - 修改 `config.py`，支持动态获取 exe 目录下的配置文件
-- 数据库路径默认指向 exe 同目录
+- 数据库统一使用 PostgreSQL
 
 ### 统一入口
 - `main.py` 创建 FastAPI 应用

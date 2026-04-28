@@ -16,8 +16,6 @@ docs/superpowers/specs
 **/.env
 **/.env.local
 **/*.db
-**/*.sqlite
-**/*.sqlite3
 **/*.log
 backend-server*.log
 frontend-server*.log

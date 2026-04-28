@@ -73,7 +73,7 @@ Keep the existing optimization flow unchanged after the project is selected.
 
 ## Migration and Compatibility
 
-Use SQLAlchemy model changes and the existing startup table creation style. For existing SQLite development databases, add a small startup migration that creates the new table and adds missing columns if they do not exist. PostgreSQL deployment should use the same schema definitions; a later dedicated migration system can replace this.
+Use SQLAlchemy model changes and the existing startup table creation style. PostgreSQL is the only supported database; startup migrations may add missing PostgreSQL columns for existing deployments until a dedicated migration system replaces this.
 
 Existing sessions remain usable:
 

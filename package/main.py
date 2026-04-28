@@ -23,22 +23,17 @@ else:
     APP_DIR = os.path.dirname(os.path.abspath(__file__))
     STATIC_DIR = os.path.join(APP_DIR, 'static')
 
-# 设置工作目录为应用目录（确保数据库和配置文件在正确位置）
+# 设置工作目录为应用目录（确保配置文件在正确位置）
 os.chdir(APP_DIR)
 
 # 设置环境变量指向 exe 同目录的 .env 文件
 ENV_FILE = os.path.join(APP_DIR, '.env')
-DB_FILE = os.path.join(APP_DIR, 'ai_polish.db')
 os.environ['GANKAIGC_ENV_FILE'] = ENV_FILE
 
 # 加载环境变量
 if os.path.exists(ENV_FILE):
     from dotenv import load_dotenv
     load_dotenv(ENV_FILE)
-
-# 设置默认数据库路径到 exe 同目录
-if 'DATABASE_URL' not in os.environ:
-    os.environ['DATABASE_URL'] = f"sqlite:///{DB_FILE}"
 
 # 添加 backend 到 Python 路径
 backend_path = os.path.join(APP_DIR, 'backend') if not getattr(sys, 'frozen', False) else APP_DIR
@@ -171,7 +166,7 @@ async def startup_event():
     """启动时初始化"""
     print(f"\n📁 应用目录: {APP_DIR}")
     print(f"📁 配置文件: {ENV_FILE}")
-    print(f"📁 数据库文件: {DB_FILE}")
+    print("📁 数据库: PostgreSQL")
     print(f"📁 静态文件目录: {STATIC_DIR}")
     
     # 初始化数据库
@@ -484,8 +479,8 @@ def create_sample_env():
 SERVER_HOST=0.0.0.0
 SERVER_PORT=9800
 
-# 数据库配置 (SQLite 默认在 exe 同目录)
-# DATABASE_URL=sqlite:///./ai_polish.db
+# 数据库配置 (仅支持 PostgreSQL)
+DATABASE_URL=postgresql://ai_polish:replace-with-postgres-password@127.0.0.1:5432/ai_polish
 
 # Redis 配置 (用于并发控制和队列)
 REDIS_URL=redis://localhost:6379/0

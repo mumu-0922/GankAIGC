@@ -5,17 +5,21 @@ from app.config import settings
 
 
 def normalize_database_url(database_url: str) -> str:
-    if database_url.startswith("postgresql://"):
-        return database_url.replace("postgresql://", "postgresql+psycopg://", 1)
-    return database_url
+    if not database_url or not database_url.strip():
+        raise ValueError("DATABASE_URL must be a PostgreSQL URL")
+
+    normalized_url = database_url.strip()
+    if normalized_url.startswith("postgresql://"):
+        return normalized_url.replace("postgresql://", "postgresql+psycopg://", 1)
+    if normalized_url.startswith("postgresql+psycopg://"):
+        return normalized_url
+
+    raise ValueError("Only PostgreSQL DATABASE_URL values are supported")
 
 
 DATABASE_URL = normalize_database_url(settings.DATABASE_URL)
 
-engine = create_engine(
-    DATABASE_URL,
-    connect_args={"check_same_thread": False} if "sqlite" in DATABASE_URL else {}
-)
+engine = create_engine(DATABASE_URL, connect_args={"connect_timeout": 10})
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -65,113 +69,6 @@ def _add_column_safely(conn, table_name, column_name, column_def):
         return False
 
 
-def _sqlite_select_expression(existing_columns, column_name, fallback_sql, coalesce_sql=None):
-    if column_name not in existing_columns:
-        return fallback_sql
-    if coalesce_sql is not None:
-        return f"COALESCE({column_name}, {coalesce_sql})"
-    return column_name
-
-
-def _rebuild_sqlite_users_table_without_card_keys(conn, existing_columns):
-    """SQLite 通过重建 users 表来移除旧卡密字段。"""
-    column_names = [
-        "id",
-        "username",
-        "nickname",
-        "password_hash",
-        "access_link",
-        "is_active",
-        "is_unlimited",
-        "credit_balance",
-        "created_at",
-        "last_used",
-        "last_login_at",
-        "usage_limit",
-        "usage_count",
-    ]
-    select_expressions = {
-        "id": _sqlite_select_expression(existing_columns, "id", "NULL"),
-        "username": _sqlite_select_expression(existing_columns, "username", "NULL"),
-        "nickname": _sqlite_select_expression(
-            existing_columns,
-            "nickname",
-            "username" if "username" in existing_columns else "NULL",
-        ),
-        "password_hash": _sqlite_select_expression(existing_columns, "password_hash", "NULL"),
-        "access_link": _sqlite_select_expression(existing_columns, "access_link", "''"),
-        "is_active": _sqlite_select_expression(existing_columns, "is_active", "1", "1"),
-        "is_unlimited": _sqlite_select_expression(existing_columns, "is_unlimited", "0", "0"),
-        "credit_balance": _sqlite_select_expression(existing_columns, "credit_balance", "0", "0"),
-        "created_at": _sqlite_select_expression(existing_columns, "created_at", "CURRENT_TIMESTAMP"),
-        "last_used": _sqlite_select_expression(existing_columns, "last_used", "NULL"),
-        "last_login_at": _sqlite_select_expression(existing_columns, "last_login_at", "NULL"),
-        "usage_limit": _sqlite_select_expression(
-            existing_columns,
-            "usage_limit",
-            str(settings.DEFAULT_USAGE_LIMIT),
-            str(settings.DEFAULT_USAGE_LIMIT),
-        ),
-        "usage_count": _sqlite_select_expression(existing_columns, "usage_count", "0", "0"),
-    }
-    insert_columns_sql = ", ".join(column_names)
-    select_sql = ", ".join(
-        f"{expression} AS {column_name}" for column_name, expression in select_expressions.items()
-    )
-
-    try:
-        conn.commit()
-        conn.execute(text("PRAGMA foreign_keys=OFF"))
-        conn.commit()
-        conn.execute(text("DROP TABLE IF EXISTS users__migration"))
-        conn.execute(text(
-            """
-            CREATE TABLE users__migration (
-                id INTEGER PRIMARY KEY,
-                username VARCHAR(100),
-                nickname VARCHAR(100),
-                password_hash VARCHAR(255),
-                access_link VARCHAR(255) NOT NULL,
-                is_active BOOLEAN DEFAULT 1,
-                is_unlimited BOOLEAN DEFAULT 0,
-                credit_balance INTEGER DEFAULT 0,
-                created_at DATETIME,
-                last_used DATETIME,
-                last_login_at DATETIME,
-                usage_limit INTEGER DEFAULT 0,
-                usage_count INTEGER DEFAULT 0,
-                UNIQUE (username),
-                UNIQUE (access_link)
-            )
-            """
-        ))
-        conn.execute(text(
-            f"""
-            INSERT INTO users__migration ({insert_columns_sql})
-            SELECT {select_sql}
-            FROM users
-            """
-        ))
-        conn.execute(text("DROP TABLE users"))
-        conn.execute(text("ALTER TABLE users__migration RENAME TO users"))
-        conn.commit()
-        return True
-    except Exception:
-        conn.rollback()
-        try:
-            conn.execute(text("DROP TABLE IF EXISTS users__migration"))
-            conn.commit()
-        except Exception:
-            conn.rollback()
-        return False
-    finally:
-        try:
-            conn.execute(text("PRAGMA foreign_keys=ON"))
-            conn.commit()
-        except Exception:
-            conn.rollback()
-
-
 def _add_performance_indexes():
     """添加性能优化索引"""
     try:
@@ -214,7 +111,7 @@ def _add_performance_indexes():
                     if index_name in index_names:
                         continue
                     
-                    # 创建索引（SQLite 和 PostgreSQL 都支持相同语法）
+                    # 创建索引
                     conn.execute(text(
                         f"CREATE INDEX IF NOT EXISTS {index_name} ON {table_name} ({column_name})"
                     ))
@@ -311,16 +208,6 @@ def _migrate_database_schema():
             if "users" in tables:
                 user_columns = {column["name"]: column for column in inspector.get_columns("users")}
 
-                if engine.dialect.name == "sqlite" and (
-                    "card_key" in user_columns or "legacy_card_key" in user_columns
-                ):
-                    if _rebuild_sqlite_users_table_without_card_keys(conn, user_columns):
-                        print("  ✓ 重建 users 表以移除旧卡密字段")
-                        Base.metadata.create_all(bind=engine)
-                        inspector = inspect(engine)
-                        tables = inspector.get_table_names()
-                        user_columns = {column["name"]: column for column in inspector.get_columns("users")}
-
                 if "username" not in user_columns:
                     if _add_column_safely(conn, "users", "username", "VARCHAR(100)"):
                         print("  ✓ 添加字段: users.username")
@@ -334,7 +221,7 @@ def _migrate_database_schema():
                         print("  ✓ 添加字段: users.password_hash")
 
                 if "is_unlimited" not in user_columns:
-                    if _add_column_safely(conn, "users", "is_unlimited", "BOOLEAN DEFAULT 0"):
+                    if _add_column_safely(conn, "users", "is_unlimited", "BOOLEAN DEFAULT false"):
                         print("  ✓ 添加字段: users.is_unlimited")
 
                 if "credit_balance" not in user_columns:
@@ -342,7 +229,7 @@ def _migrate_database_schema():
                         print("  ✓ 添加字段: users.credit_balance")
 
                 if "last_login_at" not in user_columns:
-                    if _add_column_safely(conn, "users", "last_login_at", "DATETIME"):
+                    if _add_column_safely(conn, "users", "last_login_at", "TIMESTAMP"):
                         print("  ✓ 添加字段: users.last_login_at")
 
                 if "usage_limit" not in user_columns:
@@ -359,7 +246,7 @@ def _migrate_database_schema():
                         print("  ✓ 添加字段: users.usage_count")
 
                 try:
-                    conn.execute(text("UPDATE users SET is_unlimited = 0 WHERE is_unlimited IS NULL"))
+                    conn.execute(text("UPDATE users SET is_unlimited = false WHERE is_unlimited IS NULL"))
                     conn.execute(text("UPDATE users SET credit_balance = 0 WHERE credit_balance IS NULL"))
                     conn.execute(text("UPDATE users SET nickname = username WHERE nickname IS NULL AND username IS NOT NULL"))
                     conn.execute(
@@ -376,18 +263,18 @@ def _migrate_database_schema():
                 segment_columns = {column["name"] for column in inspector.get_columns("optimization_segments")}
 
                 if "is_title" not in segment_columns:
-                    if _add_column_safely(conn, "optimization_segments", "is_title", "BOOLEAN DEFAULT 0"):
+                    if _add_column_safely(conn, "optimization_segments", "is_title", "BOOLEAN DEFAULT false"):
                         print("  ✓ 添加字段: optimization_segments.is_title")
 
             if "custom_prompts" in tables:
                 prompt_columns = {column["name"] for column in inspector.get_columns("custom_prompts")}
 
                 if "is_system" not in prompt_columns:
-                    if _add_column_safely(conn, "custom_prompts", "is_system", "BOOLEAN DEFAULT 0"):
+                    if _add_column_safely(conn, "custom_prompts", "is_system", "BOOLEAN DEFAULT false"):
                         print("  ✓ 添加字段: custom_prompts.is_system")
 
                 if "is_active" not in prompt_columns:
-                    if _add_column_safely(conn, "custom_prompts", "is_active", "BOOLEAN DEFAULT 1"):
+                    if _add_column_safely(conn, "custom_prompts", "is_active", "BOOLEAN DEFAULT true"):
                         print("  ✓ 添加字段: custom_prompts.is_active")
 
             if "registration_invites" in tables:

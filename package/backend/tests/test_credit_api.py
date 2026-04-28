@@ -1,8 +1,5 @@
 from datetime import UTC, datetime
 
-from sqlalchemy import create_engine, inspect, text
-
-import app.database as database_module
 from app.database import Base
 from app.models.models import User
 from app.schemas import UserCreate, UserResponse
@@ -59,81 +56,6 @@ def test_user_schemas_do_not_expose_card_key_fields():
 
     assert response.username == "new-account"
     assert response.nickname == "New Account"
-
-
-def test_sqlite_user_migration_removes_legacy_card_key_columns(tmp_path, monkeypatch):
-    db_path = tmp_path / "legacy-users.db"
-    temp_engine = create_engine(
-        f"sqlite:///{db_path}",
-        connect_args={"check_same_thread": False},
-    )
-
-    with temp_engine.begin() as conn:
-        conn.execute(
-            text(
-                """
-                CREATE TABLE users (
-                    id INTEGER PRIMARY KEY,
-                    card_key VARCHAR(255) NOT NULL,
-                    access_link VARCHAR(255) NOT NULL,
-                    is_active BOOLEAN DEFAULT 1,
-                    created_at DATETIME,
-                    last_used DATETIME,
-                    usage_limit INTEGER DEFAULT 100,
-                    usage_count INTEGER DEFAULT 0
-                )
-                """
-            )
-        )
-        conn.execute(
-            text(
-                """
-                INSERT INTO users (id, card_key, access_link, is_active, created_at, last_used, usage_limit, usage_count)
-                VALUES (1, 'LEGACY-KEY', 'http://testserver/access/legacy', 1, '2026-04-24 00:00:00', NULL, 7, 2)
-                """
-            )
-        )
-
-    monkeypatch.setattr(database_module, "engine", temp_engine)
-
-    database_module._migrate_database_schema()
-
-    inspector = inspect(temp_engine)
-    user_columns = {column["name"]: column for column in inspector.get_columns("users")}
-
-    assert "card_key" not in user_columns
-    assert "legacy_card_key" not in user_columns
-    assert "nickname" in user_columns
-    assert {"registration_invites", "credit_codes", "credit_transactions", "user_provider_configs"}.issubset(
-        set(inspector.get_table_names())
-    )
-
-    with temp_engine.begin() as conn:
-        legacy_user = conn.execute(
-            text("SELECT id, access_link, usage_limit, usage_count FROM users WHERE id = 1")
-        ).mappings().one()
-        assert legacy_user["access_link"] == "http://testserver/access/legacy"
-        assert legacy_user["usage_limit"] == 7
-        assert legacy_user["usage_count"] == 2
-
-        conn.execute(
-            text(
-                """
-                INSERT INTO users (
-                    id, username, nickname, access_link, is_active, created_at, usage_limit, usage_count
-                ) VALUES (
-                    2, 'new-account', 'New Account', 'http://testserver/access/new', 1, '2026-04-24 00:00:01', 0, 0
-                )
-                """
-            )
-        )
-        migrated_user = conn.execute(
-            text("SELECT id, username, nickname FROM users WHERE id = 2")
-        ).mappings().one()
-
-    temp_engine.dispose()
-    assert migrated_user["username"] == "new-account"
-    assert migrated_user["nickname"] == "New Account"
 
 
 def _create_user(db, username="alice", credit_balance=0, is_unlimited=False):

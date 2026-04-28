@@ -6,7 +6,7 @@
 
 **Architecture:** Add a `PaperProject` SQLAlchemy model and nullable project linkage on optimization sessions. Expose user-authenticated project CRUD APIs and extend optimization start/list responses with project fields. Update the workspace UI to create/select projects and filter history by project.
 
-**Tech Stack:** FastAPI, SQLAlchemy, Pydantic, SQLite/PostgreSQL-compatible schema, React, Axios, Vite.
+**Tech Stack:** FastAPI, SQLAlchemy, Pydantic, PostgreSQL schema, React, Axios, Vite.
 
 ---
 
@@ -14,7 +14,7 @@
 
 - Modify `package/backend/app/models/models.py`: add `PaperProject`, relationships, and `OptimizationSession.project_id/task_title`.
 - Modify `package/backend/app/schemas.py`: add project request/response schemas and extend optimization schemas.
-- Modify `package/backend/app/database.py`: startup migration for missing table/columns in existing SQLite/PostgreSQL deployments.
+- Modify `package/backend/app/database.py`: startup migration for missing tables/columns in existing PostgreSQL deployments.
 - Modify `package/backend/app/routes/user.py`: project CRUD endpoints.
 - Modify `package/backend/app/routes/optimization.py`: accept project id/task title, validate ownership, filter session list.
 - Modify `package/frontend/src/api/index.js`: add project API helpers and pass project filters.

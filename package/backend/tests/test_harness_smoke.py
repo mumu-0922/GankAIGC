@@ -1,3 +1,4 @@
+import pytest
 from sqlalchemy import inspect
 
 import app.database as database_module
@@ -80,4 +81,8 @@ def test_normalize_database_url_uses_psycopg_for_plain_postgres_urls():
     assert database_module.normalize_database_url("postgresql+psycopg://user:pass@localhost/dbname") == (
         "postgresql+psycopg://user:pass@localhost/dbname"
     )
-    assert database_module.normalize_database_url("sqlite:///test.db") == "sqlite:///test.db"
+
+
+def test_database_url_rejects_non_postgresql_urls():
+    with pytest.raises(ValueError, match="PostgreSQL"):
+        database_module.normalize_database_url("mysql://user:pass@localhost/dbname")

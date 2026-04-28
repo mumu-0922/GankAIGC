@@ -2,27 +2,20 @@ import atexit
 import os
 from pathlib import Path
 import sys
-import tempfile
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy.engine import make_url
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
-TEST_DB_FD, TEST_DB_PATH = tempfile.mkstemp(suffix=".db")
-os.close(TEST_DB_FD)
 _ORIGINAL_ENV = {
     "DATABASE_URL": os.environ.get("DATABASE_URL"),
     "SECRET_KEY": os.environ.get("SECRET_KEY"),
     "ADMIN_PASSWORD": os.environ.get("ADMIN_PASSWORD"),
 }
-
-
-def _cleanup_test_db():
-    if os.path.exists(TEST_DB_PATH):
-        os.unlink(TEST_DB_PATH)
 
 
 def _restore_env():
@@ -33,10 +26,17 @@ def _restore_env():
             os.environ[key] = value
 
 
-atexit.register(_cleanup_test_db)
 atexit.register(_restore_env)
 
-os.environ["DATABASE_URL"] = "sqlite:///" + TEST_DB_PATH
+TEST_DATABASE_URL = os.environ.get(
+    "GANKAIGC_TEST_DATABASE_URL",
+    "postgresql://ai_polish:postgres@127.0.0.1:5432/gankaigc_test",
+)
+test_database_name = make_url(TEST_DATABASE_URL).database or ""
+if "test" not in test_database_name.lower():
+    raise RuntimeError("GANKAIGC_TEST_DATABASE_URL must point to a dedicated PostgreSQL test database")
+
+os.environ["DATABASE_URL"] = TEST_DATABASE_URL
 os.environ["SECRET_KEY"] = "test-secret-key"
 os.environ["ADMIN_PASSWORD"] = "test-admin-password"
 
@@ -63,4 +63,3 @@ def client():
 def pytest_sessionfinish(session, exitstatus):
     engine.dispose()
     _restore_env()
-    _cleanup_test_db()

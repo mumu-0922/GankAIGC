@@ -25,10 +25,11 @@ PLACEHOLDER_MARKERS = (
 )
 MIN_SECRET_KEY_LENGTH = 16
 MIN_ADMIN_PASSWORD_LENGTH = 8
+DEFAULT_DATABASE_URL = "postgresql://ai_polish:postgres@127.0.0.1:5432/ai_polish"
 
 
 def get_exe_dir():
-    """获取 exe 所在目录，用于定位 .env 和数据库文件"""
+    """获取 exe 所在目录，用于定位 .env 文件"""
     if getattr(sys, 'frozen', False):
         # 运行在 PyInstaller 打包的 exe 中
         return os.path.dirname(sys.executable)
@@ -45,13 +46,6 @@ def get_env_file_path():
     return os.path.join(get_exe_dir(), '.env')
 
 
-def get_default_database_url():
-    """获取默认数据库 URL，指向 exe 同目录"""
-    exe_dir = get_exe_dir()
-    db_path = os.path.join(exe_dir, 'ai_polish.db')
-    return f"sqlite:///{db_path}"
-
-
 class Settings(BaseSettings):
     # 服务器配置
     SERVER_HOST: str = "0.0.0.0"
@@ -60,8 +54,8 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: str = "http://localhost:9800"
     AUTO_OPEN_BROWSER: bool = True
 
-    # 数据库配置 - 默认使用 exe 同目录
-    DATABASE_URL: str = get_default_database_url()
+    # 数据库配置 - 仅支持 PostgreSQL
+    DATABASE_URL: str = DEFAULT_DATABASE_URL
     
     # Redis 配置
     REDIS_URL: str = "redis://IP:6379/0"

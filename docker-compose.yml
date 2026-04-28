@@ -14,9 +14,8 @@ services:
       SERVER_PORT: 9800
       APP_ENV: production
       AUTO_OPEN_BROWSER: "false"
-    command: >
-      sh -c 'export DATABASE_URL="postgresql://ai_polish:$${POSTGRES_PASSWORD}@postgres:5432/ai_polish";
-      python main.py'
+      DATABASE_URL: postgresql://ai_polish:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.docker}@postgres:5432/ai_polish
+    command: python main.py
     ports:
       - "${APP_PORT:-9800}:9800"
     depends_on:
