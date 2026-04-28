@@ -271,10 +271,10 @@ const AdminDashboard = () => {
         { is_unlimited: !user.is_unlimited },
         { headers: { Authorization: `Bearer ${adminToken}` } }
       );
-      toast.success(user.is_unlimited ? '已取消无限调用' : '已设为无限调用');
+      toast.success(user.is_unlimited ? '已取消无限额度' : '已设为无限额度');
       fetchAccountData();
     } catch (error) {
-      toast.error(error.response?.data?.detail || '更新无限调用状态失败');
+      toast.error(error.response?.data?.detail || '更新无限额度状态失败');
     }
   };
 
@@ -739,7 +739,7 @@ const AdminDashboard = () => {
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900">额度兑换码</h3>
-                    <p className="text-xs text-gray-500">用户兑换后增加平台处理额度</p>
+                    <p className="text-xs text-gray-500">用户兑换后增加平台千字额度</p>
                   </div>
                 </div>
 
@@ -818,7 +818,7 @@ const AdminDashboard = () => {
               <div className="p-6 border-b border-gray-200 flex items-center justify-between">
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900">用户额度余额</h3>
-                  <p className="text-xs text-gray-500 mt-1">管理员可给平台模式充值额度，或给账号开启无限调用</p>
+                  <p className="text-xs text-gray-500 mt-1">管理员可给平台模式充值千字额度，或给账号开启无限额度</p>
                 </div>
                 {loadingAccountData && <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />}
               </div>
@@ -853,7 +853,7 @@ const AdminDashboard = () => {
                                 : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
                             }`}
                           >
-                            {user.is_unlimited ? '无限调用' : '按额度'}
+                            {user.is_unlimited ? '无限额度' : '按千字额度'}
                           </button>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">

@@ -378,7 +378,7 @@ const WorkspacePage = () => {
     }
 
     if (billingMode === 'platform' && credits && !credits.is_unlimited && credits.credit_balance < estimatedCredits) {
-      toast.error(`平台剩余额度不足，本次需要 ${estimatedCredits} 额度，当前剩余 ${credits.credit_balance ?? 0} 额度`);
+      toast.error(`平台千字额度不足，本次需要 ${estimatedCredits} 千字额度，当前剩余 ${credits.credit_balance ?? 0} 千字额度`);
       return;
     }
 
@@ -592,12 +592,15 @@ const WorkspacePage = () => {
                     />
                     <span className="font-semibold text-black">平台模式</span>
                     <p className="text-xs text-gray-500 mt-1">
-                      剩余 {credits?.is_unlimited ? '无限' : `${credits?.credit_balance ?? '-'} 额度`}
+                      剩余 {credits?.is_unlimited ? '无限额度' : `${credits?.credit_balance ?? '-'} 千字额度`}
                       {text.trim() && (
                         <span className="block mt-0.5 text-amber-600">
-                          预计消耗 {estimatedCredits} 额度
+                          预计消耗 {estimatedCredits} 千字额度
                         </span>
                       )}
+                      <span className="block mt-0.5 text-gray-400">
+                        1000 非空白字符 = 1 额度，综合模式按两阶段计费
+                      </span>
                     </p>
                   </label>
                   <label

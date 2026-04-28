@@ -56,16 +56,19 @@ const CreditsPage = () => {
       <main className="max-w-5xl mx-auto px-4 py-8">
         <div className="mb-6">
           <p className="text-sm font-semibold text-teal-600">兑换额度</p>
-          <h1 className="text-3xl font-bold text-slate-950 mt-1">平台处理额度</h1>
+          <h1 className="text-3xl font-bold text-slate-950 mt-1">平台千字额度</h1>
+          <p className="text-sm text-slate-500 mt-2">
+            1 额度约处理 1000 个非空白字符；润色 + 增强按两阶段消耗。
+          </p>
         </div>
         <div className="grid lg:grid-cols-[0.85fr_1.15fr] gap-6">
           <section className="gank-glass-card rounded-[2rem] p-6">
             <div className="gank-icon-tile w-12 h-12 rounded-2xl flex items-center justify-center mb-4">
               <Coins className="w-6 h-6" />
             </div>
-            <p className="text-slate-500 text-sm">当前剩余额度</p>
+            <p className="text-slate-500 text-sm">当前剩余千字额度</p>
             <h1 className="text-5xl font-black text-slate-950 mt-2">
-              {credits?.is_unlimited ? '无限' : credits?.credit_balance ?? '-'}
+              {credits?.is_unlimited ? '无限额度' : credits?.credit_balance ?? '-'}
             </h1>
 
             <form onSubmit={handleRedeem} className="mt-6 space-y-3">

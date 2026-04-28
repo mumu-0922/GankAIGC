@@ -12,6 +12,7 @@ def test_user_menu_exposes_explicit_redeem_entry():
     user_menu = (FRONTEND_SRC / "components" / "UserMenu.jsx").read_text(encoding="utf-8")
 
     assert "兑换额度" in user_menu
+    assert "千字额度" in user_menu
     assert user_menu.count('to="/credits"') == 1
 
 
@@ -122,12 +123,15 @@ def test_admin_dashboard_hides_legacy_card_key_management():
 
     assert "额度兑换码" in admin_dashboard
     assert "用户额度余额" in admin_dashboard
+    assert "按千字额度" in admin_dashboard
+    assert "无限额度" in admin_dashboard
     assert "邀请码、兑换码和用户余额统一在这里管理。" not in admin_dashboard
     assert "前往管理" not in admin_dashboard
     assert "生成卡密" not in admin_dashboard
     assert "批量生成" not in admin_dashboard
     assert "使用次数" not in admin_dashboard
     assert "账号次数" not in admin_dashboard
+    assert "无限调用" not in admin_dashboard
     assert "/api/admin/card-keys" not in admin_dashboard
     assert "/api/admin/batch-generate-keys" not in admin_dashboard
     assert "/api/admin/users/${userId}/usage" not in admin_dashboard
@@ -221,6 +225,26 @@ def test_word_formatter_uses_platform_credits_or_user_api_not_legacy_card_key():
     assert "已使用:" not in page
     assert "使用量:" not in spec_page
     assert "使用量:" not in preprocess_page
+
+
+def test_workspace_and_credits_explain_character_based_credit_billing():
+    workspace = (FRONTEND_SRC / "pages" / "WorkspacePage.jsx").read_text(encoding="utf-8")
+    credits_page = (FRONTEND_SRC / "pages" / "CreditsPage.jsx").read_text(encoding="utf-8")
+    profile_page = (FRONTEND_SRC / "pages" / "ProfilePage.jsx").read_text(encoding="utf-8")
+    welcome_page = (FRONTEND_SRC / "pages" / "WelcomePage.jsx").read_text(encoding="utf-8")
+    readme = (PACKAGE_ROOT.parent / "README.md").read_text(encoding="utf-8")
+
+    assert "1000 非空白字符 = 1 额度" in workspace
+    assert "预计消耗 {estimatedCredits} 千字额度" in workspace
+    assert "平台千字额度不足" in workspace
+    assert "平台千字额度" in credits_page
+    assert "1000 个非空白字符" in credits_page
+    assert "剩余千字额度" in profile_page
+    assert "按千字额度使用" in welcome_page
+    assert "兑换码充值额度" in readme
+    assert "平台模式按字符折算额度" in readme
+    assert "兑换码充值次数" not in readme
+    assert "平台次数模式" not in readme
 
 
 def test_frontend_exposes_profile_page_and_nickname_update():

@@ -398,7 +398,7 @@ const FormatCheckerPage = () => {
           <div className="flex items-center gap-4">
             {usage && (
               <div className="hidden md:block gank-topbar-pill rounded-xl px-3 py-1.5 text-sm text-gray-600">
-                使用量: {usage.usage_count}/{usage.usage_limit > 0 ? usage.usage_limit : '∞'}
+                平台额度: {usage.is_unlimited ? '无限额度' : `${usage.credit_balance ?? 0} 千字额度`}
               </div>
             )}
             {selectedSpec && (

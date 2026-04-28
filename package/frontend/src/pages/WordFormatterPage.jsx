@@ -378,7 +378,7 @@ const WordFormatterPage = () => {
               {usage && (
                 <div className="hidden sm:block gank-topbar-pill rounded-xl px-3 py-1.5 text-[13px] text-slate-600">
                   平台额度: <span className="font-medium text-black">
-                    {usage.is_unlimited ? '无限' : `${usage.credit_balance ?? 0} 额度`}
+                    {usage.is_unlimited ? '无限额度' : `${usage.credit_balance ?? 0} 千字额度`}
                   </span>
                 </div>
               )}
@@ -680,7 +680,7 @@ Deep Learning; Image Recognition; Convolutional Neural Network
                     平台额度
                   </div>
                   <p className="mt-1 text-[12px] text-gray-500">
-                    剩余 {usage?.is_unlimited ? '无限' : `${usage?.credit_balance ?? '-'} 额度`}
+                    剩余 {usage?.is_unlimited ? '无限额度' : `${usage?.credit_balance ?? '-'} 千字额度`}
                   </p>
                 </button>
 

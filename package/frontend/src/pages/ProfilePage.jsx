@@ -136,10 +136,10 @@ const ProfilePage = () => {
                 <div className="gank-card rounded-2xl p-5">
                   <div className="flex items-center gap-2 text-teal-700 mb-3">
                     <Coins className="w-5 h-5" />
-                    <span className="font-semibold">剩余额度</span>
+                    <span className="font-semibold">剩余千字额度</span>
                   </div>
                   <p className="text-3xl font-bold text-gray-950">
-                    {profile?.is_unlimited ? '无限' : profile?.credit_balance ?? 0}
+                    {profile?.is_unlimited ? '无限额度' : profile?.credit_balance ?? 0}
                   </p>
                 </div>
                 <div className="gank-card rounded-2xl p-5">

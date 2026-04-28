@@ -520,7 +520,7 @@ const ArticlePreprocessorPage = () => {
           <div className="flex items-center gap-4">
             {usage && (
               <div className="hidden md:block gank-topbar-pill rounded-xl px-3 py-1.5 text-sm text-gray-600">
-                平台额度: {usage.is_unlimited ? '无限' : `${usage.credit_balance ?? 0} 额度`}
+                平台额度: {usage.is_unlimited ? '无限额度' : `${usage.credit_balance ?? 0} 千字额度`}
               </div>
             )}
             {selectedSpec && (
@@ -654,7 +654,7 @@ const ArticlePreprocessorPage = () => {
                     平台额度
                   </div>
                   <p className="mt-1 text-[12px] text-gray-500">
-                    剩余 {usage?.is_unlimited ? '无限' : `${usage?.credit_balance ?? '-'} 额度`}
+                    剩余 {usage?.is_unlimited ? '无限额度' : `${usage?.credit_balance ?? '-'} 千字额度`}
                   </p>
                 </button>
 

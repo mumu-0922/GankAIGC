@@ -33,7 +33,7 @@ const featureCards = [
   },
   {
     title: '账号体系',
-    desc: '注册登录后按额度使用，也可配置自带 API',
+    desc: '注册登录后按千字额度使用，也可配置自带 API',
     icon: KeyRound,
     accent: 'text-violet-600 bg-violet-50',
   },

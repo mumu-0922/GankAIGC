@@ -36,7 +36,7 @@ const UserMenu = ({ credits }) => {
           className="hidden sm:flex items-center gap-1.5 gank-topbar-pill text-slate-700 px-3 py-1.5 rounded-xl text-sm font-semibold"
         >
           <Coins className="w-4 h-4 text-teal-600" />
-          {credits.is_unlimited ? '无限' : `${credits.credit_balance} 额度`}
+          {credits.is_unlimited ? '无限额度' : `${credits.credit_balance} 千字额度`}
         </div>
       )}
       <Link
