@@ -523,6 +523,45 @@ def test_admin_session_lists_include_user_identity(client):
     assert active_session["user_display_name"] == "Alice Chen"
 
 
+def test_admin_statistics_count_all_processing_modes(client):
+    from app.database import SessionLocal
+    from app.models.models import OptimizationSession, User
+
+    db = SessionLocal()
+    try:
+        user = User(
+            username="mode_owner",
+            nickname="Mode Owner",
+            access_link="http://testserver/access/mode-owner",
+        )
+        db.add(user)
+        db.flush()
+        for mode in ("paper_polish", "paper_enhance", "paper_polish_enhance", "emotion_polish"):
+            db.add(
+                OptimizationSession(
+                    user_id=user.id,
+                    session_id=f"stats-{mode}",
+                    original_text="统计模式文本",
+                    status="completed",
+                    processing_mode=mode,
+                    total_segments=1,
+                )
+            )
+        db.commit()
+    finally:
+        db.close()
+
+    headers = _admin_auth_headers(client)
+    response = client.get("/api/admin/statistics", headers=headers)
+
+    assert response.status_code == 200
+    processing = response.json()["processing"]
+    assert processing["paper_polish_count"] == 1
+    assert processing["paper_enhance_count"] == 1
+    assert processing["paper_polish_enhance_count"] == 1
+    assert processing["emotion_polish_count"] == 1
+
+
 def test_crypto_helpers_round_trip_with_test_fernet_key(monkeypatch):
     monkeypatch.setattr(config_module.settings, "ENCRYPTION_KEY", Fernet.generate_key().decode())
 

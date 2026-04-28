@@ -145,6 +145,20 @@ def test_admin_dashboard_does_not_duplicate_session_monitor_status_metrics():
     assert "平均输入规模" in admin_dashboard
 
 
+def test_admin_dashboard_shows_all_processing_mode_counts():
+    admin_dashboard = (FRONTEND_SRC / "pages" / "AdminDashboard.jsx").read_text(encoding="utf-8")
+
+    assert "data-admin-processing-modes" in admin_dashboard
+    assert "论文润色" in admin_dashboard
+    assert "论文增强" in admin_dashboard
+    assert "润色 + 增强" in admin_dashboard
+    assert "感情文章润色" in admin_dashboard
+    assert "processingStats.paper_polish_count" in admin_dashboard
+    assert "processingStats.paper_enhance_count" in admin_dashboard
+    assert "processingStats.paper_polish_enhance_count" in admin_dashboard
+    assert "processingStats.emotion_polish_count" in admin_dashboard
+
+
 def test_admin_dashboard_uses_left_sidebar_navigation():
     admin_dashboard = (FRONTEND_SRC / "pages" / "AdminDashboard.jsx").read_text(encoding="utf-8")
 

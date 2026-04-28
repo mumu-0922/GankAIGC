@@ -536,7 +536,7 @@ const AdminDashboard = () => {
                 {statistics.processing && (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                     {/* Total Characters Processed */}
-                    <div className="bg-white rounded-2xl shadow-ios p-6">
+                    <div className="bg-white rounded-2xl shadow-ios p-6 lg:col-span-2">
                       <div className="flex items-center justify-between mb-4">
                         <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
                           <BarChart3 className="w-5 h-5 text-blue-600" />
@@ -550,7 +550,7 @@ const AdminDashboard = () => {
                     </div>
 
                     {/* Average Processing Time */}
-                    <div className="bg-white rounded-2xl shadow-ios p-6">
+                    <div className="bg-white rounded-2xl shadow-ios p-6 lg:col-span-2">
                       <div className="flex items-center justify-between mb-4">
                         <div className="w-10 h-10 bg-orange-50 rounded-lg flex items-center justify-center">
                           <Clock className="w-5 h-5 text-orange-600" />
@@ -564,30 +564,56 @@ const AdminDashboard = () => {
                       </p>
                     </div>
 
-                    <div className="bg-white rounded-2xl shadow-ios p-6">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="w-10 h-10 bg-teal-50 rounded-lg flex items-center justify-center">
-                          <FileText className="w-5 h-5 text-teal-600" />
+                    <div className="bg-white rounded-2xl shadow-ios p-6 md:col-span-2 lg:col-span-4" data-admin-processing-modes>
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-5">
+                        <div>
+                          <p className="text-sm font-medium text-gray-500 mb-1">模式统计</p>
+                          <h3 className="text-lg font-bold text-gray-900">4 种降 AI 模式统计</h3>
                         </div>
-                        <span className="text-xs font-medium text-gray-400">计数</span>
+                        <span className="text-xs font-medium text-gray-400">累计</span>
                       </div>
-                      <p className="text-sm font-medium text-gray-500 mb-1">论文润色</p>
-                      <p className="text-2xl font-bold text-gray-900 tracking-tight">
-                        {formatAdminNumber(processingStats.paper_polish_count)}
-                      </p>
-                    </div>
 
-                    <div className="bg-white rounded-2xl shadow-ios p-6">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="w-10 h-10 bg-rose-50 rounded-lg flex items-center justify-center">
-                          <TrendingUp className="w-5 h-5 text-rose-600" />
+                      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+                        <div className="rounded-2xl border border-teal-100 bg-teal-50/70 p-4">
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm font-medium text-teal-700">论文润色</p>
+                            <FileText className="w-5 h-5 text-teal-600" />
+                          </div>
+                          <p className="text-2xl font-bold text-gray-900 mt-3">
+                            {formatAdminNumber(processingStats.paper_polish_count)}
+                          </p>
                         </div>
-                        <span className="text-xs font-medium text-gray-400">计数</span>
+
+                        <div className="rounded-2xl border border-blue-100 bg-blue-50/70 p-4">
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm font-medium text-blue-700">论文增强</p>
+                            <TrendingUp className="w-5 h-5 text-blue-600" />
+                          </div>
+                          <p className="text-2xl font-bold text-gray-900 mt-3">
+                            {formatAdminNumber(processingStats.paper_enhance_count)}
+                          </p>
+                        </div>
+
+                        <div className="rounded-2xl border border-rose-100 bg-rose-50/70 p-4">
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm font-medium text-rose-700">润色 + 增强</p>
+                            <CheckCircle className="w-5 h-5 text-rose-600" />
+                          </div>
+                          <p className="text-2xl font-bold text-gray-900 mt-3">
+                            {formatAdminNumber(processingStats.paper_polish_enhance_count)}
+                          </p>
+                        </div>
+
+                        <div className="rounded-2xl border border-violet-100 bg-violet-50/70 p-4">
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm font-medium text-violet-700">感情文章润色</p>
+                            <Activity className="w-5 h-5 text-violet-600" />
+                          </div>
+                          <p className="text-2xl font-bold text-gray-900 mt-3">
+                            {formatAdminNumber(processingStats.emotion_polish_count)}
+                          </p>
+                        </div>
                       </div>
-                      <p className="text-sm font-medium text-gray-500 mb-1">润色 + 增强</p>
-                      <p className="text-2xl font-bold text-gray-900 tracking-tight">
-                        {formatAdminNumber(processingStats.paper_polish_enhance_count)}
-                      </p>
                     </div>
 
                     <div className="bg-white rounded-2xl shadow-ios p-6 md:col-span-2 lg:col-span-4" data-admin-processing-summary>

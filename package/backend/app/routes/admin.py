@@ -410,6 +410,10 @@ async def get_statistics(_: str = Depends(get_admin_from_token), db: Session = D
     paper_polish_count = db.query(OptimizationSession).filter(
         OptimizationSession.processing_mode == "paper_polish"
     ).count() or 0
+
+    paper_enhance_count = db.query(OptimizationSession).filter(
+        OptimizationSession.processing_mode == "paper_enhance"
+    ).count() or 0
     
     paper_polish_enhance_count = db.query(OptimizationSession).filter(
         OptimizationSession.processing_mode == "paper_polish_enhance"
@@ -462,6 +466,7 @@ async def get_statistics(_: str = Depends(get_admin_from_token), db: Session = D
             "total_chars_processed": total_original_chars,
             "avg_processing_time": round(avg_processing_time, 2),
             "paper_polish_count": paper_polish_count,
+            "paper_enhance_count": paper_enhance_count,
             "paper_polish_enhance_count": paper_polish_enhance_count,
             "emotion_polish_count": emotion_polish_count,
         },
