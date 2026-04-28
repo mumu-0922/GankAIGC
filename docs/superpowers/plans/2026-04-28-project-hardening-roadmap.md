@@ -347,7 +347,7 @@ git push
 - Modify: `README.md`
 - Modify: `.gitignore`
 
-- [ ] **Step 1: 编写备份脚本**
+- [x] **Step 1: 编写备份脚本**
 
 PowerShell 脚本使用 `pg_dump`，输出文件名：
 
@@ -357,11 +357,11 @@ gankaigc_ai_polish_YYYYMMDD_HHMMSS.dump
 
 脚本读取环境变量 `DATABASE_URL`，不在脚本中写死密码。
 
-- [ ] **Step 2: 编写恢复脚本**
+- [x] **Step 2: 编写恢复脚本**
 
 恢复脚本使用 `pg_restore --clean --if-exists`，要求用户显式传入 dump 文件路径。
 
-- [ ] **Step 3: 编写运维文档**
+- [x] **Step 3: 编写运维文档**
 
 `docs/postgresql-operations.md` 包含：
 
@@ -372,14 +372,14 @@ gankaigc_ai_polish_YYYYMMDD_HHMMSS.dump
 - 恢复命令。
 - 常见错误：密码错误、端口占用、数据库不存在。
 
-- [ ] **Step 4: 验证脚本语法**
+- [x] **Step 4: 验证脚本语法**
 
 ```powershell
 PowerShell -NoProfile -ExecutionPolicy Bypass -File scripts/backup-postgres.ps1 -WhatIf
 PowerShell -NoProfile -ExecutionPolicy Bypass -File scripts/restore-postgres.ps1 -Help
 ```
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```powershell
 git add docs/postgresql-operations.md scripts README.md .gitignore

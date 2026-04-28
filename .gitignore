@@ -12,6 +12,11 @@ ENV/
 # Database
 *.db
 
+# Backups
+backups/
+*.dump
+*.backup
+
 # Environment
 .env
 .env.local
