@@ -14,12 +14,14 @@ def test_user_model_exposes_account_credit_and_provider_tables():
         "username",
         "nickname",
         "password_hash",
-        "legacy_card_key",
         "is_unlimited",
         "credit_balance",
         "last_login_at",
     ):
         assert hasattr(User, field_name)
+
+    assert not hasattr(User, "card_key")
+    assert not hasattr(User, "legacy_card_key")
 
     metadata_tables = set(Base.metadata.tables)
     for table_name in (
@@ -31,18 +33,19 @@ def test_user_model_exposes_account_credit_and_provider_tables():
         assert table_name in metadata_tables
 
 
-def test_user_schemas_allow_non_card_key_accounts():
+def test_user_schemas_do_not_expose_card_key_fields():
     user_create = UserCreate(access_link="http://testserver/access/account", username="new-account")
 
-    assert user_create.card_key is None
+    assert "card_key" not in UserCreate.model_fields
+    assert "legacy_card_key" not in UserCreate.model_fields
+    assert "card_key" not in UserResponse.model_fields
+    assert "legacy_card_key" not in UserResponse.model_fields
     assert user_create.username == "new-account"
 
     response = UserResponse(
         id=1,
-        card_key=None,
         username="new-account",
         nickname="New Account",
-        legacy_card_key=None,
         access_link="http://testserver/access/account",
         is_active=True,
         is_unlimited=False,
@@ -54,12 +57,11 @@ def test_user_schemas_allow_non_card_key_accounts():
         usage_count=0,
     )
 
-    assert response.card_key is None
     assert response.username == "new-account"
     assert response.nickname == "New Account"
 
 
-def test_sqlite_user_migration_rebuilds_legacy_table_for_nullable_card_key(tmp_path, monkeypatch):
+def test_sqlite_user_migration_removes_legacy_card_key_columns(tmp_path, monkeypatch):
     db_path = tmp_path / "legacy-users.db"
     temp_engine = create_engine(
         f"sqlite:///{db_path}",
@@ -99,7 +101,8 @@ def test_sqlite_user_migration_rebuilds_legacy_table_for_nullable_card_key(tmp_p
     inspector = inspect(temp_engine)
     user_columns = {column["name"]: column for column in inspector.get_columns("users")}
 
-    assert user_columns["card_key"]["nullable"] is True
+    assert "card_key" not in user_columns
+    assert "legacy_card_key" not in user_columns
     assert "nickname" in user_columns
     assert {"registration_invites", "credit_codes", "credit_transactions", "user_provider_configs"}.issubset(
         set(inspector.get_table_names())
@@ -107,9 +110,8 @@ def test_sqlite_user_migration_rebuilds_legacy_table_for_nullable_card_key(tmp_p
 
     with temp_engine.begin() as conn:
         legacy_user = conn.execute(
-            text("SELECT id, card_key, access_link, usage_limit, usage_count FROM users WHERE id = 1")
+            text("SELECT id, access_link, usage_limit, usage_count FROM users WHERE id = 1")
         ).mappings().one()
-        assert legacy_user["card_key"] == "LEGACY-KEY"
         assert legacy_user["access_link"] == "http://testserver/access/legacy"
         assert legacy_user["usage_limit"] == 7
         assert legacy_user["usage_count"] == 2
@@ -118,21 +120,20 @@ def test_sqlite_user_migration_rebuilds_legacy_table_for_nullable_card_key(tmp_p
             text(
                 """
                 INSERT INTO users (
-                    id, card_key, username, nickname, access_link, is_active, created_at, usage_limit, usage_count
+                    id, username, nickname, access_link, is_active, created_at, usage_limit, usage_count
                 ) VALUES (
-                    2, NULL, 'new-account', 'New Account', 'http://testserver/access/new', 1, '2026-04-24 00:00:01', 0, 0
+                    2, 'new-account', 'New Account', 'http://testserver/access/new', 1, '2026-04-24 00:00:01', 0, 0
                 )
                 """
             )
         )
         migrated_user = conn.execute(
-            text("SELECT id, username, nickname, card_key FROM users WHERE id = 2")
+            text("SELECT id, username, nickname FROM users WHERE id = 2")
         ).mappings().one()
 
     temp_engine.dispose()
     assert migrated_user["username"] == "new-account"
     assert migrated_user["nickname"] == "New Account"
-    assert migrated_user["card_key"] is None
 
 
 def _create_user(db, username="alice", credit_balance=0, is_unlimited=False):

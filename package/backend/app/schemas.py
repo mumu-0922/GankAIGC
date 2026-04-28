@@ -5,21 +5,17 @@ from datetime import datetime
 
 class UserCreate(BaseModel):
     """创建用户"""
-    card_key: Optional[str] = None
     username: Optional[str] = None
     nickname: Optional[str] = None
     password_hash: Optional[str] = None
-    legacy_card_key: Optional[str] = None
     access_link: str
 
 
 class UserResponse(BaseModel):
     """用户响应"""
     id: int
-    card_key: Optional[str] = None
     username: Optional[str] = None
     nickname: Optional[str] = None
-    legacy_card_key: Optional[str] = None
     access_link: str
     is_active: bool
     is_unlimited: bool = False

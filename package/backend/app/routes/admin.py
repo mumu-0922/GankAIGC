@@ -306,7 +306,6 @@ async def toggle_user_status(
     db.refresh(user)
     return {
         "id": user.id,
-        "card_key": user.card_key,
         "is_active": user.is_active,
         "message": f"用户已{'启用' if user.is_active else '禁用'}",
     }
@@ -372,7 +371,7 @@ async def delete_user(
 
     db.delete(user)
     db.commit()
-    return {"message": "用户已删除", "card_key": user.card_key}
+    return {"message": "用户已删除", "id": user_id}
 
 
 @router.get("/statistics")
@@ -510,7 +509,6 @@ async def get_user_details(
     return {
         "user": {
             "id": user.id,
-            "card_key": user.card_key,
             "is_active": user.is_active,
             "created_at": user.created_at,
             "last_used": user.last_used,
@@ -607,7 +605,6 @@ async def get_all_sessions(
         result.append({
             "session_id": session.id,
             "user_id": session.user_id,
-            "card_key": session.user.card_key if session.user else None,
             **_session_user_identity(session.user),
             "status": session.status,
             "processing_mode": session.processing_mode,
@@ -683,7 +680,6 @@ async def get_active_sessions(
             "id": session.id,
             "session_id": session.session_id,
             "user_id": session.user_id,
-            "card_key": session.user.card_key if session.user else "未知",
             **_session_user_identity(session.user),
             "status": session.status,
             "progress": session.progress,

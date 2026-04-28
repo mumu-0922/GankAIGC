@@ -73,15 +73,13 @@ def _sqlite_select_expression(existing_columns, column_name, fallback_sql, coale
     return column_name
 
 
-def _rebuild_sqlite_users_table_for_nullable_card_key(conn, existing_columns):
-    """SQLite 通过重建表来放宽 card_key 非空约束。"""
+def _rebuild_sqlite_users_table_without_card_keys(conn, existing_columns):
+    """SQLite 通过重建 users 表来移除旧卡密字段。"""
     column_names = [
         "id",
-        "card_key",
         "username",
         "nickname",
         "password_hash",
-        "legacy_card_key",
         "access_link",
         "is_active",
         "is_unlimited",
@@ -94,7 +92,6 @@ def _rebuild_sqlite_users_table_for_nullable_card_key(conn, existing_columns):
     ]
     select_expressions = {
         "id": _sqlite_select_expression(existing_columns, "id", "NULL"),
-        "card_key": _sqlite_select_expression(existing_columns, "card_key", "NULL"),
         "username": _sqlite_select_expression(existing_columns, "username", "NULL"),
         "nickname": _sqlite_select_expression(
             existing_columns,
@@ -102,7 +99,6 @@ def _rebuild_sqlite_users_table_for_nullable_card_key(conn, existing_columns):
             "username" if "username" in existing_columns else "NULL",
         ),
         "password_hash": _sqlite_select_expression(existing_columns, "password_hash", "NULL"),
-        "legacy_card_key": _sqlite_select_expression(existing_columns, "legacy_card_key", "NULL"),
         "access_link": _sqlite_select_expression(existing_columns, "access_link", "''"),
         "is_active": _sqlite_select_expression(existing_columns, "is_active", "1", "1"),
         "is_unlimited": _sqlite_select_expression(existing_columns, "is_unlimited", "0", "0"),
@@ -132,11 +128,9 @@ def _rebuild_sqlite_users_table_for_nullable_card_key(conn, existing_columns):
             """
             CREATE TABLE users__migration (
                 id INTEGER PRIMARY KEY,
-                card_key VARCHAR(255),
                 username VARCHAR(100),
                 nickname VARCHAR(100),
                 password_hash VARCHAR(255),
-                legacy_card_key VARCHAR(255),
                 access_link VARCHAR(255) NOT NULL,
                 is_active BOOLEAN DEFAULT 1,
                 is_unlimited BOOLEAN DEFAULT 0,
@@ -146,9 +140,7 @@ def _rebuild_sqlite_users_table_for_nullable_card_key(conn, existing_columns):
                 last_login_at DATETIME,
                 usage_limit INTEGER DEFAULT 0,
                 usage_count INTEGER DEFAULT 0,
-                UNIQUE (card_key),
                 UNIQUE (username),
-                UNIQUE (legacy_card_key),
                 UNIQUE (access_link)
             )
             """
@@ -319,9 +311,11 @@ def _migrate_database_schema():
             if "users" in tables:
                 user_columns = {column["name"]: column for column in inspector.get_columns("users")}
 
-                if engine.dialect.name == "sqlite" and not user_columns.get("card_key", {}).get("nullable", True):
-                    if _rebuild_sqlite_users_table_for_nullable_card_key(conn, user_columns):
-                        print("  ✓ 重建 users 表以允许 card_key 为空")
+                if engine.dialect.name == "sqlite" and (
+                    "card_key" in user_columns or "legacy_card_key" in user_columns
+                ):
+                    if _rebuild_sqlite_users_table_without_card_keys(conn, user_columns):
+                        print("  ✓ 重建 users 表以移除旧卡密字段")
                         Base.metadata.create_all(bind=engine)
                         inspector = inspect(engine)
                         tables = inspector.get_table_names()
@@ -338,10 +332,6 @@ def _migrate_database_schema():
                 if "password_hash" not in user_columns:
                     if _add_column_safely(conn, "users", "password_hash", "VARCHAR(255)"):
                         print("  ✓ 添加字段: users.password_hash")
-
-                if "legacy_card_key" not in user_columns:
-                    if _add_column_safely(conn, "users", "legacy_card_key", "VARCHAR(255)"):
-                        print("  ✓ 添加字段: users.legacy_card_key")
 
                 if "is_unlimited" not in user_columns:
                     if _add_column_safely(conn, "users", "is_unlimited", "BOOLEAN DEFAULT 0"):

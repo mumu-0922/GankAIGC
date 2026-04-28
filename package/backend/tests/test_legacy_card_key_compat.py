@@ -3,14 +3,12 @@ from app.models.models import User
 from app.utils.auth import create_user_access_token, get_password_hash
 
 
-def _create_user(username="alice", card_key=None, legacy_card_key=None):
+def _create_user(username="alice"):
     db = SessionLocal()
     try:
         user = User(
             username=username,
             password_hash=get_password_hash("Password123!"),
-            card_key=card_key,
-            legacy_card_key=legacy_card_key,
             access_link=f"http://testserver/access/{username}",
             is_active=True,
             credit_balance=0,
@@ -34,7 +32,7 @@ def test_user_token_can_access_prompt_routes(client):
 
 
 def test_legacy_card_key_no_longer_authenticates_prompt_routes(client):
-    _create_user(username="legacy", card_key="legacy-demo-key")
+    _create_user(username="legacy")
 
     response = client.get("/api/prompts/", params={"card_key": "legacy-demo-key"})
 
@@ -64,7 +62,7 @@ def test_user_token_can_access_word_formatter_usage(client):
 
 
 def test_legacy_card_key_no_longer_authenticates_word_formatter_usage(client):
-    _create_user(username="legacy", card_key="legacy-demo-key")
+    _create_user(username="legacy")
 
     response = client.get("/api/word-formatter/usage", params={"card_key": "legacy-demo-key"})
 
