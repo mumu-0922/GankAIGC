@@ -471,6 +471,58 @@ def test_legacy_admin_card_key_endpoints_are_removed(client):
         assert response.status_code == 404
 
 
+def test_admin_session_lists_include_user_identity(client):
+    from app.database import SessionLocal
+    from app.models.models import OptimizationSession, User
+
+    db = SessionLocal()
+    try:
+        user = User(
+            username="alice",
+            nickname="Alice Chen",
+            access_link="http://testserver/access/alice",
+        )
+        db.add(user)
+        db.flush()
+        db.add_all([
+            OptimizationSession(
+                user_id=user.id,
+                session_id="session-history",
+                original_text="历史会话文本",
+                status="completed",
+                processing_mode="paper_polish_enhance",
+                total_segments=1,
+            ),
+            OptimizationSession(
+                user_id=user.id,
+                session_id="session-active",
+                original_text="实时会话文本",
+                status="processing",
+                processing_mode="paper_polish",
+                total_segments=1,
+            ),
+        ])
+        db.commit()
+    finally:
+        db.close()
+
+    headers = _admin_auth_headers(client)
+
+    history_response = client.get("/api/admin/sessions", params={"status": "completed"}, headers=headers)
+    assert history_response.status_code == 200
+    history_session = history_response.json()[0]
+    assert history_session["username"] == "alice"
+    assert history_session["nickname"] == "Alice Chen"
+    assert history_session["user_display_name"] == "Alice Chen"
+
+    active_response = client.get("/api/admin/sessions/active", headers=headers)
+    assert active_response.status_code == 200
+    active_session = active_response.json()[0]
+    assert active_session["username"] == "alice"
+    assert active_session["nickname"] == "Alice Chen"
+    assert active_session["user_display_name"] == "Alice Chen"
+
+
 def test_crypto_helpers_round_trip_with_test_fernet_key(monkeypatch):
     monkeypatch.setattr(config_module.settings, "ENCRYPTION_KEY", Fernet.generate_key().decode())
 

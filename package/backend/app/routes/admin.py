@@ -53,6 +53,21 @@ class AdminLoginResponse(BaseModel):
     username: str
 
 
+def _session_user_identity(user: Optional[User]) -> Dict[str, Optional[str]]:
+    if not user:
+        return {
+            "username": None,
+            "nickname": None,
+            "user_display_name": "未知用户",
+        }
+
+    return {
+        "username": user.username,
+        "nickname": user.nickname,
+        "user_display_name": user.nickname or user.username or f"用户 #{user.id}",
+    }
+
+
 class UnlimitedToggleRequest(BaseModel):
     is_unlimited: bool
 
@@ -588,6 +603,7 @@ async def get_all_sessions(
             "session_id": session.id,
             "user_id": session.user_id,
             "card_key": session.user.card_key if session.user else None,
+            **_session_user_identity(session.user),
             "status": session.status,
             "processing_mode": session.processing_mode,
             "original_char_count": original_length_map.get(session.id, 0),
@@ -663,6 +679,7 @@ async def get_active_sessions(
             "session_id": session.session_id,
             "user_id": session.user_id,
             "card_key": session.user.card_key if session.user else "未知",
+            **_session_user_identity(session.user),
             "status": session.status,
             "progress": session.progress,
             "current_stage": session.current_stage,

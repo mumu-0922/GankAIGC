@@ -233,6 +233,10 @@ def test_frontend_removes_legacy_card_key_and_dead_prompt_manager():
     assert "admin_password" not in api
     assert "adminAPI" not in session_monitor
     assert "prompt(" not in session_monitor
+    assert "getSessionUserLabel" in session_monitor
+    assert "session.user_display_name" in session_monitor
+    assert "用户会话历史: {selectedUser.label}" in session_monitor
+    assert "用户会话历史: {selectedUser.card_key}" not in session_monitor
 
 
 def test_package_main_no_longer_registers_legacy_access_page():

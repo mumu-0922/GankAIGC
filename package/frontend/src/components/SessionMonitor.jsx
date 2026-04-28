@@ -4,6 +4,10 @@ import { toast } from 'react-hot-toast';
 import { Activity, RefreshCw, Clock, User, FileText, TrendingUp, BarChart3, Zap, History, Square } from 'lucide-react';
 import { formatChinaDateTime } from '../utils/dateTime';
 
+const getSessionUserLabel = (session) => (
+  session.user_display_name || session.nickname || session.username || (session.user_id ? `用户 #${session.user_id}` : '未知用户')
+);
+
 const SessionMonitor = ({ adminToken }) => {
   const [activeSessions, setActiveSessions] = useState([]);
   const [historySessions, setHistorySessions] = useState([]);
@@ -75,14 +79,14 @@ const SessionMonitor = ({ adminToken }) => {
     }
   };
 
-  const fetchUserSessions = async (userId, cardKey) => {
+  const fetchUserSessions = async (userId, userLabel) => {
     setLoading(true);
     try {
       const response = await axios.get(`/api/admin/users/${userId}/sessions`, {
         headers: { Authorization: `Bearer ${adminToken}` }
       });
       setUserSessions(response.data);
-      setSelectedUser({ id: userId, card_key: cardKey });
+      setSelectedUser({ id: userId, label: userLabel || `用户 #${userId}` });
     } catch (error) {
       toast.error('获取用户会话历史失败');
     } finally {
@@ -316,11 +320,15 @@ const SessionMonitor = ({ adminToken }) => {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2 flex-wrap">
                       <button
-                        onClick={() => fetchUserSessions(session.user_id, session.card_key)}
+                        onClick={() => fetchUserSessions(session.user_id, getSessionUserLabel(session))}
                         className="flex items-center gap-2 px-3 py-1 bg-blue-100 hover:bg-blue-200 text-blue-800 rounded-lg transition-colors text-sm font-medium"
+                        title={`查看 ${getSessionUserLabel(session)} 的会话历史`}
                       >
                         <User className="w-4 h-4" />
-                        {session.card_key}
+                        <span>{getSessionUserLabel(session)}</span>
+                        {session.username && session.nickname && session.username !== session.nickname && (
+                          <span className="text-xs text-blue-600/70">@{session.username}</span>
+                        )}
                       </button>
                       <span className={`px-2 py-1 text-xs font-medium rounded ${
                         session.status === 'processing' ? 'bg-blue-100 text-blue-800' :
@@ -417,7 +425,7 @@ const SessionMonitor = ({ adminToken }) => {
               <div className="flex items-center gap-3">
                 <User className="w-6 h-6 text-blue-600" />
                 <h3 className="text-xl font-bold text-gray-800">
-                  用户会话历史: {selectedUser.card_key}
+                  用户会话历史: {selectedUser.label}
                 </h3>
               </div>
               <button
