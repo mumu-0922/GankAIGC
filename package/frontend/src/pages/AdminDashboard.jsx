@@ -29,6 +29,9 @@ import { formatChinaDateTime } from '../utils/dateTime';
 
 const DEFAULT_ADMIN_TAB = 'dashboard';
 const ADMIN_TAB_IDS = ['dashboard', 'sessions', 'accounts', 'database', 'config'];
+const ADMIN_ACCOUNT_FORM_CLASS = 'grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_9.5rem_7rem] gap-3 mb-5';
+const ADMIN_ACCOUNT_INPUT_CLASS = 'w-full min-w-0 h-12 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent';
+const ADMIN_ACCOUNT_ACTION_BUTTON_CLASS = 'min-w-[7rem] h-12 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors flex items-center justify-center gap-2 font-semibold';
 
 const formatAdminNumber = (value) => Number(value || 0).toLocaleString();
 
@@ -700,17 +703,18 @@ const AdminDashboard = () => {
                   </div>
                 </div>
 
-                <form onSubmit={handleCreateInvite} className="flex flex-col sm:flex-row gap-3 mb-5">
+                <form onSubmit={handleCreateInvite} className={ADMIN_ACCOUNT_FORM_CLASS}>
                   <input
                     type="text"
                     value={newInviteCode}
                     onChange={(e) => setNewInviteCode(e.target.value)}
                     placeholder="邀请码，可留空自动生成"
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className={ADMIN_ACCOUNT_INPUT_CLASS}
                   />
+                  <div className="hidden sm:block" aria-hidden="true" />
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center justify-center gap-2"
+                    className={ADMIN_ACCOUNT_ACTION_BUTTON_CLASS}
                   >
                     <Plus className="w-4 h-4" />
                     创建
@@ -777,24 +781,24 @@ const AdminDashboard = () => {
                   </div>
                 </div>
 
-                <form onSubmit={handleCreateCreditCode} className="grid grid-cols-1 sm:grid-cols-[1fr_120px_auto] gap-3 mb-5">
+                <form onSubmit={handleCreateCreditCode} className={ADMIN_ACCOUNT_FORM_CLASS}>
                   <input
                     type="text"
                     value={newCreditCode}
                     onChange={(e) => setNewCreditCode(e.target.value)}
                     placeholder="兑换码，可留空自动生成"
-                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                    className={ADMIN_ACCOUNT_INPUT_CLASS}
                   />
                   <input
                     type="number"
                     min="1"
                     value={newCreditAmount}
                     onChange={(e) => setNewCreditAmount(e.target.value)}
-                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                    className={ADMIN_ACCOUNT_INPUT_CLASS}
                   />
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors flex items-center justify-center gap-2"
+                    className={ADMIN_ACCOUNT_ACTION_BUTTON_CLASS}
                   >
                     <Plus className="w-4 h-4" />
                     创建

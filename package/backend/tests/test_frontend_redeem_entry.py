@@ -161,6 +161,20 @@ def test_admin_dashboard_hides_legacy_card_key_management():
     assert "/api/admin/users/${userId}/usage" not in admin_dashboard
 
 
+def test_admin_invite_and_credit_code_forms_use_matching_layout():
+    admin_dashboard = (FRONTEND_SRC / "pages" / "AdminDashboard.jsx").read_text(encoding="utf-8")
+
+    assert "ADMIN_ACCOUNT_FORM_CLASS" in admin_dashboard
+    assert "ADMIN_ACCOUNT_INPUT_CLASS" in admin_dashboard
+    assert "ADMIN_ACCOUNT_ACTION_BUTTON_CLASS" in admin_dashboard
+    assert admin_dashboard.count("className={ADMIN_ACCOUNT_FORM_CLASS}") == 2
+    assert admin_dashboard.count("className={ADMIN_ACCOUNT_INPUT_CLASS}") >= 2
+    assert admin_dashboard.count("className={ADMIN_ACCOUNT_ACTION_BUTTON_CLASS}") == 2
+    assert "sm:grid-cols-[minmax(0,1fr)_9.5rem_7rem]" in admin_dashboard
+    assert "min-w-[7rem]" in admin_dashboard
+    assert "grid grid-cols-1 sm:grid-cols-[1fr_120px_auto]" not in admin_dashboard
+
+
 def test_admin_dashboard_hides_word_formatter_statistics_until_feature_is_ready():
     admin_dashboard = (FRONTEND_SRC / "pages" / "AdminDashboard.jsx").read_text(encoding="utf-8")
 
