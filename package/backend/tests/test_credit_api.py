@@ -1,9 +1,10 @@
-from datetime import UTC, datetime
+from datetime import timedelta
 
 from app.database import Base
-from app.models.models import User
+from app.models.models import CreditTransaction, OptimizationSession, User
 from app.schemas import UserCreate, UserResponse
 from app.utils.auth import create_user_access_token, get_password_hash
+from app.utils.time import utcnow
 
 
 def test_user_model_exposes_account_credit_and_provider_tables():
@@ -47,7 +48,7 @@ def test_user_schemas_do_not_expose_card_key_fields():
         is_active=True,
         is_unlimited=False,
         credit_balance=0,
-        created_at=datetime.now(UTC),
+        created_at=utcnow(),
         last_used=None,
         last_login_at=None,
         usage_limit=5,
@@ -145,3 +146,137 @@ def test_admin_can_create_credit_codes_and_recharge_user(client):
 
     assert list_response.status_code == 200
     assert [item["code"] for item in list_response.json()] == ["CREDIT5"]
+
+
+def test_user_credit_transactions_are_limited_labeled_and_private(client):
+    from app.database import SessionLocal
+
+    db = SessionLocal()
+    try:
+        user = _create_user(db, username="alice")
+        other_user = _create_user(db, username="bob")
+        now = utcnow()
+        db.add_all(
+            [
+                CreditTransaction(
+                    user_id=user.id,
+                    delta=10,
+                    balance_after=10,
+                    reason="redeem_code",
+                    created_at=now - timedelta(minutes=3),
+                ),
+                CreditTransaction(
+                    user_id=user.id,
+                    delta=-3,
+                    balance_after=7,
+                    reason="optimization_start",
+                    created_at=now - timedelta(minutes=2),
+                ),
+                CreditTransaction(
+                    user_id=user.id,
+                    delta=3,
+                    balance_after=10,
+                    reason="optimization_refund",
+                    created_at=now - timedelta(minutes=1),
+                ),
+                CreditTransaction(
+                    user_id=other_user.id,
+                    delta=99,
+                    balance_after=99,
+                    reason="admin_recharge",
+                    created_at=now,
+                ),
+            ]
+        )
+        db.commit()
+        headers = _user_auth_headers(user)
+    finally:
+        db.close()
+
+    response = client.get("/api/user/credit-transactions?limit=2", headers=headers)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert [item["reason"] for item in payload] == ["optimization_refund", "optimization_start"]
+    assert [item["reason_label"] for item in payload] == ["任务失败退款", "降 AI 消耗"]
+    assert [item["transaction_type"] for item in payload] == ["credit", "debit"]
+    assert all("user_id" not in item for item in payload)
+    assert all(item["balance_after"] in {7, 10} for item in payload)
+
+
+def test_admin_can_view_recent_credit_transactions_with_user_and_session_context(client):
+    from app.database import SessionLocal
+
+    db = SessionLocal()
+    try:
+        user = _create_user(db, username="alice")
+        user.nickname = "Alice 昵称"
+        session = OptimizationSession(
+            user_id=user.id,
+            session_id="public-session-id",
+            original_text="测试正文",
+            current_stage="polish",
+            status="completed",
+            progress=100,
+            processing_mode="paper_polish",
+            billing_mode="platform",
+            charge_status="charged",
+            charged_credits=2,
+            task_title="第一章",
+        )
+        db.add(session)
+        db.flush()
+        db.add(
+            CreditTransaction(
+                user_id=user.id,
+                delta=-2,
+                balance_after=8,
+                reason="optimization_start",
+                related_session_id=session.id,
+            )
+        )
+        db.commit()
+    finally:
+        db.close()
+
+    admin_headers = _admin_auth_headers(client)
+    response = client.get("/api/admin/credit-transactions?limit=10", headers=admin_headers)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload[0]["username"] == "alice"
+    assert payload[0]["nickname"] == "Alice 昵称"
+    assert payload[0]["user_display_name"] == "Alice 昵称"
+    assert payload[0]["reason_label"] == "降 AI 消耗"
+    assert payload[0]["transaction_type"] == "debit"
+    assert payload[0]["related_session_public_id"] == "public-session-id"
+    assert payload[0]["related_session_title"] == "第一章"
+
+
+def test_admin_user_details_include_recent_credit_transactions(client):
+    from app.database import SessionLocal
+
+    db = SessionLocal()
+    try:
+        user = _create_user(db, username="alice")
+        db.add(
+            CreditTransaction(
+                user_id=user.id,
+                delta=7,
+                balance_after=7,
+                reason="admin_recharge",
+            )
+        )
+        db.commit()
+        user_id = user.id
+    finally:
+        db.close()
+
+    admin_headers = _admin_auth_headers(client)
+    response = client.get(f"/api/admin/users/{user_id}/details", headers=admin_headers)
+
+    assert response.status_code == 200
+    transactions = response.json()["recent_credit_transactions"]
+    assert transactions[0]["reason_label"] == "管理员充值"
+    assert transactions[0]["delta"] == 7
+    assert transactions[0]["balance_after"] == 7

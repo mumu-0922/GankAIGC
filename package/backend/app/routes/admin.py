@@ -3,7 +3,7 @@ import secrets
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Type
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, status, Request
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import inspect, func, case
 from sqlalchemy.orm import Session, defer, joinedload
@@ -13,6 +13,7 @@ from app.database import get_db
 from app.models.models import (
     ChangeLog,
     CreditCode,
+    CreditTransaction,
     OptimizationSegment,
     OptimizationSession,
     RegistrationInvite,
@@ -32,7 +33,7 @@ from app.schemas import (
     UserUsageUpdate,
 )
 from app.services.concurrency import concurrency_manager
-from app.services.credit_service import CreditService
+from app.services.credit_service import CreditService, serialize_credit_transaction
 from app.utils.auth import (
     create_access_token,
     verify_token,
@@ -277,6 +278,30 @@ async def list_credit_codes(
     db: Session = Depends(get_db),
 ) -> List[CreditCode]:
     return db.query(CreditCode).order_by(CreditCode.created_at.desc()).all()
+
+
+@router.get("/credit-transactions")
+async def list_credit_transactions(
+    _: str = Depends(get_admin_from_token),
+    db: Session = Depends(get_db),
+    limit: int = Query(50, ge=1, le=200),
+    user_id: Optional[int] = Query(None, ge=1),
+) -> List[Dict[str, Any]]:
+    query = (
+        db.query(CreditTransaction)
+        .options(
+            joinedload(CreditTransaction.user),
+            joinedload(CreditTransaction.related_session),
+        )
+        .order_by(CreditTransaction.created_at.desc(), CreditTransaction.id.desc())
+    )
+    if user_id is not None:
+        query = query.filter(CreditTransaction.user_id == user_id)
+
+    return [
+        serialize_credit_transaction(transaction, include_user=True)
+        for transaction in query.limit(limit).all()
+    ]
 
 
 @router.post("/users/{user_id}/credits")
@@ -574,6 +599,14 @@ async def get_user_details(
         .limit(5)
         .all()
     )
+    recent_credit_transactions = (
+        db.query(CreditTransaction)
+        .options(joinedload(CreditTransaction.related_session))
+        .filter(CreditTransaction.user_id == user_id)
+        .order_by(CreditTransaction.created_at.desc(), CreditTransaction.id.desc())
+        .limit(10)
+        .all()
+    )
 
     return {
         "user": {
@@ -599,6 +632,10 @@ async def get_user_details(
                 "updated_at": session.updated_at,
             }
             for session in recent_sessions
+        ],
+        "recent_credit_transactions": [
+            serialize_credit_transaction(transaction)
+            for transaction in recent_credit_transactions
         ],
     }
 

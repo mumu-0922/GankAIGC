@@ -59,7 +59,7 @@ export const userAPI = {
   redeemCode: (code) => api.post('/user/redeem-code', { code }),
   getMyInvite: () => api.get('/user/invites/my'),
   createMyInvite: () => api.post('/user/invites'),
-  listCreditTransactions: () => api.get('/user/credit-transactions'),
+  listCreditTransactions: (limit = 50) => api.get('/user/credit-transactions', { params: { limit } }),
   getProviderConfig: () => api.get('/user/provider-config'),
   saveProviderConfig: (data) => api.put('/user/provider-config', data),
   testProviderConfig: () => api.post('/user/provider-config/test'),

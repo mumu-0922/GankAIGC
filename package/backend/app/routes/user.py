@@ -1,8 +1,8 @@
 import secrets
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.orm import Session, joinedload
 
 from app.config import settings
 from app.database import get_db
@@ -19,7 +19,7 @@ from app.schemas import (
     RedeemCodeRequest,
     UserInviteResponse,
 )
-from app.services.credit_service import CreditService
+from app.services.credit_service import CreditService, serialize_credit_transaction
 from app.services.provider_config_service import ProviderConfigService
 
 router = APIRouter(prefix="/user", tags=["user"])
@@ -183,13 +183,17 @@ async def get_credits(current_user: User = Depends(get_current_user_from_bearer)
 async def list_credit_transactions(
     current_user: User = Depends(get_current_user_from_bearer),
     db: Session = Depends(get_db),
-) -> List[CreditTransaction]:
-    return (
+    limit: int = Query(50, ge=1, le=100),
+) -> List[dict]:
+    transactions = (
         db.query(CreditTransaction)
+        .options(joinedload(CreditTransaction.related_session))
         .filter(CreditTransaction.user_id == current_user.id)
         .order_by(CreditTransaction.created_at.desc())
+        .limit(limit)
         .all()
     )
+    return [serialize_credit_transaction(transaction) for transaction in transactions]
 
 
 @router.get("/provider-config", response_model=ProviderConfigResponse | None)

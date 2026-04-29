@@ -7,6 +7,21 @@ import BrandLogo from '../components/BrandLogo';
 import BeerIcon from '../components/BeerIcon';
 import { formatChinaDateTime } from '../utils/dateTime';
 
+const formatBeerDelta = (delta) => {
+  const value = Number(delta || 0);
+  return `${value > 0 ? '+' : ''}${value} 啤酒`;
+};
+
+const getTransactionAmountClass = (transaction) => {
+  if (transaction.transaction_type === 'credit' || transaction.delta > 0) {
+    return 'text-emerald-600 bg-emerald-50 border-emerald-100';
+  }
+  if (transaction.transaction_type === 'debit' || transaction.delta < 0) {
+    return 'text-red-600 bg-red-50 border-red-100';
+  }
+  return 'text-slate-600 bg-slate-50 border-slate-100';
+};
+
 const CreditsPage = () => {
   const [credits, setCredits] = useState(null);
   const [transactions, setTransactions] = useState([]);
@@ -92,13 +107,27 @@ const CreditsPage = () => {
                 <p className="text-slate-500 text-sm">暂无流水记录</p>
               )}
               {transactions.map((transaction) => (
-                <div key={transaction.id} className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
-                  <div>
-                    <p className="font-semibold text-slate-900">{transaction.reason}</p>
-                    <p className="text-xs text-slate-500">{formatChinaDateTime(transaction.created_at)}</p>
+                <div key={transaction.id} className="rounded-2xl bg-slate-50 px-4 py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-semibold text-slate-900">{transaction.reason_label || transaction.reason}</p>
+                      <p className="text-xs text-slate-500 mt-1">{formatChinaDateTime(transaction.created_at)}</p>
+                    </div>
+                    <div className={`shrink-0 rounded-full border px-3 py-1 text-sm font-bold ${getTransactionAmountClass(transaction)}`}>
+                      {formatBeerDelta(transaction.delta)}
+                    </div>
                   </div>
-                  <div className={transaction.delta >= 0 ? 'text-emerald-600 font-bold' : 'text-red-600 font-bold'}>
-                    {transaction.delta > 0 ? '+' : ''}{transaction.delta}
+                  <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-500">
+                    <span className="rounded-full bg-white/80 px-2 py-1">余额 {transaction.balance_after} 啤酒</span>
+                    {transaction.related_session_title && (
+                      <span className="rounded-full bg-white/80 px-2 py-1">任务：{transaction.related_session_title}</span>
+                    )}
+                    {transaction.related_session_public_id && !transaction.related_session_title && (
+                      <span className="rounded-full bg-white/80 px-2 py-1">会话：{transaction.related_session_public_id.slice(0, 8)}…</span>
+                    )}
+                    {transaction.related_code_id && (
+                      <span className="rounded-full bg-white/80 px-2 py-1">兑换码 #{transaction.related_code_id}</span>
+                    )}
                   </div>
                 </div>
               ))}

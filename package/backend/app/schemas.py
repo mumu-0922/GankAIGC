@@ -94,8 +94,13 @@ class CreditTransactionResponse(BaseModel):
     delta: int
     balance_after: int
     reason: str
+    reason_label: str
+    transaction_type: str
     related_code_id: Optional[int] = None
     related_session_id: Optional[int] = None
+    related_session_public_id: Optional[str] = None
+    related_session_title: Optional[str] = None
+    related_session_processing_mode: Optional[str] = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

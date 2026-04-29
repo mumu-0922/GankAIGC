@@ -17,6 +17,17 @@ PROCESSING_MODE_STAGE_MULTIPLIERS = {
     "paper_polish_enhance": 2,
 }
 
+CREDIT_TRANSACTION_REASON_LABELS = {
+    "redeem_code": "兑换码充值",
+    "admin_recharge": "管理员充值",
+    "optimization_start": "降 AI 消耗",
+    "optimization_refund": "任务失败退款",
+    "word_formatter_preprocess": "Word 预处理消耗",
+    "word_formatter_preprocess_refund": "Word 预处理退款",
+    "word_formatter_format": "Word 排版消耗",
+    "word_formatter_format_refund": "Word 排版退款",
+}
+
 
 def count_billable_characters(text: str) -> int:
     return len(re.findall(r"\S", text or ""))
@@ -27,6 +38,57 @@ def calculate_optimization_credits(text: str, processing_mode: str) -> int:
     base_credits = max(1, math.ceil(billable_characters / CREDIT_UNIT_CHARACTERS))
     stage_multiplier = PROCESSING_MODE_STAGE_MULTIPLIERS.get(processing_mode, 1)
     return base_credits * stage_multiplier
+
+
+def get_credit_transaction_reason_label(reason: str) -> str:
+    return CREDIT_TRANSACTION_REASON_LABELS.get(reason, reason)
+
+
+def get_credit_transaction_type(delta: int) -> str:
+    if delta > 0:
+        return "credit"
+    if delta < 0:
+        return "debit"
+    return "neutral"
+
+
+def serialize_credit_transaction(
+    transaction: CreditTransaction,
+    *,
+    include_user: bool = False,
+) -> dict:
+    related_session = transaction.related_session
+    payload = {
+        "id": transaction.id,
+        "delta": transaction.delta,
+        "balance_after": transaction.balance_after,
+        "reason": transaction.reason,
+        "reason_label": get_credit_transaction_reason_label(transaction.reason),
+        "transaction_type": get_credit_transaction_type(transaction.delta),
+        "related_code_id": transaction.related_code_id,
+        "related_session_id": transaction.related_session_id,
+        "related_session_public_id": related_session.session_id if related_session else None,
+        "related_session_title": related_session.task_title if related_session else None,
+        "related_session_processing_mode": related_session.processing_mode if related_session else None,
+        "created_at": transaction.created_at,
+    }
+
+    if include_user:
+        user = transaction.user
+        payload.update(
+            {
+                "user_id": transaction.user_id,
+                "username": user.username if user else None,
+                "nickname": user.nickname if user else None,
+                "user_display_name": (
+                    user.nickname or user.username or f"用户 #{user.id}"
+                    if user
+                    else "未知用户"
+                ),
+            }
+        )
+
+    return payload
 
 
 class CreditService:

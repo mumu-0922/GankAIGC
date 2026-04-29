@@ -34,6 +34,21 @@ def test_credit_transactions_render_backend_utc_as_china_time():
     assert "new Date(transaction.created_at).toLocaleString()" not in credits_page
 
 
+def test_credit_transaction_pages_show_labeled_beer_flow():
+    api = (FRONTEND_SRC / "api" / "index.js").read_text(encoding="utf-8")
+    credits_page = (FRONTEND_SRC / "pages" / "CreditsPage.jsx").read_text(encoding="utf-8")
+    admin_dashboard = (FRONTEND_SRC / "pages" / "AdminDashboard.jsx").read_text(encoding="utf-8")
+
+    assert "listCreditTransactions: (limit = 50)" in api
+    assert "reason_label" in credits_page
+    assert "balance_after" in credits_page
+    assert "related_session_title" in credits_page
+    assert "最近啤酒流水" in admin_dashboard
+    assert "/api/admin/credit-transactions" in admin_dashboard
+    assert "reason_label" in admin_dashboard
+    assert "balance_after" in admin_dashboard
+
+
 def test_served_static_bundle_includes_china_time_formatter():
     static_index = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
     bundle_match = re.search(r'src="/assets/(index-[^"]+\.js)"', static_index)

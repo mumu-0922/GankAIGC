@@ -104,6 +104,7 @@ async function mockAdminApis(page) {
       url.pathname === '/api/admin/users' ||
       url.pathname === '/api/admin/invites' ||
       url.pathname === '/api/admin/credit-codes' ||
+      url.pathname === '/api/admin/credit-transactions' ||
       url.pathname === '/api/admin/provider-configs'
     ) {
       return fulfillJson(route, []);
@@ -131,6 +132,7 @@ test('admin can log in and switch core sections', async ({ page }) => {
   await page.getByRole('button', { name: /账号啤酒/ }).click();
   await expect(page).toHaveURL(/tab=accounts/);
   await expect(page.getByRole('heading', { name: '啤酒兑换码' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '最近啤酒流水' })).toBeVisible();
 
   await page.getByRole('button', { name: /系统配置/ }).click();
   await expect(page).toHaveURL(/tab=config/);

@@ -24,12 +24,28 @@ import ConfigManager from '../components/ConfigManager';
 import SessionMonitor from '../components/SessionMonitor';
 import DatabaseManager from '../components/DatabaseManager';
 import BrandLogo from '../components/BrandLogo';
+import BeerIcon from '../components/BeerIcon';
 import { formatChinaDateTime } from '../utils/dateTime';
 
 const DEFAULT_ADMIN_TAB = 'dashboard';
 const ADMIN_TAB_IDS = ['dashboard', 'sessions', 'accounts', 'database', 'config'];
 
 const formatAdminNumber = (value) => Number(value || 0).toLocaleString();
+
+const formatBeerDelta = (delta) => {
+  const value = Number(delta || 0);
+  return `${value > 0 ? '+' : ''}${value} 啤酒`;
+};
+
+const getCreditTransactionClass = (transaction) => {
+  if (transaction.transaction_type === 'credit' || transaction.delta > 0) {
+    return 'bg-emerald-50 text-emerald-700 border-emerald-100';
+  }
+  if (transaction.transaction_type === 'debit' || transaction.delta < 0) {
+    return 'bg-red-50 text-red-700 border-red-100';
+  }
+  return 'bg-slate-50 text-slate-700 border-slate-100';
+};
 
 const getAdminTabFromSearchParams = (searchParams) => {
   const requestedTab = searchParams.get('tab');
@@ -60,6 +76,7 @@ const AdminDashboard = () => {
   // Account and credit management state
   const [invites, setInvites] = useState([]);
   const [creditCodes, setCreditCodes] = useState([]);
+  const [creditTransactions, setCreditTransactions] = useState([]);
   const [providerConfigs, setProviderConfigs] = useState([]);
   const [loadingAccountData, setLoadingAccountData] = useState(false);
   const [newInviteCode, setNewInviteCode] = useState('');
@@ -177,16 +194,18 @@ const AdminDashboard = () => {
     setLoadingAccountData(true);
     try {
       const headers = { Authorization: `Bearer ${adminToken}` };
-      const [usersResponse, invitesResponse, creditCodesResponse, providerConfigsResponse] = await Promise.all([
+      const [usersResponse, invitesResponse, creditCodesResponse, creditTransactionsResponse, providerConfigsResponse] = await Promise.all([
         axios.get('/api/admin/users', { headers }),
         axios.get('/api/admin/invites', { headers }),
         axios.get('/api/admin/credit-codes', { headers }),
+        axios.get('/api/admin/credit-transactions', { headers, params: { limit: 30 } }),
         axios.get('/api/admin/provider-configs', { headers })
       ]);
 
       setUsers(usersResponse.data);
       setInvites(invitesResponse.data);
       setCreditCodes(creditCodesResponse.data);
+      setCreditTransactions(creditTransactionsResponse.data);
       setProviderConfigs(providerConfigsResponse.data);
     } catch (error) {
       toast.error(error.response?.data?.detail || '获取账号管理数据失败');
@@ -877,6 +896,66 @@ const AdminDashboard = () => {
                               充值
                             </button>
                           </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-ios overflow-hidden">
+              <div className="p-6 border-b border-gray-200 flex items-center gap-3">
+                <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center">
+                  <BeerIcon className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">最近啤酒流水</h3>
+                  <p className="text-xs text-gray-500 mt-1">展示充值、兑换、降 AI 消耗和失败退款，方便排查用户余额变化</p>
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">用户</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">类型</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">变动</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">关联</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">时间</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {creditTransactions.length === 0 ? (
+                      <tr>
+                        <td colSpan="5" className="px-6 py-10 text-center text-sm text-gray-500">暂无啤酒流水</td>
+                      </tr>
+                    ) : creditTransactions.map((transaction) => (
+                      <tr key={transaction.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">{transaction.user_display_name || transaction.username || `用户 #${transaction.user_id}`}</div>
+                          <div className="text-xs text-gray-500">ID #{transaction.user_id}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-sm font-semibold text-gray-900">{transaction.reason_label || transaction.reason}</span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className={`inline-flex items-center rounded-full border px-3 py-1 text-sm font-bold ${getCreditTransactionClass(transaction)}`}>
+                            {formatBeerDelta(transaction.delta)}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">余额 {transaction.balance_after} 啤酒</div>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600">
+                          {transaction.related_session_title
+                            ? `任务：${transaction.related_session_title}`
+                            : transaction.related_session_public_id
+                              ? `会话：${transaction.related_session_public_id.slice(0, 8)}…`
+                              : transaction.related_code_id
+                                ? `兑换码 #${transaction.related_code_id}`
+                                : '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {formatChinaDateTime(transaction.created_at)}
                         </td>
                       </tr>
                     ))}
