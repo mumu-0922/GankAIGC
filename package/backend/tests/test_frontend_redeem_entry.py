@@ -172,7 +172,7 @@ def test_admin_invite_and_credit_code_forms_use_matching_layout():
     assert admin_dashboard.count("className={ADMIN_ACCOUNT_WIDE_INPUT_CLASS}") == 1
     assert admin_dashboard.count("className={ADMIN_ACCOUNT_INPUT_CLASS}") >= 2
     assert admin_dashboard.count("className={ADMIN_ACCOUNT_ACTION_BUTTON_CLASS}") == 2
-    assert "sm:grid-cols-[minmax(0,1fr)_9.5rem_7rem]" in admin_dashboard
+    assert "sm:grid-cols-[minmax(0,1fr)_6rem_7rem]" in admin_dashboard
     assert "sm:col-span-2" in admin_dashboard
     assert "min-w-[7rem]" in admin_dashboard
     assert 'aria-hidden="true"' not in admin_dashboard
