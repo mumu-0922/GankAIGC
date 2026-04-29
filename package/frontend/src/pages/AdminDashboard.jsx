@@ -31,6 +31,7 @@ const DEFAULT_ADMIN_TAB = 'dashboard';
 const ADMIN_TAB_IDS = ['dashboard', 'sessions', 'accounts', 'database', 'config'];
 const ADMIN_ACCOUNT_FORM_CLASS = 'grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_9.5rem_7rem] gap-3 mb-5';
 const ADMIN_ACCOUNT_INPUT_CLASS = 'w-full min-w-0 h-12 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent';
+const ADMIN_ACCOUNT_WIDE_INPUT_CLASS = `${ADMIN_ACCOUNT_INPUT_CLASS} sm:col-span-2`;
 const ADMIN_ACCOUNT_ACTION_BUTTON_CLASS = 'min-w-[7rem] h-12 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors flex items-center justify-center gap-2 font-semibold';
 
 const formatAdminNumber = (value) => Number(value || 0).toLocaleString();
@@ -709,9 +710,8 @@ const AdminDashboard = () => {
                     value={newInviteCode}
                     onChange={(e) => setNewInviteCode(e.target.value)}
                     placeholder="邀请码，可留空自动生成"
-                    className={ADMIN_ACCOUNT_INPUT_CLASS}
+                    className={ADMIN_ACCOUNT_WIDE_INPUT_CLASS}
                   />
-                  <div className="hidden sm:block" aria-hidden="true" />
                   <button
                     type="submit"
                     className={ADMIN_ACCOUNT_ACTION_BUTTON_CLASS}
