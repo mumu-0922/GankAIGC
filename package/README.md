@@ -73,7 +73,7 @@ cd package
    - API Key（OPENAI_API_KEY、POLISH_API_KEY 等）
    - 管理员密码（ADMIN_PASSWORD）
    - JWT 密钥（SECRET_KEY）
-   - 可选任务队列配置（INLINE_TASK_WORKER_ENABLED、TASK_WORKER_POLL_INTERVAL）
+   - 可选任务队列配置（INLINE_TASK_WORKER_ENABLED、TASK_WORKER_POLL_INTERVAL、TASK_WORKER_HEARTBEAT_INTERVAL、TASK_WORKER_STALE_TIMEOUT_SECONDS）
 5. 再次运行程序
 6. 程序会自动打开浏览器访问 http://localhost:9800
 
@@ -81,7 +81,7 @@ cd package
 
 `.env` 文件会保存在可执行文件同目录下。数据库只支持 PostgreSQL，请在 `.env` 中配置 `DATABASE_URL`。
 
-源码运行时降 AI 任务会先进入 PostgreSQL 队列。exe / `python main.py` 默认启用 inline worker；Docker 部署则由独立 worker 服务消费队列。
+源码运行时降 AI 任务会先进入 PostgreSQL 队列。exe / `python main.py` 默认启用 inline worker；Docker 部署则由独立 worker 服务消费队列。worker 会定期刷新心跳，长时间无心跳的处理中任务会自动恢复为排队状态。
 
 ### 访问地址
 

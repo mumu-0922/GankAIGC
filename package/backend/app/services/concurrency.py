@@ -2,6 +2,7 @@ import asyncio
 from typing import Optional, Dict, List
 from datetime import datetime
 from app.config import settings
+from app.utils.time import utcnow
 
 # 等待并发权限的最大超时时间（秒）
 ACQUIRE_TIMEOUT = 3600  # 1小时
@@ -33,18 +34,18 @@ class ConcurrencyManager:
                 return True
             
             if len(self.active_sessions) < self.max_concurrent:
-                self.active_sessions[session_id] = datetime.utcnow()
+                self.active_sessions[session_id] = utcnow()
                 return True
 
             if session_id not in self.queue:
                 self.queue.append(session_id)
             
             # 等待被唤醒，设置超时防止无限等待
-            start_time = datetime.utcnow()
+            start_time = utcnow()
             while session_id not in self.active_sessions and session_id in self.queue:
                 try:
                     # 使用 wait_for 设置超时
-                    remaining_timeout = timeout - (datetime.utcnow() - start_time).total_seconds()
+                    remaining_timeout = timeout - (utcnow() - start_time).total_seconds()
                     if remaining_timeout <= 0:
                         # 超时，从队列中移除
                         if session_id in self.queue:
@@ -108,7 +109,7 @@ class ConcurrencyManager:
         """尝试为等待队列中的会话分配执行权限 (需持有锁)"""
         while self.queue and len(self.active_sessions) < self.max_concurrent:
             next_session = self.queue.pop(0)
-            self.active_sessions[next_session] = datetime.utcnow()
+            self.active_sessions[next_session] = utcnow()
 
 
 # 全局并发管理器实例

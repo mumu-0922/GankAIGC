@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 
@@ -26,8 +26,7 @@ class UserResponse(BaseModel):
     usage_limit: int
     usage_count: int
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class RegisterRequest(BaseModel):
@@ -51,8 +50,7 @@ class UserProfileResponse(BaseModel):
     created_at: datetime
     last_login_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserProfileUpdateRequest(BaseModel):
@@ -73,8 +71,7 @@ class UserInviteResponse(BaseModel):
     used_by_user_id: Optional[int] = None
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CreditCodeCreateRequest(BaseModel):
@@ -101,8 +98,7 @@ class CreditTransactionResponse(BaseModel):
     related_session_id: Optional[int] = None
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CreditCodeResponse(BaseModel):
@@ -115,8 +111,7 @@ class CreditCodeResponse(BaseModel):
     redeemed_at: Optional[datetime] = None
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AdminCreditAdjustRequest(BaseModel):
@@ -139,8 +134,7 @@ class ProviderConfigResponse(BaseModel):
     enhance_model: str
     emotion_model: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PaperProjectCreate(BaseModel):
@@ -162,8 +156,7 @@ class PaperProjectResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ModelConfig(BaseModel):
@@ -199,8 +192,7 @@ class SegmentResponse(BaseModel):
     created_at: datetime
     completed_at: Optional[datetime] = None
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class SessionResponse(BaseModel):
@@ -227,8 +219,7 @@ class SessionResponse(BaseModel):
     updated_at: datetime
     completed_at: Optional[datetime] = None
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class SessionDetailResponse(SessionResponse):
@@ -266,8 +257,7 @@ class ChangeLogResponse(BaseModel):
     changes_detail: Optional[Dict[str, Any]] = None
     created_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ExportConfirmation(BaseModel):
@@ -317,5 +307,4 @@ class PromptResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

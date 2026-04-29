@@ -1,8 +1,8 @@
 from sqlalchemy import Column, Integer, String, DateTime, Text, Boolean, ForeignKey, Float
 from sqlalchemy.orm import relationship
-from datetime import datetime
 from app.database import Base
 from app.config import settings
+from app.utils.time import utcnow
 
 
 class User(Base):
@@ -17,7 +17,7 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     is_unlimited = Column(Boolean, default=False)
     credit_balance = Column(Integer, default=0)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
     last_used = Column(DateTime, nullable=True)
     last_login_at = Column(DateTime, nullable=True)
     usage_limit = Column(Integer, default=settings.DEFAULT_USAGE_LIMIT)
@@ -47,8 +47,8 @@ class CustomPrompt(Base):
     is_default = Column(Boolean, default=False)
     is_system = Column(Boolean, default=False)  # 系统预设提示词
     is_active = Column(Boolean, default=True)  # 是否启用
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
     
     # 关系
     user = relationship("User", back_populates="prompts")
@@ -63,8 +63,8 @@ class PaperProject(Base):
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
     is_archived = Column(Boolean, default=False, index=True)
-    created_at = Column(DateTime, default=datetime.utcnow, index=True)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow, index=True)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
 
     user = relationship("User", back_populates="paper_projects")
     sessions = relationship("OptimizationSession", back_populates="project")
@@ -85,12 +85,12 @@ class OptimizationSession(Base):
     total_segments = Column(Integer, default=0)  # 总段落数
     error_message = Column(Text, nullable=True)
     failed_segment_index = Column(Integer, nullable=True)
-    queued_at = Column(DateTime, default=datetime.utcnow, index=True)
+    queued_at = Column(DateTime, default=utcnow, index=True)
     started_at = Column(DateTime, nullable=True)
     finished_at = Column(DateTime, nullable=True)
     worker_id = Column(String(100), nullable=True, index=True)
-    created_at = Column(DateTime, default=datetime.utcnow, index=True)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow, index=True)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
     completed_at = Column(DateTime, nullable=True)
     
     # 模型配置
@@ -142,7 +142,7 @@ class OptimizationSegment(Base):
     enhanced_text = Column(Text, nullable=True)
     status = Column(String(50), index=True)  # 'pending', 'processing', 'completed', 'failed'
     is_title = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
     completed_at = Column(DateTime, nullable=True)
     
     # 关系
@@ -159,7 +159,7 @@ class SessionHistory(Base):
     history_data = Column(Text)  # JSON格式的历史会话
     is_compressed = Column(Boolean, default=False)
     character_count = Column(Integer, default=0)  # 汉字数量
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
     
     # 关系
     session = relationship("OptimizationSession", back_populates="history")
@@ -176,7 +176,7 @@ class ChangeLog(Base):
     before_text = Column(Text)
     after_text = Column(Text)
     changes_detail = Column(Text)  # JSON格式的详细变更
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
 
 
 class QueueStatus(Base):
@@ -188,7 +188,7 @@ class QueueStatus(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     position = Column(Integer)  # 队列位置
     status = Column(String(50))  # 'queued' 或 'processing'
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
     started_at = Column(DateTime, nullable=True)
 
 
@@ -201,7 +201,7 @@ class RegistrationInvite(Base):
     expires_at = Column(DateTime, nullable=True)
     created_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     used_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
 
     created_by_user = relationship("User", back_populates="created_invites", foreign_keys=[created_by_user_id])
     used_by_user = relationship("User", back_populates="used_invites", foreign_keys=[used_by_user_id])
@@ -217,7 +217,7 @@ class CreditCode(Base):
     expires_at = Column(DateTime, nullable=True)
     redeemed_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     redeemed_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
 
     redeemed_by_user = relationship("User", back_populates="redeemed_credit_codes", foreign_keys=[redeemed_by_user_id])
     credit_transactions = relationship("CreditTransaction", back_populates="related_code")
@@ -233,7 +233,7 @@ class CreditTransaction(Base):
     reason = Column(String(64), nullable=False)
     related_code_id = Column(Integer, ForeignKey("credit_codes.id"), nullable=True)
     related_session_id = Column(Integer, ForeignKey("optimization_sessions.id"), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    created_at = Column(DateTime, default=utcnow, index=True)
 
     user = relationship("User", back_populates="credit_transactions")
     related_code = relationship("CreditCode", back_populates="credit_transactions")
@@ -251,7 +251,7 @@ class UserProviderConfig(Base):
     polish_model = Column(String(100), nullable=False)
     enhance_model = Column(String(100), nullable=False)
     emotion_model = Column(String(100), nullable=True)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
 
     user = relationship("User", back_populates="provider_config")
 
@@ -263,7 +263,7 @@ class SystemSetting(Base):
     id = Column(Integer, primary_key=True, index=True)
     key = Column(String(100), unique=True, nullable=False)
     value = Column(String(255), nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
 
 
 class SavedSpec(Base):
@@ -275,8 +275,8 @@ class SavedSpec(Base):
     name = Column(String(100), nullable=False)
     description = Column(String(500), nullable=True)
     spec_json = Column(Text, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
 
     # 关系
     user = relationship("User", back_populates="saved_specs")

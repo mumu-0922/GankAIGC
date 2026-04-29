@@ -14,7 +14,7 @@ from urllib.parse import quote
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, Request, UploadFile
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 from sse_starlette.sse import EventSourceResponse
 
@@ -116,7 +116,9 @@ class SpecListResponse(BaseModel):
 
 class SpecSchemaResponse(BaseModel):
     """Response for spec schema."""
-    schema: dict
+    json_schema: dict = Field(alias="schema")
+
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class UsageInfoResponse(BaseModel):

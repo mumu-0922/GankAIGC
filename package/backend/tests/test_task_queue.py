@@ -1,12 +1,14 @@
 import asyncio
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import app.config as config_module
 from app.database import SessionLocal
 from app.models.models import CreditTransaction, OptimizationSession, User
 from app.services.credit_service import CreditService
+from app.services import task_queue
 from app.services.task_queue import process_next_queued_session
 from app.utils.auth import create_user_access_token, get_password_hash
+from app.utils.time import utcnow
 
 
 def _create_user(credit_balance=0):
@@ -28,7 +30,17 @@ def _create_user(credit_balance=0):
         db.close()
 
 
-def _create_session(user_id, session_id, *, status="queued", created_at=None, charged_credits=0):
+def _create_session(
+    user_id,
+    session_id,
+    *,
+    status="queued",
+    created_at=None,
+    updated_at=None,
+    started_at=None,
+    worker_id=None,
+    charged_credits=0,
+):
     db = SessionLocal()
     try:
         session = OptimizationSession(
@@ -42,7 +54,10 @@ def _create_session(user_id, session_id, *, status="queued", created_at=None, ch
             billing_mode="platform",
             charge_status="held" if charged_credits else "not_charged",
             charged_credits=charged_credits,
-            created_at=created_at or datetime.utcnow(),
+            created_at=created_at or utcnow(),
+            updated_at=updated_at or created_at or utcnow(),
+            started_at=started_at,
+            worker_id=worker_id,
         )
         db.add(session)
         db.commit()
@@ -82,15 +97,15 @@ def test_start_optimization_can_enqueue_without_inline_background_processing(cli
 
 def test_process_next_queued_session_runs_oldest_queued_session():
     user_id, _ = _create_user()
-    older_id = _create_session(user_id, "older-session", created_at=datetime.utcnow() - timedelta(minutes=5))
-    newer_id = _create_session(user_id, "newer-session", created_at=datetime.utcnow())
+    older_id = _create_session(user_id, "older-session", created_at=utcnow() - timedelta(minutes=5))
+    newer_id = _create_session(user_id, "newer-session", created_at=utcnow())
     processed = []
 
     async def fake_runner(db, session):
         processed.append(session.session_id)
         session.status = "completed"
         session.progress = 100
-        session.completed_at = datetime.utcnow()
+        session.completed_at = utcnow()
         db.commit()
 
     assert asyncio.run(process_next_queued_session("test-worker", runner=fake_runner)) is True
@@ -106,6 +121,75 @@ def test_process_next_queued_session_runs_oldest_queued_session():
         assert older.finished_at is not None
         assert newer.status == "queued"
         assert newer.worker_id is None
+    finally:
+        db.close()
+
+
+def test_process_next_queued_session_refreshes_heartbeat_while_running(monkeypatch):
+    monkeypatch.setattr(config_module.settings, "TASK_WORKER_HEARTBEAT_INTERVAL", 0.01, raising=False)
+
+    user_id, _ = _create_user()
+    session_id = _create_session(user_id, "heartbeat-session")
+    heartbeat_seen = {}
+
+    async def slow_runner(db, session):
+        heartbeat_seen["initial"] = session.updated_at
+        await asyncio.sleep(0.05)
+
+        probe_db = SessionLocal()
+        try:
+            current = probe_db.query(OptimizationSession).filter(OptimizationSession.id == session_id).one()
+            heartbeat_seen["current"] = current.updated_at
+        finally:
+            probe_db.close()
+
+        session.status = "completed"
+        session.progress = 100
+        session.completed_at = utcnow()
+        db.commit()
+
+    assert asyncio.run(process_next_queued_session("heartbeat-worker", runner=slow_runner)) is True
+
+    assert heartbeat_seen["current"] > heartbeat_seen["initial"]
+
+
+def test_recover_stale_processing_sessions_requeues_dead_worker_session():
+    user_id, _ = _create_user()
+    stale_time = utcnow() - timedelta(minutes=30)
+    fresh_time = utcnow()
+    stale_id = _create_session(
+        user_id,
+        "stale-processing-session",
+        status="processing",
+        created_at=stale_time,
+        updated_at=stale_time,
+        started_at=stale_time,
+        worker_id="dead-worker",
+    )
+    fresh_id = _create_session(
+        user_id,
+        "fresh-processing-session",
+        status="processing",
+        created_at=fresh_time,
+        updated_at=fresh_time,
+        started_at=fresh_time,
+        worker_id="live-worker",
+    )
+
+    db = SessionLocal()
+    try:
+        recovered = task_queue.recover_stale_processing_sessions(db, stale_after_seconds=60)
+        stale = db.query(OptimizationSession).filter(OptimizationSession.id == stale_id).one()
+        fresh = db.query(OptimizationSession).filter(OptimizationSession.id == fresh_id).one()
+
+        assert recovered == 1
+        assert stale.status == "queued"
+        assert stale.worker_id is None
+        assert stale.started_at is None
+        assert stale.finished_at is None
+        assert "dead-worker" in stale.error_message
+        assert fresh.status == "processing"
+        assert fresh.worker_id == "live-worker"
     finally:
         db.close()
 

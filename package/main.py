@@ -10,6 +10,7 @@ import webbrowser
 import threading
 import time
 import signal
+from contextlib import asynccontextmanager
 from typing import Optional
 
 # 获取应用运行目录
@@ -85,11 +86,22 @@ ensure_runtime_secrets_safe()
 auth_rate_limiter = SlidingWindowLimiter()
 redeem_rate_limiter = SlidingWindowLimiter()
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await startup_event()
+    try:
+        yield
+    finally:
+        await shutdown_event()
+
+
 # 创建 FastAPI 应用
 app = FastAPI(
     title="GankAIGC",
     description="高质量论文润色与原创性学术表达增强",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan,
 )
 
 # 添加 Gzip 压缩中间件以减少响应体积
@@ -161,7 +173,6 @@ async def enforce_sensitive_endpoint_rate_limits(request: Request, call_next):
     return await call_next(request)
 
 
-@app.on_event("startup")
 async def startup_event():
     """启动时初始化"""
     print(f"\n📁 应用目录: {APP_DIR}")
@@ -212,7 +223,6 @@ async def startup_event():
         db.close()
 
 
-@app.on_event("shutdown")
 async def shutdown_event():
     """关闭时清理资源"""
     if settings.WORD_FORMATTER_ENABLED:

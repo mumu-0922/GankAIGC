@@ -1,4 +1,4 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Optional
 import os
 import sys
@@ -123,10 +123,13 @@ class Settings(BaseSettings):
     ADMIN_DATABASE_WRITE_ENABLED: bool = False
     INLINE_TASK_WORKER_ENABLED: bool = True
     TASK_WORKER_POLL_INTERVAL: float = 2.0
-    
-    class Config:
-        env_file = get_env_file_path()
-        case_sensitive = True
+    TASK_WORKER_HEARTBEAT_INTERVAL: float = 30.0
+    TASK_WORKER_STALE_TIMEOUT_SECONDS: int = 1800
+
+    model_config = SettingsConfigDict(
+        env_file=get_env_file_path(),
+        case_sensitive=True,
+    )
 
 
 # 加载 exe 目录下的 .env 文件

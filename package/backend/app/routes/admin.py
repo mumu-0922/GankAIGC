@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Type
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import inspect, func, case
 from sqlalchemy.orm import Session, defer, joinedload
 
@@ -37,6 +37,7 @@ from app.utils.auth import (
     create_access_token,
     verify_token,
 )
+from app.utils.time import utcnow
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -79,8 +80,7 @@ class InviteResponse(BaseModel):
     used_by_user_id: Optional[int] = None
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 ALLOWED_TABLES: Dict[str, Type] = {
@@ -453,10 +453,10 @@ async def get_statistics(_: str = Depends(get_admin_from_token), db: Session = D
     total_segments = db.query(OptimizationSegment).count() or 0
     completed_segments = db.query(OptimizationSegment).filter(OptimizationSegment.status == "completed").count() or 0
 
-    seven_days_ago = datetime.utcnow() - timedelta(days=7)
+    seven_days_ago = utcnow() - timedelta(days=7)
     recent_active_users = db.query(User).filter(User.last_used >= seven_days_ago).count() or 0
 
-    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start = utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
     today_new_users = db.query(User).filter(User.created_at >= today_start).count() or 0
     today_active_users = db.query(User).filter(User.last_used >= today_start).count() or 0
     today_sessions = db.query(OptimizationSession).filter(OptimizationSession.created_at >= today_start).count() or 0
@@ -664,7 +664,7 @@ async def get_all_sessions(
         if session.completed_at and session.created_at:
             processing_time = (session.completed_at - session.created_at).total_seconds()
         elif session.status == 'processing' and session.created_at:
-            processing_time = (datetime.utcnow() - session.created_at).total_seconds()
+            processing_time = (utcnow() - session.created_at).total_seconds()
         
         # 获取统计信息
         stats = stats_map.get(session.id, {
@@ -736,7 +736,7 @@ async def get_active_sessions(
     segments_map = {stat.session_id: int(stat.completed or 0) for stat in segments_stats}
 
     result = []
-    now = datetime.utcnow()
+    now = utcnow()
     for session in active_sessions:
         # 计算处理时间
         processing_time = None
@@ -831,7 +831,7 @@ async def get_user_sessions(
         if session.completed_at and session.created_at:
             processing_time = (session.completed_at - session.created_at).total_seconds()
         elif session.status == "processing" and session.created_at:
-            processing_time = (datetime.utcnow() - session.created_at).total_seconds()
+            processing_time = (utcnow() - session.created_at).total_seconds()
         
         stats = stats_map.get(session.id, {
             'total': 0, 'completed': 0, 'polished_chars': 0, 'enhanced_chars': 0

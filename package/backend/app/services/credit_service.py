@@ -6,6 +6,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.models.models import CreditCode, CreditTransaction, OptimizationSession, User
+from app.utils.time import utcnow
 
 
 CREDIT_UNIT_CHARACTERS = 1000
@@ -159,5 +160,5 @@ class CreditService:
         )
         credit_code.is_active = False
         credit_code.redeemed_by_user_id = user.id
-        credit_code.redeemed_at = datetime.utcnow()
+        credit_code.redeemed_at = utcnow()
         return transaction

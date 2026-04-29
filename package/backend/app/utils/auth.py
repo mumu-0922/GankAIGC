@@ -1,5 +1,5 @@
 import secrets
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Optional
 from fastapi import Depends, Header, HTTPException, status
 from jose import JWTError, jwt
@@ -7,6 +7,7 @@ from passlib.context import CryptContext
 from app.config import settings
 from app.database import get_db
 from app.models.models import User
+from app.utils.time import utcnow
 from sqlalchemy.orm import Session
 
 
@@ -32,9 +33,9 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     """创建访问令牌"""
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = utcnow() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=settings.USER_ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = utcnow() + timedelta(minutes=settings.USER_ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
@@ -80,7 +81,7 @@ def get_current_user_from_bearer(
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="用户不存在或已禁用")
 
-    user.last_used = datetime.utcnow()
+    user.last_used = utcnow()
     db.commit()
     return user
 
@@ -100,7 +101,7 @@ def get_current_user_with_legacy_fallback(
             if user_id and str(user_id).isdigit():
                 user = db.query(User).filter(User.id == int(user_id), User.is_active.is_(True)).first()
                 if user:
-                    user.last_used = datetime.utcnow()
+                    user.last_used = utcnow()
                     db.commit()
                     return user
 

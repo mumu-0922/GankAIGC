@@ -1,7 +1,6 @@
 import json
 import asyncio
 from typing import List, Dict, Optional
-from datetime import datetime
 from sqlalchemy.orm import Session
 from app.models.models import (
     OptimizationSession, OptimizationSegment,
@@ -16,6 +15,7 @@ from app.services.concurrency import concurrency_manager
 from app.services.credit_service import CreditService
 from app.services.stream_manager import stream_manager
 from app.config import settings
+from app.utils.time import utcnow
 
 # 错误信息最大长度，避免数据库字段溢出
 MAX_ERROR_MESSAGE_LENGTH = 500
@@ -162,7 +162,7 @@ class OptimizationService:
             
             # 完成
             self.session_obj.status = "completed"
-            self.session_obj.completed_at = datetime.utcnow()
+            self.session_obj.completed_at = utcnow()
             self.session_obj.progress = 100.0
             self.session_obj.failed_segment_index = None
             self.db.commit()
@@ -275,7 +275,7 @@ class OptimizationService:
                     segment.status = "completed"
                     segment.polished_text = segment.original_text
                     segment.enhanced_text = segment.original_text
-                    segment.completed_at = datetime.utcnow()
+                    segment.completed_at = utcnow()
                     segment.stage = stage
                     self.db.commit()
                 continue
@@ -289,7 +289,7 @@ class OptimizationService:
                 if segment.is_title and not segment.enhanced_text:
                     segment.enhanced_text = segment.polished_text or segment.original_text
                     segment.status = "completed"
-                    segment.completed_at = segment.completed_at or datetime.utcnow()
+                    segment.completed_at = segment.completed_at or utcnow()
                     self.db.commit()
                     continue
 
@@ -346,7 +346,7 @@ class OptimizationService:
                     segment.enhanced_text = output_text
 
                 segment.status = "completed"
-                segment.completed_at = datetime.utcnow()
+                segment.completed_at = utcnow()
                 self.db.commit()
                 
                 # 记录变更
@@ -544,7 +544,7 @@ class OptimizationService:
             # 更新现有记录
             existing.history_data = json.dumps(history, ensure_ascii=False)
             existing.character_count = char_count
-            existing.created_at = datetime.utcnow()
+            existing.created_at = utcnow()
         else:
             # 创建新记录
             history_obj = SessionHistory(

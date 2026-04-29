@@ -14,6 +14,7 @@ from app.utils.auth import (
     verify_password,
     verify_user_token,
 )
+from app.utils.time import utcnow
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -96,7 +97,7 @@ async def login(payload: LoginRequest, db: Session = Depends(get_db)):
     if not user or not user.password_hash or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="用户名或密码错误")
 
-    user.last_login_at = datetime.utcnow()
+    user.last_login_at = utcnow()
     db.commit()
     token = create_user_access_token(user.id, user.username or "")
     return {

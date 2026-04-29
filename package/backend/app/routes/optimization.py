@@ -18,6 +18,7 @@ from app.services.provider_config_service import ProviderConfigService
 from app.services.stream_manager import stream_manager
 from app.services.task_queue import process_session_by_id
 from app.utils.auth import generate_session_id, get_current_user_with_legacy_fallback
+from app.utils.time import utcnow
 from datetime import datetime
 import asyncio
 from app.config import settings
@@ -155,7 +156,7 @@ async def start_optimization(
         current_stage=initial_stage,
         status="queued",
         progress=0.0,
-        queued_at=datetime.utcnow(),
+        queued_at=utcnow(),
         polish_model=polish_model,
         polish_api_key=polish_api_key,
         polish_base_url=polish_base_url,
@@ -506,7 +507,7 @@ async def retry_session(
     # 保留历史错误信息
     old_error = session.error_message or "未知错误"
     session.status = "queued"
-    session.queued_at = datetime.utcnow()
+    session.queued_at = utcnow()
     session.started_at = None
     session.finished_at = None
     session.worker_id = None
