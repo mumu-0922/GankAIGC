@@ -78,7 +78,10 @@ const adminConfig = {
   },
 };
 
-async function mockAdminApis(page) {
+async function mockAdminApis(page, options = {}) {
+  const users = options.users || [];
+  const creditTransactionsStatus = options.creditTransactionsStatus || 200;
+
   await page.route('**/api/admin/**', async (route) => {
     const url = new URL(route.request().url());
 
@@ -98,13 +101,26 @@ async function mockAdminApis(page) {
       return fulfillJson(route, adminConfig);
     }
 
+    if (url.pathname === '/api/admin/users') {
+      return fulfillJson(route, users);
+    }
+
+    if (url.pathname === '/api/admin/credit-transactions') {
+      if (creditTransactionsStatus === 404) {
+        return route.fulfill({
+          status: 404,
+          contentType: 'application/json',
+          body: JSON.stringify({ detail: 'Not found' }),
+        });
+      }
+      return fulfillJson(route, []);
+    }
+
     if (
       url.pathname === '/api/admin/sessions' ||
       url.pathname === '/api/admin/sessions/active' ||
-      url.pathname === '/api/admin/users' ||
       url.pathname === '/api/admin/invites' ||
       url.pathname === '/api/admin/credit-codes' ||
-      url.pathname === '/api/admin/credit-transactions' ||
       url.pathname === '/api/admin/provider-configs'
     ) {
       return fulfillJson(route, []);
@@ -139,4 +155,33 @@ test('admin can log in and switch core sections', async ({ page }) => {
   await expect(page.getByRole('heading', { name: '润色模型配置', exact: true })).toBeVisible();
 
   await expect(page.getByText(/卡密|Word 排版任务|论文排版/)).toHaveCount(0);
+});
+
+test('admin account data remains visible if beer history endpoint is missing', async ({ page }) => {
+  await mockAdminApis(page, {
+    creditTransactionsStatus: 404,
+    users: [{
+      id: 7,
+      username: 'alice',
+      nickname: 'Alice',
+      is_active: true,
+      is_unlimited: false,
+      credit_balance: 18,
+      created_at: '2026-04-30T00:00:00',
+      last_login_at: null,
+      last_used: null,
+      usage_limit: 0,
+      usage_count: 0,
+      access_link: 'account://alice',
+    }],
+  });
+  await page.goto('/admin?tab=accounts');
+
+  await page.getByPlaceholder('请输入用户名').fill('admin');
+  await page.getByPlaceholder('请输入密码').fill('admin-password');
+  await page.getByRole('button', { name: /登录/ }).click();
+
+  await expect(page.getByText('alice')).toBeVisible();
+  await expect(page.getByText('18')).toBeVisible();
+  await expect(page.getByText('暂无啤酒流水')).toBeVisible();
 });

@@ -194,19 +194,34 @@ const AdminDashboard = () => {
     setLoadingAccountData(true);
     try {
       const headers = { Authorization: `Bearer ${adminToken}` };
-      const [usersResponse, invitesResponse, creditCodesResponse, creditTransactionsResponse, providerConfigsResponse] = await Promise.all([
+      const [usersResponse, invitesResponse, creditCodesResponse] = await Promise.all([
         axios.get('/api/admin/users', { headers }),
         axios.get('/api/admin/invites', { headers }),
         axios.get('/api/admin/credit-codes', { headers }),
-        axios.get('/api/admin/credit-transactions', { headers, params: { limit: 30 } }),
-        axios.get('/api/admin/provider-configs', { headers })
       ]);
 
       setUsers(usersResponse.data);
       setInvites(invitesResponse.data);
       setCreditCodes(creditCodesResponse.data);
-      setCreditTransactions(creditTransactionsResponse.data);
-      setProviderConfigs(providerConfigsResponse.data);
+
+      const [creditTransactionsResult, providerConfigsResult] = await Promise.allSettled([
+        axios.get('/api/admin/credit-transactions', { headers, params: { limit: 30 } }),
+        axios.get('/api/admin/provider-configs', { headers })
+      ]);
+
+      if (creditTransactionsResult.status === 'fulfilled') {
+        setCreditTransactions(creditTransactionsResult.value.data);
+      } else {
+        setCreditTransactions([]);
+        console.warn('Beer transaction history is unavailable:', creditTransactionsResult.reason);
+      }
+
+      if (providerConfigsResult.status === 'fulfilled') {
+        setProviderConfigs(providerConfigsResult.value.data);
+      } else {
+        setProviderConfigs([]);
+        console.warn('Provider config summaries are unavailable:', providerConfigsResult.reason);
+      }
     } catch (error) {
       toast.error(error.response?.data?.detail || '获取账号管理数据失败');
       console.error('Error fetching account data:', error);
