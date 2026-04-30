@@ -1,77 +1,192 @@
+<div align="center">
+  <img src="package/frontend/public/gankaigc-logo.svg" alt="GankAIGC Logo" width="96" />
+
 # GankAIGC
 
-GankAIGC 是一个面向论文文本的 AI 降重、学术润色与原创性表达增强工具。项目采用 FastAPI + React/Vite 架构，支持源码运行、Docker 部署和 PyInstaller 打包为单个可执行文件。
+**论文降 AI、学术润色与原创性表达增强工具**
 
-当前稳定主线聚焦「账号注册 + 用户登录 + 邀请码注册 + 兑换码充值啤酒 + 降 AI 工作台」。文档排版相关代码仍保留在后端实验模块中，但前端入口和路由已移除，不是当前主流程功能。
+[![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-Backend-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![React](https://img.shields.io/badge/React%2018-Frontend-61DAFB?logo=react&logoColor=111)](https://react.dev/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Only-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Docker](https://img.shields.io/badge/Docker-Deploy-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
+[![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey)](LICENSE)
 
-## 主要功能
+如果这个项目对你有帮助，欢迎点一个 ⭐ Star。
 
-- 论文文本降 AI：支持论文润色、原创性增强、润色 + 增强、感情文章润色等处理模式。
-- 账号体系：用户通过邀请码注册，登录后进入工作台；用户可修改昵称并查看个人信息。
-- 邀请机制：管理员可创建多个邀请码，普通用户只能生成一个自己的邀请码用于邀请他人注册。
-- 啤酒体系：管理员创建兑换码，用户在前台兑换啤酒；平台模式按字符折算啤酒，1000 个非空白字符约消耗 1 啤酒。
-- 自带 API：用户可保存自己的 OpenAI 兼容接口配置，使用 BYOK 模式处理任务。
-- 论文项目与历史：支持按论文项目归档任务，查看会话进度、处理结果和改写记录。
-- 结果导出：处理完成后可导出 Word (`.docx`) 或 Markdown (`.md`) 文件。
-- 管理后台：提供数据面板、会话监控、账号与兑换码管理、数据库管理、系统配置等能力。
+</div>
 
-## 技术栈
+---
 
-- 后端：FastAPI、SQLAlchemy、PostgreSQL、JWT、OpenAI Python SDK
-- 前端：React 18、Vite、Tailwind CSS、React Router、Axios、Lucide React
-- 打包：PyInstaller
-- 部署：Docker Compose + PostgreSQL
+## ✨ 项目简介
 
-## 项目结构
+GankAIGC 是一个面向论文文本的降 AI 与学术润色工具，采用 **FastAPI + React/Vite + PostgreSQL** 架构，支持源码运行、Docker 部署和 PyInstaller 打包。
+
+当前稳定主线只聚焦：
+
+```text
+账号注册 → 用户登录 → 邀请码注册 → 兑换码充值啤酒 → 降 AI 工作台
+```
+
+> 文档排版 / Word 排版仍是后端实验模块，默认关闭，前端不暴露入口。
+
+---
+
+## 🧩 核心功能
+
+| 功能 | 说明 |
+| --- | --- |
+| 📝 论文降 AI | 支持论文润色、原创性增强、润色 + 增强、感情文章润色等模式 |
+| 👤 账号体系 | 用户通过邀请码注册，登录后进入工作台，可修改昵称和查看个人信息 |
+| 📨 邀请机制 | 管理员可无限创建邀请码，普通用户只能生成 1 个自己的邀请码 |
+| 🍺 啤酒额度 | 用户使用兑换码充值啤酒；平台模式按字符扣除，约 1000 个非空白字符消耗 1 啤酒 |
+| 🔑 自带 API | 用户可保存自己的 OpenAI 兼容接口配置，使用 BYOK 模式处理任务 |
+| 📚 论文项目 | 支持按论文项目归档任务，查看历史会话、分段结果和改写记录 |
+| 📦 结果导出 | 支持导出 Word `.docx` 和 Markdown `.md` |
+| 🛠 管理后台 | 数据面板、会话监控、用户管理、兑换码、封禁/解封、操作日志、系统配置 |
+
+---
+
+## 🏗 技术栈
+
+- **后端**：FastAPI、SQLAlchemy、Alembic、PostgreSQL、JWT、OpenAI Python SDK
+- **前端**：React 18、Vite、Tailwind CSS、React Router、Axios、Lucide React
+- **任务处理**：PostgreSQL 队列；Docker 部署使用独立 worker
+- **部署**：Docker Compose + PostgreSQL
+- **打包**：PyInstaller
+
+---
+
+## 📁 项目结构
 
 ```text
 GankAIGC/
 ├── package/
-│   ├── main.py                  # 一体化启动入口，挂载 API 与前端静态文件
+│   ├── main.py                  # 一体化启动入口，提供 API 与前端静态页面
 │   ├── backend/
-│   │   ├── app/
-│   │   │   ├── routes/          # auth、user、admin、optimization 等 API
-│   │   │   ├── services/        # AI 调用、并发、啤酒、配置等业务逻辑
-│   │   │   ├── models/          # SQLAlchemy 数据模型
-│   │   │   ├── utils/           # 认证、加密等工具
-│   │   │   └── word_formatter/  # 实验性文档工具模块
+│   │   ├── app/routes/          # auth、user、admin、optimization 等 API
+│   │   ├── app/services/        # AI 调用、啤酒、配置、任务队列等业务逻辑
+│   │   ├── app/models/          # SQLAlchemy 数据模型
+│   │   ├── migrations/          # Alembic 数据库迁移
 │   │   └── tests/               # pytest 测试
 │   ├── frontend/
 │   │   ├── src/pages/           # 页面
 │   │   ├── src/components/      # 组件
 │   │   └── src/api/             # 前端 API 封装
-│   ├── static/                  # 前端生产构建产物，由 main.py 提供服务
-│   ├── requirements.txt         # 打包运行所需 Python 依赖
+│   ├── static/                  # 前端生产构建产物
+│   ├── requirements.txt
 │   ├── build.ps1                # Windows 可执行文件构建脚本
 │   └── build.sh                 # Linux/macOS 可执行文件构建脚本
 ├── docker-compose.yml
 ├── Dockerfile
-├── scripts/
-│   └── start-dev.ps1            # Windows 本地一键诊断与启动
-├── .env.docker.example
+├── scripts/                     # 启动诊断、PostgreSQL 备份/恢复脚本
+├── docs/                        # 部署、运维和维护清单
+├── .env.docker.example          # Docker 环境变量模板，不是真实密钥
 └── AGENTS.md                    # 贡献者/Agent 开发指南
 ```
 
-## 快速运行
+---
 
-### 本地一键启动（Windows）
+## 🚀 新手最快启动（Windows 本地）
 
-用于本地开发前先诊断端口、`package/.env`、`DATABASE_URL` 和 PostgreSQL 连接；诊断通过后会在 `package/` 目录执行 `python main.py`。
+适合本机开发或试运行。脚本会检查 Docker、PostgreSQL、端口、`package/.env` 和 `DATABASE_URL`。
 
 ```powershell
+git clone https://github.com/mumu-0922/GankAIGC.git
+cd GankAIGC
 PowerShell -NoProfile -ExecutionPolicy Bypass -File scripts/start-dev.ps1
 ```
 
 常用参数：
 
-- `-NoRun`：只做诊断，诊断通过后不启动后端，适合排查环境。
-- `-SkipDocker`：不尝试启动 Docker/PostgreSQL，只检查当前环境，适合使用已有本机 PostgreSQL 或只想确认问题来源。
+```powershell
+# 只检查环境，不启动项目
+PowerShell -NoProfile -ExecutionPolicy Bypass -File scripts/start-dev.ps1 -NoRun
 
-脚本发现 `9800` 端口被占用时只会显示 PID/进程名和处理建议，默认不会杀进程；发现 `5432` 不通且未指定 `-SkipDocker` 时，会优先尝试 `docker start gankaigc-postgres`，再尝试 `docker compose up -d postgres`。
+# 不尝试启动 Docker，只检查本机已有服务
+PowerShell -NoProfile -ExecutionPolicy Bypass -File scripts/start-dev.ps1 -SkipDocker -NoRun
+```
 
-### 一体化源码运行
+启动成功后访问：
 
-适合直接使用当前已构建的前端静态文件。
+- 🌐 用户首页：<http://localhost:9800>
+- 🛠 管理后台：<http://localhost:9800/admin>
+- 📖 API 文档：<http://localhost:9800/docs>
+
+---
+
+## 🐳 Docker 部署（推荐生产方式）
+
+Docker Compose 会启动：
+
+- `app`：FastAPI + 前端静态页面
+- `worker`：独立任务处理进程
+- `postgres`：PostgreSQL 16 数据库
+
+### 1. 复制配置模板
+
+```powershell
+git clone https://github.com/mumu-0922/GankAIGC.git
+cd GankAIGC
+Copy-Item .env.docker.example .env.docker
+```
+
+### 2. 生成安全密钥
+
+```powershell
+# SECRET_KEY
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+
+# ENCRYPTION_KEY
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
+
+打开 `.env.docker`，至少修改：
+
+```env
+POSTGRES_PASSWORD=换成强数据库密码
+SECRET_KEY=上面生成的随机字符串
+ADMIN_PASSWORD=换成强后台密码
+ENCRYPTION_KEY=上面生成的Fernet密钥
+```
+
+> `.env.docker` 是真实密钥文件，不要提交到 GitHub。
+
+### 3. 启动服务
+
+```powershell
+docker compose --env-file .env.docker up --build -d
+```
+
+### 4. 检查状态
+
+```powershell
+docker compose --env-file .env.docker ps
+Invoke-WebRequest http://127.0.0.1:9800/health -UseBasicParsing
+```
+
+返回 `healthy` 后，打开：
+
+```text
+http://你的服务器IP:9800
+```
+
+### 5. 反向代理建议
+
+如果使用 Nginx，把域名代理到本机 `9800` 端口，并在 `.env.docker` 中设置：
+
+```env
+ALLOWED_ORIGINS=https://你的域名
+APP_PORT=9800
+```
+
+更多细节见：[Docker / PostgreSQL Deployment](docs/docker-deployment.md)。
+
+---
+
+## 💻 源码运行
+
+### 后端一体化运行
 
 ```powershell
 cd package
@@ -79,22 +194,16 @@ pip install -r requirements.txt
 python main.py
 ```
 
-启动后访问：
-
-- 用户首页：http://localhost:9800
-- 管理后台：http://localhost:9800/admin
-- API 文档：http://localhost:9800/docs
-
 ### 前端开发模式
 
-适合修改前端页面时使用。后端仍运行在 `9800`，Vite 默认运行在 `5174`，并将 `/api` 代理到后端。
+先启动后端：
 
 ```powershell
 cd package
 python main.py
 ```
 
-另开终端：
+另开一个终端启动 Vite：
 
 ```powershell
 cd package/frontend
@@ -102,7 +211,9 @@ npm ci
 npm run dev
 ```
 
-### 修改前端后更新生产静态文件
+Vite 默认运行在 `5174`，并将 `/api` 代理到后端。
+
+### 修改前端后同步生产静态文件
 
 ```powershell
 cd package/frontend
@@ -111,13 +222,19 @@ cd ../..
 Copy-Item -Path .\package\frontend\dist\* -Destination .\package\static -Recurse -Force
 ```
 
-注意：`package/static/` 在 `.gitignore` 中，若确实要提交新的静态 bundle，需要对新增 hash 文件使用 `git add -f`。
+`package/static/` 被 `.gitignore` 忽略；如果需要提交新的生产 bundle，请使用：
 
-## 配置说明
+```powershell
+git add -f package/static
+```
 
-源码运行时，配置文件位于 `package/.env`；打包后的可执行文件会在 exe 同目录读取 `.env`。项目只支持 PostgreSQL，启动前必须准备可连接的 PostgreSQL 数据库。
+---
 
-核心配置示例：
+## ⚙️ 配置说明
+
+源码运行读取 `package/.env`；打包后的 exe 读取 exe 同目录 `.env`；Docker 读取 `.env.docker`。
+
+项目 **只支持 PostgreSQL**。核心配置示例：
 
 ```properties
 SERVER_HOST=0.0.0.0
@@ -126,7 +243,6 @@ APP_ENV=development
 ALLOWED_ORIGINS=http://localhost:9800
 
 DATABASE_URL=postgresql://ai_polish:数据库密码@127.0.0.1:5432/ai_polish
-REDIS_URL=redis://IP:6379/0
 
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=replace-with-strong-password
@@ -146,85 +262,92 @@ COMPRESSION_API_KEY=KEY
 COMPRESSION_BASE_URL=https://api.openai.com/v1
 
 MAX_CONCURRENT_USERS=5
-SEGMENT_SKIP_THRESHOLD=15
 API_REQUEST_INTERVAL=6
-USE_STREAMING=false
 REGISTRATION_ENABLED=true
 WORD_FORMATTER_ENABLED=false
 ADMIN_DATABASE_MANAGER_ENABLED=true
 ADMIN_DATABASE_WRITE_ENABLED=false
 ```
 
-`ENCRYPTION_KEY` 用于加密用户保存的自带 API 配置，建议使用 Fernet key：
+关键说明：
 
-```powershell
-python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+- `REGISTRATION_ENABLED=false`：关闭邀请码注册，已有用户仍可登录。
+- `WORD_FORMATTER_ENABLED=false`：不挂载 Word 排版 API，也不会出现在 OpenAPI 文档中。
+- `ADMIN_DATABASE_WRITE_ENABLED=false`：数据库管理器保持只读，生产环境建议保持关闭。
+- `ENCRYPTION_KEY`：用于加密用户保存的自带 API 配置，必须妥善保存。
+
+---
+
+## 🧭 使用流程
+
+1. 管理员访问 `/admin` 登录后台。
+2. 在「用户管理」中创建注册邀请码。
+3. 用户通过邀请码注册并登录。
+4. 管理员创建啤酒兑换码，用户在前台兑换啤酒。
+5. 用户进入工作台，选择平台啤酒模式或自带 API 模式。
+6. 提交论文文本，等待任务处理完成。
+7. 查看分段结果、改写记录，并导出 `.docx` 或 `.md`。
+
+---
+
+## 🛠 管理后台
+
+后台地址：
+
+```text
+http://localhost:9800/admin
 ```
 
-生产环境必须修改默认 `ADMIN_PASSWORD` 和 `SECRET_KEY`。当 `APP_ENV=production`、`staging` 或 `server` 时，项目会拒绝使用明显的占位密钥。
-`REGISTRATION_ENABLED=false` 会关闭所有邀请码注册和普通用户生成邀请码，已有用户仍可登录使用。
-`WORD_FORMATTER_ENABLED=false` 时，Word 排版相关 API 不会挂载到后端和 OpenAPI 文档。数据库管理器默认可查看但不可编辑；只有同时设置 `ADMIN_DATABASE_MANAGER_ENABLED=true` 与 `ADMIN_DATABASE_WRITE_ENABLED=true` 才会开放写入操作。数据库管理器只暴露白名单表，敏感字段和长文本会脱敏，单页最多返回 100 条记录。
-降 AI 任务会先进入 PostgreSQL 队列。本地 `python main.py` 默认启用 `INLINE_TASK_WORKER_ENABLED=true`，会在 Web 进程内处理队列；Docker 部署默认关闭 inline worker，并由独立 `worker` 服务消费队列。worker 会按 `TASK_WORKER_HEARTBEAT_INTERVAL` 刷新心跳，超过 `TASK_WORKER_STALE_TIMEOUT_SECONDS` 未更新的处理中任务会自动重新排队。
+默认账号为 `admin`；默认密码仅适合本地开发，部署前必须通过 `ADMIN_PASSWORD` 修改。
 
-### 启动失败排查
+后台包含：
 
-启动时会先检查 PostgreSQL 连接，再初始化数据表。若提示 `PostgreSQL 数据库连接失败`，优先检查：
+- 📊 **数据面板**：用户、任务、完成率、模式统计等。
+- ⏳ **会话监控**：排队、处理中、历史任务。
+- 👥 **用户管理**：用户、邀请码、兑换码、啤酒流水、自带 API 摘要、封禁/解封。
+- 🧾 **操作日志**：记录创建邀请码、创建兑换码、充值啤酒、封禁/解封、配置变更。
+- 🗄 **数据库管理**：默认只读，白名单表可查，敏感字段脱敏。
+- ⚙️ **系统配置**：模型、Base URL、并发、请求间隔、思考模式等。
 
-- `package/.env` 中 `DATABASE_URL` 是否是 `postgresql://` 或 `postgresql+psycopg://`。
-- PostgreSQL 是否已启动；Docker 部署可先运行 `docker compose up -d postgres`。
-- `DATABASE_URL` 的用户名、密码、数据库名和端口是否正确。
-- 使用 `.env.docker` 时，`DATABASE_URL` 密码是否与 `POSTGRES_PASSWORD` 一致。
-- 新机器首次部署时，是否已经创建 `ai_polish` 用户和 `ai_polish` 数据库。
+---
+
+## 🗄 数据库迁移、备份与恢复
 
 ### 数据库迁移
 
-项目已接入 Alembic 管理 PostgreSQL 表结构。新库或部署升级时可执行：
+新库或升级部署时执行：
 
 ```powershell
 cd package/backend
 python -m alembic upgrade head
 ```
 
-`migrations/env.py` 会优先读取 `package/.env` 中的 `DATABASE_URL`。如果是已经由旧版本自动建表的数据库，先备份数据，再执行 `python -m alembic stamp head` 标记当前结构，后续版本再使用 `upgrade head`。
+### 备份 PostgreSQL
 
-PostgreSQL 备份、恢复、换机器部署和常见错误排查见 [PostgreSQL 运维指南](docs/postgresql-operations.md)。
-发布前检查见 [维护发布清单](docs/maintenance-checklist.md)。
-
-## 使用流程
-
-1. 管理员访问 `/admin` 登录后台。
-2. 在「用户管理」中创建注册邀请码。
-3. 用户通过邀请码注册并登录。
-4. 管理员创建啤酒兑换码，用户在前台兑换啤酒。
-5. 用户进入工作台，选择平台啤酒模式或自带 API 模式，提交论文文本。
-6. 任务完成后查看分段结果、改写记录，并导出 `.docx` 或 `.md` 文件。
-
-## 管理后台
-
-后台地址为 `http://localhost:9800/admin`。默认账号为 `admin`，默认密码为 `admin123`，仅适合本地开发，部署前必须修改。
-
-后台包含：
-
-- 数据面板：查看用户、任务、完成率等统计。
-- 会话监控：查看任务队列、处理中会话和历史任务。
-- 用户管理：管理用户、邀请码、啤酒兑换码、最近啤酒流水、用户自带 API 摘要和封禁状态。
-- 操作日志：查看管理员创建邀请码、充值啤酒、封禁/解封和配置变更等关键操作。
-- 数据库管理：默认只读查看允许管理的数据表记录，敏感字段会脱敏。
-- 系统配置：在线调整模型、Base URL、并发、请求间隔、思考模式等配置。
-
-## Docker 部署
-
-Docker Compose 会启动应用容器、独立任务 worker 和 PostgreSQL。
+如果本机安装了 `pg_dump`：
 
 ```powershell
-Copy-Item .env.docker.example .env.docker
-# 编辑 .env.docker，至少修改 POSTGRES_PASSWORD、SECRET_KEY、ADMIN_PASSWORD、ENCRYPTION_KEY
-docker compose up --build -d
+$env:DATABASE_URL="postgresql://ai_polish:数据库密码@127.0.0.1:5432/ai_polish"
+PowerShell -NoProfile -ExecutionPolicy Bypass -File scripts/backup-postgres.ps1
+Remove-Item Env:\DATABASE_URL
 ```
 
-默认对外端口为 `9800`，可通过 `.env.docker` 中的 `APP_PORT` 修改。
+如果 PostgreSQL 在 Docker 容器 `gankaigc-postgres` 中，也可以使用容器内的 `pg_dump`：
 
-## 构建可执行文件
+```powershell
+New-Item -ItemType Directory -Force backups
+$ts = Get-Date -Format "yyyyMMdd_HHmmss"
+$file = "gankaigc_ai_polish_$ts.dump"
+docker exec gankaigc-postgres pg_dump -U ai_polish -d ai_polish -F c -f "/tmp/$file"
+docker cp "gankaigc-postgres:/tmp/$file" ".\backups\$file"
+docker exec gankaigc-postgres rm "/tmp/$file"
+```
+
+备份、恢复和换机器说明见：[PostgreSQL 运维指南](docs/postgresql-operations.md)。
+
+---
+
+## 📦 构建可执行文件
 
 Windows：
 
@@ -233,7 +356,7 @@ cd package
 .\build.ps1
 ```
 
-Linux/macOS：
+Linux / macOS：
 
 ```bash
 cd package
@@ -241,9 +364,11 @@ chmod +x build.sh
 ./build.sh
 ```
 
-构建产物位于 `package/dist/`。推送 `v*` 标签也会触发 GitHub Actions 构建各平台可执行文件。
+构建产物位于 `package/dist/`。推送 `v*` 标签会触发 GitHub Actions 构建各平台可执行文件。
 
-## 测试
+---
+
+## ✅ 测试
 
 后端测试：
 
@@ -252,45 +377,72 @@ cd package/backend
 python -m pytest -q
 ```
 
-默认会读取 `package/.env` 的 `DATABASE_URL`，并自动把数据库名切换为 `gankaigc_test`。也可以手动设置 `GANKAIGC_TEST_DATABASE_URL` 覆盖。测试库名称必须包含 `test`，测试运行会清空并重建该库中的项目表。
-
-前端生产构建检查：
+前端构建：
 
 ```powershell
 cd package/frontend
 npm run build
 ```
 
-前端主流程 e2e 检查：
+前端主流程 e2e：
 
 ```powershell
 cd package/frontend
-npm run test:e2e
+npm run test:e2e -- --workers=1
 ```
 
-e2e 测试会启动 Vite 开发服务器，并通过 Playwright 拦截 API 响应，覆盖首页、用户工作台入口、兑换啤酒提示和后台核心导航。
-本地默认使用系统 Chrome；如果要使用 Playwright 自带 Chromium，先执行 `npx playwright install chromium`，再设置 `PLAYWRIGHT_CHANNEL=chromium` 运行。
+发布前检查见：[维护发布清单](docs/maintenance-checklist.md)。
 
-## 常见问题
+---
 
-**端口被占用**
-修改 `.env` 中的 `SERVER_PORT`，或关闭占用 `9800` 端口的进程。
+## ❓ 常见问题
 
-**管理后台刷新后回到数据面板**
-当前后台通过 URL 参数保存 tab，例如 `/admin?tab=config`。如果手动删除参数，刷新会回到默认数据面板。
+### 端口被占用怎么办？
 
-**用户无法使用自带 API**
-确认用户已在「API 设置」保存 Base URL、API Key 和模型名称，并且服务端配置了有效的 `ENCRYPTION_KEY`。
+关闭占用 `9800` 的旧进程，或修改 `.env` / `.env.docker` 中的端口配置。
 
-**AI 调用失败**
-检查 API Key、Base URL、模型名称和网络连通性。Google AI Studio 等服务商的 Key 在文档中统一写作 `Google API Key`，不要把真实密钥提交到仓库。
+### 启动提示 PostgreSQL 连接失败？
 
-## 许可证
+优先检查：
 
-本项目基于 BypassAIGC 深度修改，继续采用 CC BY-NC-SA 4.0 协议发布。
+- PostgreSQL 是否启动。
+- `DATABASE_URL` 是否以 `postgresql://` 或 `postgresql+psycopg://` 开头。
+- 用户名、密码、数据库名和端口是否正确。
+- Docker 部署是否使用了 `docker compose --env-file .env.docker ...`。
+
+### 用户无法使用自带 API？
+
+确认用户已保存 Base URL、API Key 和模型名称，并且服务端配置了有效的 `ENCRYPTION_KEY`。
+
+### AI 调用失败？
+
+检查 API Key、Base URL、模型名称和网络连通性。不要把真实 API Key 提交到仓库。
+
+---
+
+## 🔐 安全提醒
+
+发布到公网前必须完成：
+
+- 修改 `ADMIN_PASSWORD`。
+- 修改 `SECRET_KEY`。
+- 修改 `POSTGRES_PASSWORD`。
+- 设置有效的 `ENCRYPTION_KEY`。
+- 备份 PostgreSQL 数据库。
+- 不要提交 `.env`、`.env.docker`、数据库 dump、日志和真实 API Key。
+
+---
+
+## 📄 许可证
+
+本项目基于 BypassAIGC 深度修改，继续采用 **CC BY-NC-SA 4.0** 协议发布。
 
 未经相关版权方授权，禁止商业使用。
 
 完整署名与来源见 [NOTICE](NOTICE)。
+
+---
+
+## ⭐ Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=mumu-0922/GankAIGC&type=date&legend=top-left)](https://www.star-history.com/?repos=mumu-0922%2FGankAIGC&type=date&legend=top-left)
