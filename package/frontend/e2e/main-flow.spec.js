@@ -38,6 +38,7 @@ async function mockUserApis(page) {
 
     if (url.pathname === '/api/optimization/status') {
       return fulfillJson(route, {
+        online_users: 1,
         current_users: 0,
         max_users: 20,
         queue_length: 0,

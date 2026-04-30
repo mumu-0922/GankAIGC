@@ -474,6 +474,12 @@ const WorkspacePage = () => {
               {queueStatus && (
                 <div className="hidden md:flex items-center gap-2 text-[13px]">
                   <div className="flex items-center gap-1.5 gank-topbar-pill px-2.5 py-1.5 rounded-xl">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.16)]" />
+                    <span className="text-slate-600 font-medium">
+                      在线 {queueStatus.online_users ?? 0}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 gank-topbar-pill px-2.5 py-1.5 rounded-xl">
                     <ListChecks className="w-3.5 h-3.5 text-slate-500" />
                     <span className="text-slate-600 font-medium">
                       处理中 {queueStatus.current_users}/{queueStatus.max_users}

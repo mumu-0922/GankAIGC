@@ -129,6 +129,8 @@ def test_workspace_queue_status_uses_processing_task_label():
     workspace = (FRONTEND_SRC / "pages" / "WorkspacePage.jsx").read_text(encoding="utf-8")
 
     assert "ListChecks" in workspace
+    assert "在线 {queueStatus.online_users ?? 0}" in workspace
+    assert "bg-emerald-500" in workspace
     assert "处理中 {queueStatus.current_users}/{queueStatus.max_users}" in workspace
     assert "Users className" not in workspace
 

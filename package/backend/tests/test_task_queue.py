@@ -95,6 +95,43 @@ def test_start_optimization_can_enqueue_without_inline_background_processing(cli
     assert calls == []
 
 
+def test_queue_status_includes_recent_online_user_count(client):
+    _, token = _create_user(credit_balance=0)
+    db = SessionLocal()
+    try:
+        db.add(
+            User(
+                username="stale-user",
+                password_hash=get_password_hash("Password123!"),
+                access_link="http://testserver/access/stale-user",
+                is_active=True,
+                credit_balance=0,
+                last_used=utcnow() - timedelta(minutes=10),
+            )
+        )
+        db.add(
+            User(
+                username="inactive-recent-user",
+                password_hash=get_password_hash("Password123!"),
+                access_link="http://testserver/access/inactive-recent-user",
+                is_active=False,
+                credit_balance=0,
+                last_used=utcnow(),
+            )
+        )
+        db.commit()
+    finally:
+        db.close()
+
+    response = client.get(
+        "/api/optimization/status",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["online_users"] == 1
+
+
 def test_process_next_queued_session_runs_oldest_queued_session():
     user_id, _ = _create_user()
     older_id = _create_session(user_id, "older-session", created_at=utcnow() - timedelta(minutes=5))

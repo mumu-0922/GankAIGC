@@ -234,6 +234,7 @@ class SessionDetailResponse(SessionResponse):
 
 class QueueStatusResponse(BaseModel):
     """队列状态响应"""
+    online_users: int = 0
     current_users: int
     max_users: int
     queue_length: int

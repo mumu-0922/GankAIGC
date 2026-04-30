@@ -19,13 +19,15 @@ from app.services.stream_manager import stream_manager
 from app.services.task_queue import process_session_by_id
 from app.utils.auth import generate_session_id, get_current_user_with_legacy_fallback
 from app.utils.time import utcnow
-from datetime import datetime
+from datetime import datetime, timedelta
 import asyncio
 from app.config import settings
 from sse_starlette.sse import EventSourceResponse
 from docx import Document
 
 router = APIRouter(prefix="/optimization", tags=["optimization"])
+
+ONLINE_USER_WINDOW_MINUTES = 5
 
 
 def _clean_export_filename_part(value: str, fallback: str) -> str:
@@ -205,6 +207,17 @@ async def get_queue_status(
 ):
     """获取队列状态"""
     status = await concurrency_manager.get_status(session_id)
+    online_since = utcnow() - timedelta(minutes=ONLINE_USER_WINDOW_MINUTES)
+    status["online_users"] = (
+        db.query(User)
+        .filter(
+            User.is_active.is_(True),
+            User.last_used.isnot(None),
+            User.last_used >= online_since,
+        )
+        .count()
+        or 0
+    )
     return QueueStatusResponse(**status)
 
 
