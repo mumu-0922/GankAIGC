@@ -71,3 +71,6 @@ package/build/
 参考项目/
 .ace-tool/
 .worktrees/
+
+# Local agent instructions
+AGENTS.md
