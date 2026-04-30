@@ -233,6 +233,18 @@ def test_admin_dashboard_uses_left_sidebar_navigation():
     assert "lg:min-h-[calc(100vh-8rem)]" in admin_dashboard
 
 
+def test_admin_dashboard_exposes_user_management_ban_controls():
+    admin_dashboard = (FRONTEND_SRC / "pages" / "AdminDashboard.jsx").read_text(encoding="utf-8")
+
+    assert "用户管理" in admin_dashboard
+    assert "账号啤酒" not in admin_dashboard
+    assert "handleToggleUserStatus" in admin_dashboard
+    assert "/api/admin/users/${user.id}/toggle" in admin_dashboard
+    assert "封禁" in admin_dashboard
+    assert "解封" in admin_dashboard
+    assert "已封禁" in admin_dashboard
+
+
 def test_admin_dashboard_preserves_selected_tab_in_url():
     admin_dashboard = (FRONTEND_SRC / "pages" / "AdminDashboard.jsx").read_text(encoding="utf-8")
 

@@ -316,6 +316,18 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleToggleUserStatus = async (user) => {
+    try {
+      await axios.patch(`/api/admin/users/${user.id}/toggle`, {}, {
+        headers: { Authorization: `Bearer ${adminToken}` }
+      });
+      toast.success(user.is_active ? '用户已封禁' : '用户已解封');
+      fetchAccountData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || '更新用户状态失败');
+    }
+  };
+
   // Login Page
   if (!isAuthenticated) {
     return (
@@ -412,7 +424,7 @@ const AdminDashboard = () => {
     },
     {
       id: 'accounts',
-      label: '账号啤酒',
+      label: '用户管理',
       icon: Users,
       activeClass: 'bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-lg shadow-indigo-500/30',
       inactiveClass: 'text-gray-600 hover:text-indigo-600 hover:bg-indigo-50',
@@ -679,8 +691,8 @@ const AdminDashboard = () => {
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">账号与啤酒管理</h2>
-                <p className="text-sm text-gray-500 mt-1">管理注册邀请码、兑换码、用户啤酒和自带 API 配置摘要</p>
+                <h2 className="text-2xl font-bold text-gray-900">用户管理</h2>
+                <p className="text-sm text-gray-500 mt-1">管理注册邀请码、兑换码、用户啤酒、自带 API 配置摘要和用户封禁状态</p>
               </div>
               <button
                 onClick={fetchAccountData}
@@ -865,6 +877,7 @@ const AdminDashboard = () => {
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">用户</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">啤酒余额</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">权限</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">登录/使用</th>
@@ -873,10 +886,29 @@ const AdminDashboard = () => {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {users.map((user) => (
-                      <tr key={user.id} className="hover:bg-gray-50">
+                      <tr key={user.id} className={user.is_active ? 'hover:bg-gray-50' : 'bg-red-50/40 hover:bg-red-50'}>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900">{user.username || '未绑定账号'}</div>
                           <div className="text-xs text-gray-500">ID #{user.id}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
+                              user.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-700'
+                            }`}>
+                              {user.is_active ? '正常' : '已封禁'}
+                            </span>
+                            <button
+                              onClick={() => handleToggleUserStatus(user)}
+                              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${
+                                user.is_active
+                                  ? 'bg-red-50 hover:bg-red-100 text-red-700'
+                                  : 'bg-green-50 hover:bg-green-100 text-green-700'
+                              }`}
+                            >
+                              {user.is_active ? '封禁' : '解封'}
+                            </button>
+                          </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="text-lg font-bold text-gray-900">{user.credit_balance ?? 0}</span>

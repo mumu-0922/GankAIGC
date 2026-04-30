@@ -145,7 +145,7 @@ test('admin can log in and switch core sections', async ({ page }) => {
   await page.getByRole('button', { name: /会话监控/ }).click();
   await expect(page).toHaveURL(/tab=sessions/);
 
-  await page.getByRole('button', { name: /账号啤酒/ }).click();
+  await page.getByRole('button', { name: /用户管理/ }).click();
   await expect(page).toHaveURL(/tab=accounts/);
   await expect(page.getByRole('heading', { name: '啤酒兑换码' })).toBeVisible();
   await expect(page.getByRole('heading', { name: '最近啤酒流水' })).toBeVisible();
@@ -183,5 +183,6 @@ test('admin account data remains visible if beer history endpoint is missing', a
 
   await expect(page.getByText('alice')).toBeVisible();
   await expect(page.getByText('18')).toBeVisible();
+  await expect(page.getByRole('button', { name: '封禁' })).toBeVisible();
   await expect(page.getByText('暂无啤酒流水')).toBeVisible();
 });
