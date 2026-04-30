@@ -1,6 +1,15 @@
 # GankAIGC - Windows 构建脚本
 # 用于在 Windows 上构建可执行文件
 
+$ErrorActionPreference = "Stop"
+
+function Assert-LastExitCode {
+    param([string]$Step)
+    if ($LASTEXITCODE -ne 0) {
+        throw "命令失败: $Step (exit code: $LASTEXITCODE)"
+    }
+}
+
 Write-Host "==========================================" -ForegroundColor Cyan
 Write-Host "GankAIGC - Windows 构建脚本" -ForegroundColor Cyan
 Write-Host "==========================================" -ForegroundColor Cyan
@@ -14,8 +23,13 @@ Write-Host "1. 检查 Python 环境..." -ForegroundColor Yellow
 try {
     $pythonVersion = python --version 2>&1
     Write-Host $pythonVersion -ForegroundColor Green
+    $pythonVersionCheck = python -c "import sys; raise SystemExit(0 if (3, 9) <= sys.version_info[:2] < (3, 13) else 1)"
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "错误: 当前打包脚本要求 Python 3.9 - 3.12。请切换到 Python 3.11/3.12 后重试。" -ForegroundColor Red
+        exit 1
+    }
 } catch {
-    Write-Host "错误: 未找到 Python，请先安装 Python 3.9+" -ForegroundColor Red
+    Write-Host "错误: 未找到可用的 Python 3.9 - 3.12，请先安装或切换环境。" -ForegroundColor Red
     exit 1
 }
 
@@ -35,16 +49,20 @@ Write-Host ""
 Write-Host "3. 安装后端依赖..." -ForegroundColor Yellow
 if (-not (Test-Path "venv")) {
     python -m venv venv
+    Assert-LastExitCode "python -m venv venv"
 }
 & .\venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
+Assert-LastExitCode "python -m pip install -r requirements.txt"
 
 # 构建前端
 Write-Host ""
 Write-Host "4. 构建前端..." -ForegroundColor Yellow
 Set-Location frontend
 npm install
+Assert-LastExitCode "npm install"
 npm run build
+Assert-LastExitCode "npm run build"
 Set-Location ..
 
 # 复制前端构建产物
@@ -59,6 +77,11 @@ Copy-Item -Recurse frontend\dist static
 Write-Host ""
 Write-Host "6. 使用 PyInstaller 打包..." -ForegroundColor Yellow
 pyinstaller app.spec --clean
+Assert-LastExitCode "pyinstaller app.spec --clean"
+
+if (-not (Test-Path "dist\GankAIGC.exe")) {
+    throw "构建失败: dist\GankAIGC.exe 未生成"
+}
 
 Write-Host ""
 Write-Host "==========================================" -ForegroundColor Cyan

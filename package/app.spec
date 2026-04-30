@@ -50,6 +50,7 @@ hidden_imports = [
     'jaraco.text',
     'jaraco.functools',
     'jaraco.context',
+    'platformdirs',
     'pkg_resources',
     'pkg_resources.extern',
 ]

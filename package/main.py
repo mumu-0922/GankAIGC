@@ -480,6 +480,19 @@ def open_browser(port: int, host: str | None = None):
     webbrowser.open(url)
 
 
+def pause_before_exit_if_frozen():
+    """Windows exe 启动失败时保留窗口，方便用户看到错误原因。"""
+    if (
+        getattr(sys, 'frozen', False)
+        and os.name == 'nt'
+        and os.environ.get('GANKAIGC_NO_EXIT_PAUSE') != '1'
+    ):
+        try:
+            input("\n❌ 启动失败，请根据上面的错误提示修改 .env 后重试。按 Enter 退出...")
+        except (EOFError, KeyboardInterrupt):
+            pass
+
+
 def create_sample_env():
     """创建示例 .env 文件（如果不存在）"""
     if not os.path.exists(ENV_FILE):
@@ -599,6 +612,14 @@ def main():
     except KeyboardInterrupt:
         print("\n\n👋 服务已停止")
         sys.exit(0)
+    except SystemExit as e:
+        if e.code not in (0, None):
+            pause_before_exit_if_frozen()
+        raise
+    except Exception as e:
+        print(f"\n❌ 启动失败: {e}")
+        pause_before_exit_if_frozen()
+        raise
 
 
 if __name__ == "__main__":
