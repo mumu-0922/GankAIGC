@@ -480,15 +480,15 @@ def open_browser(port: int, host: str | None = None):
     webbrowser.open(url)
 
 
-def pause_before_exit_if_frozen():
-    """Windows exe 启动失败时保留窗口，方便用户看到错误原因。"""
+def pause_before_exit_if_frozen(prompt: str = "\n按 Enter 退出..."):
+    """Windows exe 需要保留窗口，方便用户看到提示。"""
     if (
         getattr(sys, 'frozen', False)
         and os.name == 'nt'
         and os.environ.get('GANKAIGC_NO_EXIT_PAUSE') != '1'
     ):
         try:
-            input("\n❌ 启动失败，请根据上面的错误提示修改 .env 后重试。按 Enter 退出...")
+            input(prompt)
         except (EOFError, KeyboardInterrupt):
             pass
 
@@ -570,7 +570,60 @@ SEGMENT_SKIP_THRESHOLD=15
         with open(ENV_FILE, 'w', encoding='utf-8') as f:
             f.write(sample_content)
         print(f"✅ 已创建示例配置文件: {ENV_FILE}")
-        print("   请编辑此文件，填入您的 API Key 和其他配置")
+        return True
+    return False
+
+
+def print_first_run_instructions():
+    """首次运行 exe 时给新手看的简明配置说明。"""
+    print("\n" + "=" * 60)
+    print("🎉 首次运行准备完成")
+    print("=" * 60)
+    print(f"已在程序同目录创建配置文件：{ENV_FILE}")
+    print("")
+    print("下一步只需要做两件事：")
+    print("1. 用记事本打开上面的 .env 文件。")
+    print("2. 修改 DATABASE_URL，把数据库密码改成你的 PostgreSQL 密码。")
+    print("")
+    print("示例：")
+    print("DATABASE_URL=postgresql://ai_polish:你的数据库密码@127.0.0.1:5432/ai_polish")
+    print("")
+    print("如果你还没有 PostgreSQL，推荐用 README 里的 Docker 部署方式。")
+    print("修改保存后，再重新双击 GankAIGC.exe。")
+    print("=" * 60)
+
+
+def print_database_connection_help(error: Exception):
+    """数据库连接失败时显示新手友好的错误提示，避免 traceback 刷屏。"""
+    error_text = str(error)
+    print("\n" + "=" * 60)
+    print("❌ 数据库连接失败，程序没有启动")
+    print("=" * 60)
+    print(f"配置文件位置：{ENV_FILE}")
+    print("")
+
+    if "password authentication failed" in error_text:
+        print("原因：数据库密码不对。")
+        print("")
+        print("请打开 .env，找到这一行：")
+        print("DATABASE_URL=postgresql://ai_polish:密码@127.0.0.1:5432/ai_polish")
+        print("")
+        print("把中间的“密码”改成你 PostgreSQL 的真实密码。")
+    elif "Connection refused" in error_text or "connection refused" in error_text:
+        print("原因：PostgreSQL 没有启动，或 5432 端口不通。")
+        print("")
+        print("如果你用 Docker，可以先启动数据库：")
+        print("docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.local.yml up -d postgres")
+    else:
+        print("请优先检查：")
+        print("1. PostgreSQL 是否已启动。")
+        print("2. .env 里的 DATABASE_URL 是否正确。")
+        print("3. 用户名、密码、数据库名、端口是否正确。")
+
+    print("")
+    print("DATABASE_URL 正确格式：")
+    print("postgresql://ai_polish:你的数据库密码@127.0.0.1:5432/ai_polish")
+    print("=" * 60)
 
 
 def main():
@@ -585,8 +638,19 @@ def main():
     print("🚀 GankAIGC - 启动中...")
     print("="*60)
     
-    # 创建示例配置文件
-    create_sample_env()
+    # 创建示例配置文件。首次创建后先退出，让新手有机会编辑 .env。
+    if create_sample_env():
+        print_first_run_instructions()
+        pause_before_exit_if_frozen("\n配置好 .env 后重新双击 GankAIGC.exe。按 Enter 退出...")
+        return
+
+    # 启动浏览器和 uvicorn 前先做数据库预检查，避免配置错误时刷出长 traceback。
+    try:
+        check_database_connection()
+    except RuntimeError as e:
+        print_database_connection_help(e)
+        pause_before_exit_if_frozen("\n请修改 .env 后重试。按 Enter 退出...")
+        sys.exit(1)
     
     print(f"\n📍 服务地址: http://{browser_host}:{port}")
     print(f"📍 管理后台: http://{browser_host}:{port}/admin")
@@ -614,11 +678,11 @@ def main():
         sys.exit(0)
     except SystemExit as e:
         if e.code not in (0, None):
-            pause_before_exit_if_frozen()
+            pause_before_exit_if_frozen("\n❌ 启动失败，请根据上面的错误提示修改 .env 后重试。按 Enter 退出...")
         raise
     except Exception as e:
         print(f"\n❌ 启动失败: {e}")
-        pause_before_exit_if_frozen()
+        pause_before_exit_if_frozen("\n❌ 启动失败，请根据上面的错误提示修改 .env 后重试。按 Enter 退出...")
         raise
 
 

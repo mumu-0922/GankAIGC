@@ -128,7 +128,9 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(
         env_file=get_env_file_path(),
+        env_file_encoding="utf-8-sig",
         case_sensitive=True,
+        extra="ignore",
     )
 
 
@@ -136,7 +138,7 @@ class Settings(BaseSettings):
 _env_path = get_env_file_path()
 if os.path.exists(_env_path):
     from dotenv import load_dotenv
-    load_dotenv(_env_path)
+    load_dotenv(_env_path, encoding="utf-8-sig")
 
 settings = Settings()
 
@@ -215,7 +217,7 @@ def reload_settings():
     pending_updates = {}
     env_path = get_env_file_path()
     if os.path.exists(env_path):
-        with open(env_path, 'r', encoding='utf-8') as f:
+        with open(env_path, 'r', encoding='utf-8-sig') as f:
             for line in f:
                 line = line.strip()
                 if line and not line.startswith('#') and '=' in line:
