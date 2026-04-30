@@ -106,7 +106,7 @@ def test_queue_status_includes_recent_online_user_count(client):
                 access_link="http://testserver/access/stale-user",
                 is_active=True,
                 credit_balance=0,
-                last_used=utcnow() - timedelta(minutes=10),
+                last_used=utcnow() - timedelta(seconds=61),
             )
         )
         db.add(

@@ -27,7 +27,7 @@ from docx import Document
 
 router = APIRouter(prefix="/optimization", tags=["optimization"])
 
-ONLINE_USER_WINDOW_MINUTES = 5
+ONLINE_USER_WINDOW_SECONDS = 60
 
 
 def _clean_export_filename_part(value: str, fallback: str) -> str:
@@ -207,7 +207,7 @@ async def get_queue_status(
 ):
     """获取队列状态"""
     status = await concurrency_manager.get_status(session_id)
-    online_since = utcnow() - timedelta(minutes=ONLINE_USER_WINDOW_MINUTES)
+    online_since = utcnow() - timedelta(seconds=ONLINE_USER_WINDOW_SECONDS)
     status["online_users"] = (
         db.query(User)
         .filter(

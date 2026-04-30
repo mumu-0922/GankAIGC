@@ -269,7 +269,7 @@ const WorkspacePage = () => {
 
   // 队列状态轮询 - 独立的 useEffect，避免与初始加载混淆
   useEffect(() => {
-    const interval = setInterval(loadQueueStatus, 15000);
+    const interval = setInterval(loadQueueStatus, 5000);
     return () => clearInterval(interval);
   }, [loadQueueStatus]);
 
