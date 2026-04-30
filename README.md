@@ -46,11 +46,28 @@ GankAIGC/
 │   └── build.sh                 # Linux/macOS 可执行文件构建脚本
 ├── docker-compose.yml
 ├── Dockerfile
+├── scripts/
+│   └── start-dev.ps1            # Windows 本地一键诊断与启动
 ├── .env.docker.example
 └── AGENTS.md                    # 贡献者/Agent 开发指南
 ```
 
 ## 快速运行
+
+### 本地一键启动（Windows）
+
+用于本地开发前先诊断端口、`package/.env`、`DATABASE_URL` 和 PostgreSQL 连接；诊断通过后会在 `package/` 目录执行 `python main.py`。
+
+```powershell
+PowerShell -NoProfile -ExecutionPolicy Bypass -File scripts/start-dev.ps1
+```
+
+常用参数：
+
+- `-NoRun`：只做诊断，诊断通过后不启动后端，适合排查环境。
+- `-SkipDocker`：不尝试启动 Docker/PostgreSQL，只检查当前环境，适合使用已有本机 PostgreSQL 或只想确认问题来源。
+
+脚本发现 `9800` 端口被占用时只会显示 PID/进程名和处理建议，默认不会杀进程；发现 `5432` 不通且未指定 `-SkipDocker` 时，会优先尝试 `docker start gankaigc-postgres`，再尝试 `docker compose up -d postgres`。
 
 ### 一体化源码运行
 
@@ -176,7 +193,7 @@ PostgreSQL 备份、恢复、换机器部署和常见错误排查见 [PostgreSQL
 ## 使用流程
 
 1. 管理员访问 `/admin` 登录后台。
-2. 在「账号啤酒」中创建注册邀请码。
+2. 在「用户管理」中创建注册邀请码。
 3. 用户通过邀请码注册并登录。
 4. 管理员创建啤酒兑换码，用户在前台兑换啤酒。
 5. 用户进入工作台，选择平台啤酒模式或自带 API 模式，提交论文文本。
@@ -190,7 +207,8 @@ PostgreSQL 备份、恢复、换机器部署和常见错误排查见 [PostgreSQL
 
 - 数据面板：查看用户、任务、完成率等统计。
 - 会话监控：查看任务队列、处理中会话和历史任务。
-- 账号啤酒：管理用户、邀请码、啤酒兑换码、最近啤酒流水和用户自带 API 摘要。
+- 用户管理：管理用户、邀请码、啤酒兑换码、最近啤酒流水、用户自带 API 摘要和封禁状态。
+- 操作日志：查看管理员创建邀请码、充值啤酒、封禁/解封和配置变更等关键操作。
 - 数据库管理：默认只读查看允许管理的数据表记录，敏感字段会脱敏。
 - 系统配置：在线调整模型、Base URL、并发、请求间隔、思考模式等配置。
 

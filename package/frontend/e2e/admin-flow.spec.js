@@ -78,6 +78,16 @@ const adminConfig = {
   },
 };
 
+const auditLogs = [{
+  id: 1,
+  admin_username: 'admin',
+  action: 'ban_user',
+  target_type: 'user',
+  target_id: 7,
+  detail: { username: 'alice' },
+  created_at: '2026-04-30T10:00:00',
+}];
+
 async function mockAdminApis(page, options = {}) {
   const users = options.users || [];
   const creditTransactionsStatus = options.creditTransactionsStatus || 200;
@@ -116,6 +126,10 @@ async function mockAdminApis(page, options = {}) {
       return fulfillJson(route, []);
     }
 
+    if (url.pathname === '/api/admin/audit-logs') {
+      return fulfillJson(route, auditLogs);
+    }
+
     if (
       url.pathname === '/api/admin/sessions' ||
       url.pathname === '/api/admin/sessions/active' ||
@@ -147,12 +161,23 @@ test('admin can log in and switch core sections', async ({ page }) => {
 
   await page.getByRole('button', { name: /用户管理/ }).click();
   await expect(page).toHaveURL(/tab=accounts/);
+  await page.reload();
+  await expect(page).toHaveURL(/tab=accounts/);
+  await expect(page.getByRole('heading', { name: '用户管理' })).toBeVisible();
   await expect(page.getByRole('heading', { name: '啤酒兑换码' })).toBeVisible();
   await expect(page.getByRole('heading', { name: '最近啤酒流水' })).toBeVisible();
 
   await page.getByRole('button', { name: /系统配置/ }).click();
   await expect(page).toHaveURL(/tab=config/);
+  await page.reload();
+  await expect(page).toHaveURL(/tab=config/);
   await expect(page.getByRole('heading', { name: '润色模型配置', exact: true })).toBeVisible();
+
+  await page.getByRole('button', { name: /操作日志/ }).click();
+  await expect(page).toHaveURL(/tab=audit/);
+  await expect(page.getByRole('heading', { name: '操作日志' })).toBeVisible();
+  await expect(page.getByText('ban_user')).toBeVisible();
+  await expect(page.getByText('user #7')).toBeVisible();
 
   await expect(page.getByText(/卡密|Word 排版任务|论文排版/)).toHaveCount(0);
 });

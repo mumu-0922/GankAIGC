@@ -37,7 +37,7 @@ def get_current_user_from_bearer(
 
     user = db.query(User).filter(User.id == int(user_id), User.is_active.is_(True)).first()
     if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="用户不存在或已被禁用")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="用户不存在或已禁用")
     return user
 
 
@@ -88,14 +88,13 @@ async def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> U
 async def login(payload: LoginRequest, db: Session = Depends(get_db)):
     user = (
         db.query(User)
-        .filter(
-            User.username == payload.username,
-            User.is_active.is_(True),
-        )
+        .filter(User.username == payload.username)
         .first()
     )
     if not user or not user.password_hash or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="用户名或密码错误")
+    if not user.is_active:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="账号已被封禁，请联系管理员")
 
     user.last_login_at = utcnow()
     db.commit()

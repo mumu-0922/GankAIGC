@@ -28,7 +28,7 @@ import BeerIcon from '../components/BeerIcon';
 import { formatChinaDateTime } from '../utils/dateTime';
 
 const DEFAULT_ADMIN_TAB = 'dashboard';
-const ADMIN_TAB_IDS = ['dashboard', 'sessions', 'accounts', 'database', 'config'];
+const ADMIN_TAB_IDS = ['dashboard', 'sessions', 'accounts', 'database', 'config', 'audit'];
 const ADMIN_ACCOUNT_FORM_CLASS = 'grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_5rem_7rem] gap-3 mb-5';
 const ADMIN_ACCOUNT_INPUT_CLASS = 'w-full min-w-0 h-12 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent';
 const ADMIN_ACCOUNT_WIDE_INPUT_CLASS = `${ADMIN_ACCOUNT_INPUT_CLASS} sm:col-span-2`;
@@ -49,6 +49,19 @@ const getCreditTransactionClass = (transaction) => {
     return 'bg-red-50 text-red-700 border-red-100';
   }
   return 'bg-slate-50 text-slate-700 border-slate-100';
+};
+
+const formatAuditDetail = (detail) => {
+  if (!detail) {
+    return '-';
+  }
+  if (typeof detail === 'string') {
+    return detail;
+  }
+  return Object.entries(detail)
+    .filter(([, value]) => value !== null && value !== undefined && value !== '')
+    .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
+    .join('；') || '-';
 };
 
 const getAdminTabFromSearchParams = (searchParams) => {
@@ -82,7 +95,9 @@ const AdminDashboard = () => {
   const [creditCodes, setCreditCodes] = useState([]);
   const [creditTransactions, setCreditTransactions] = useState([]);
   const [providerConfigs, setProviderConfigs] = useState([]);
+  const [auditLogs, setAuditLogs] = useState([]);
   const [loadingAccountData, setLoadingAccountData] = useState(false);
+  const [loadingAuditLogs, setLoadingAuditLogs] = useState(false);
   const [newInviteCode, setNewInviteCode] = useState('');
   const [newCreditCode, setNewCreditCode] = useState('');
   const [newCreditAmount, setNewCreditAmount] = useState(10);
@@ -111,6 +126,12 @@ const AdminDashboard = () => {
   useEffect(() => {
     if (isAuthenticated && activeTab === 'accounts') {
       fetchAccountData();
+    }
+  }, [isAuthenticated, activeTab]);
+
+  useEffect(() => {
+    if (isAuthenticated && activeTab === 'audit') {
+      fetchAuditLogs();
     }
   }, [isAuthenticated, activeTab]);
 
@@ -234,6 +255,22 @@ const AdminDashboard = () => {
     }
   };
 
+  const fetchAuditLogs = async () => {
+    setLoadingAuditLogs(true);
+    try {
+      const response = await axios.get('/api/admin/audit-logs', {
+        headers: { Authorization: `Bearer ${adminToken}` },
+        params: { limit: 50 }
+      });
+      setAuditLogs(response.data);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || '获取操作日志失败');
+      console.error('Error fetching audit logs:', error);
+    } finally {
+      setLoadingAuditLogs(false);
+    }
+  };
+
   const handleCreateInvite = async (e) => {
     e.preventDefault();
     try {
@@ -317,6 +354,14 @@ const AdminDashboard = () => {
   };
 
   const handleToggleUserStatus = async (user) => {
+    if (user.is_active) {
+      const username = user.username || '未绑定账号';
+      const confirmed = window.confirm(`确认封禁用户 ${username}（ID #${user.id}）？封禁后该用户将无法登录。`);
+      if (!confirmed) {
+        return;
+      }
+    }
+
     try {
       await axios.patch(`/api/admin/users/${user.id}/toggle`, {}, {
         headers: { Authorization: `Bearer ${adminToken}` }
@@ -442,6 +487,13 @@ const AdminDashboard = () => {
       icon: Settings,
       activeClass: 'bg-gradient-to-r from-amber-600 to-amber-500 text-white shadow-lg shadow-amber-500/30',
       inactiveClass: 'text-gray-600 hover:text-amber-600 hover:bg-amber-50',
+    },
+    {
+      id: 'audit',
+      label: '操作日志',
+      icon: FileText,
+      activeClass: 'bg-gradient-to-r from-slate-700 to-slate-600 text-white shadow-lg shadow-slate-500/30',
+      inactiveClass: 'text-gray-600 hover:text-slate-700 hover:bg-slate-50',
     },
   ];
 
@@ -1069,6 +1121,71 @@ const AdminDashboard = () => {
         {/* Database Manager Tab */}
         {activeTab === 'database' && (
           <DatabaseManager adminToken={adminToken} />
+        )}
+
+        {/* Audit Logs Tab */}
+        {activeTab === 'audit' && (
+          <div className="bg-white rounded-2xl shadow-ios overflow-hidden">
+            <div className="p-6 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center">
+                  <FileText className="w-5 h-5 text-slate-700" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">操作日志</h2>
+                  <p className="text-sm text-gray-500 mt-1">最近 50 条管理员关键操作审计记录</p>
+                </div>
+              </div>
+              <button
+                onClick={fetchAuditLogs}
+                disabled={loadingAuditLogs}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-800 disabled:bg-gray-400 text-white rounded-lg transition-colors"
+              >
+                <RefreshCw className={`w-4 h-4 ${loadingAuditLogs ? 'animate-spin' : ''}`} />
+                刷新
+              </button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">时间</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">管理员</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">动作</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">目标</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">详情</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {auditLogs.length === 0 ? (
+                    <tr>
+                      <td colSpan="5" className="px-6 py-10 text-center text-sm text-gray-500">暂无操作日志</td>
+                    </tr>
+                  ) : auditLogs.map((log) => (
+                    <tr key={log.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {formatChinaDateTime(log.created_at)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                        {log.admin_username}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                          {log.action}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        {log.target_type || '-'}{log.target_id ? ` #${log.target_id}` : ''}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600 max-w-xl">
+                        {formatAuditDetail(log.detail)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         )}
         
         {/* Config Manager Tab */}

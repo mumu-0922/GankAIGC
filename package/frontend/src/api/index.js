@@ -35,7 +35,8 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
-    if (error.response?.status === 401) {
+    const status = error.response?.status;
+    if (status === 401 || status === 403) {
       localStorage.removeItem('userToken');
       if (!window.location.pathname.startsWith('/admin')) {
         window.location.href = '/login';

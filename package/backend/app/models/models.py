@@ -240,6 +240,19 @@ class CreditTransaction(Base):
     related_session = relationship("OptimizationSession")
 
 
+class AdminAuditLog(Base):
+    """管理员操作审计日志"""
+    __tablename__ = "admin_audit_logs"
+
+    id = Column(Integer, primary_key=True)
+    admin_username = Column(String(100), nullable=False, index=True)
+    action = Column(String(64), nullable=False, index=True)
+    target_type = Column(String(64), nullable=True, index=True)
+    target_id = Column(Integer, nullable=True, index=True)
+    detail = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=utcnow, index=True)
+
+
 class UserProviderConfig(Base):
     __tablename__ = "user_provider_configs"
 

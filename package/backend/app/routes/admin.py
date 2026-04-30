@@ -1,4 +1,5 @@
 import os
+import json
 import secrets
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Type
@@ -11,6 +12,7 @@ from sqlalchemy.orm import Session, defer, joinedload
 from app.config import reload_settings, settings
 from app.database import get_db
 from app.models.models import (
+    AdminAuditLog,
     ChangeLog,
     CreditCode,
     CreditTransaction,
@@ -140,9 +142,47 @@ def get_admin_from_token(authorization: Optional[str] = Header(None)) -> str:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="缺少认证令牌")
 
     token = authorization.split(" ")[1]
-    if not verify_admin_token(token):
+    payload = verify_token(token)
+    if not payload or payload.get("sub") != settings.ADMIN_USERNAME or payload.get("role") != "admin":
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="令牌无效或已过期")
-    return token
+    return str(payload.get("sub"))
+
+
+def write_admin_audit_log(
+    db: Session,
+    admin_username: str,
+    action: str,
+    target_type: Optional[str] = None,
+    target_id: Optional[int] = None,
+    detail: Optional[Dict[str, Any]] = None,
+) -> AdminAuditLog:
+    log = AdminAuditLog(
+        admin_username=admin_username,
+        action=action,
+        target_type=target_type,
+        target_id=target_id,
+        detail=json.dumps(detail, ensure_ascii=False) if detail is not None else None,
+    )
+    db.add(log)
+    return log
+
+
+def serialize_admin_audit_log(log: AdminAuditLog) -> Dict[str, Any]:
+    detail: Any = log.detail
+    if isinstance(detail, str):
+        try:
+            detail = json.loads(detail)
+        except json.JSONDecodeError:
+            pass
+    return {
+        "id": log.id,
+        "admin_username": log.admin_username,
+        "action": log.action,
+        "target_type": log.target_type,
+        "target_id": log.target_id,
+        "detail": detail,
+        "created_at": log.created_at,
+    }
 
 
 def _model_to_dict(record: Any) -> Dict[str, Any]:
@@ -207,10 +247,25 @@ async def verify_admin_token_endpoint(authorization: Optional[str] = Header(None
     return {"valid": True}
 
 
+@router.get("/audit-logs")
+async def list_admin_audit_logs(
+    admin_username: str = Depends(get_admin_from_token),
+    db: Session = Depends(get_db),
+    limit: int = Query(50, ge=1, le=200),
+) -> List[Dict[str, Any]]:
+    logs = (
+        db.query(AdminAuditLog)
+        .order_by(AdminAuditLog.created_at.desc(), AdminAuditLog.id.desc())
+        .limit(limit)
+        .all()
+    )
+    return [serialize_admin_audit_log(log) for log in logs]
+
+
 @router.post("/invites", response_model=InviteResponse)
 async def create_registration_invite(
     payload: InviteCreateRequest,
-    _: str = Depends(get_admin_from_token),
+    admin_username: str = Depends(get_admin_from_token),
     db: Session = Depends(get_db),
 ) -> RegistrationInvite:
     code = payload.code or secrets.token_urlsafe(18)
@@ -220,6 +275,15 @@ async def create_registration_invite(
 
     invite = RegistrationInvite(code=code, is_active=True, expires_at=payload.expires_at)
     db.add(invite)
+    db.flush()
+    write_admin_audit_log(
+        db,
+        admin_username,
+        "create_invite",
+        target_type="registration_invite",
+        target_id=invite.id,
+        detail={"code": invite.code, "expires_at": invite.expires_at.isoformat() if invite.expires_at else None},
+    )
     db.commit()
     db.refresh(invite)
     return invite
@@ -236,7 +300,7 @@ async def list_registration_invites(
 @router.patch("/invites/{invite_id}/toggle", response_model=InviteResponse)
 async def toggle_registration_invite(
     invite_id: int,
-    _: str = Depends(get_admin_from_token),
+    admin_username: str = Depends(get_admin_from_token),
     db: Session = Depends(get_db),
 ) -> RegistrationInvite:
     invite = db.query(RegistrationInvite).filter(RegistrationInvite.id == invite_id).first()
@@ -244,6 +308,14 @@ async def toggle_registration_invite(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="邀请码不存在")
 
     invite.is_active = not invite.is_active
+    write_admin_audit_log(
+        db,
+        admin_username,
+        "toggle_invite",
+        target_type="registration_invite",
+        target_id=invite.id,
+        detail={"is_active": invite.is_active},
+    )
     db.commit()
     db.refresh(invite)
     return invite
@@ -252,7 +324,7 @@ async def toggle_registration_invite(
 @router.post("/credit-codes", response_model=CreditCodeResponse)
 async def create_credit_code(
     payload: CreditCodeCreateRequest,
-    _: str = Depends(get_admin_from_token),
+    admin_username: str = Depends(get_admin_from_token),
     db: Session = Depends(get_db),
 ) -> CreditCode:
     code = payload.code or secrets.token_urlsafe(18)
@@ -267,6 +339,19 @@ async def create_credit_code(
         expires_at=payload.expires_at,
     )
     db.add(credit_code)
+    db.flush()
+    write_admin_audit_log(
+        db,
+        admin_username,
+        "create_credit_code",
+        target_type="credit_code",
+        target_id=credit_code.id,
+        detail={
+            "code": credit_code.code,
+            "credit_amount": credit_code.credit_amount,
+            "expires_at": credit_code.expires_at.isoformat() if credit_code.expires_at else None,
+        },
+    )
     db.commit()
     db.refresh(credit_code)
     return credit_code
@@ -308,7 +393,7 @@ async def list_credit_transactions(
 async def add_user_credits(
     user_id: int,
     payload: AdminCreditAdjustRequest,
-    _: str = Depends(get_admin_from_token),
+    admin_username: str = Depends(get_admin_from_token),
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     user = db.query(User).filter(User.id == user_id).first()
@@ -316,6 +401,14 @@ async def add_user_credits(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
 
     CreditService(db).add_credits(user, payload.amount, reason=payload.reason)
+    write_admin_audit_log(
+        db,
+        admin_username,
+        "add_user_credits",
+        target_type="user",
+        target_id=user.id,
+        detail={"amount": payload.amount, "reason": payload.reason},
+    )
     db.commit()
     db.refresh(user)
     return {
@@ -330,7 +423,7 @@ async def add_user_credits(
 async def set_user_unlimited(
     user_id: int,
     payload: UnlimitedToggleRequest,
-    _: str = Depends(get_admin_from_token),
+    admin_username: str = Depends(get_admin_from_token),
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     user = db.query(User).filter(User.id == user_id).first()
@@ -338,6 +431,14 @@ async def set_user_unlimited(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
 
     user.is_unlimited = payload.is_unlimited
+    write_admin_audit_log(
+        db,
+        admin_username,
+        "set_user_unlimited",
+        target_type="user",
+        target_id=user.id,
+        detail={"is_unlimited": user.is_unlimited},
+    )
     db.commit()
     db.refresh(user)
     return {
@@ -382,7 +483,7 @@ async def get_all_users(_: str = Depends(get_admin_from_token), db: Session = De
 @router.patch("/users/{user_id}/toggle")
 async def toggle_user_status(
     user_id: int,
-    _: str = Depends(get_admin_from_token),
+    admin_username: str = Depends(get_admin_from_token),
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     user = db.query(User).filter(User.id == user_id).first()
@@ -390,6 +491,14 @@ async def toggle_user_status(
         raise HTTPException(status_code=404, detail="用户不存在")
 
     user.is_active = not user.is_active
+    write_admin_audit_log(
+        db,
+        admin_username,
+        "unban_user" if user.is_active else "ban_user",
+        target_type="user",
+        target_id=user.id,
+        detail={"is_active": user.is_active},
+    )
     db.commit()
     db.refresh(user)
     return {
@@ -941,7 +1050,8 @@ async def get_config(_: str = Depends(get_admin_from_token)) -> Dict[str, Any]:
 async def update_config(
     updates: Dict[str, str],
     request: Request,
-    _: str = Depends(get_admin_from_token),
+    admin_username: str = Depends(get_admin_from_token),
+    db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     if not updates:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="缺少更新内容")
@@ -993,6 +1103,15 @@ async def update_config(
             await concurrency_manager.update_limit(int(updates["MAX_CONCURRENT_USERS"]))
         except ValueError:
             pass
+
+    write_admin_audit_log(
+        db,
+        admin_username,
+        "update_config",
+        target_type="system_config",
+        detail={"updated_keys": list(updates.keys())},
+    )
+    db.commit()
 
     return {"message": "配置已更新并保存", "updated_keys": list(updates.keys())}
 

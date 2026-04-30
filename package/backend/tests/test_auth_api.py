@@ -68,6 +68,64 @@ def test_login_returns_user_token(client):
     assert response.json()["access_token"]
 
 
+def test_banned_user_with_correct_password_login_returns_forbidden(client):
+    from app.database import SessionLocal
+    from app.models.models import User
+    from app.utils.auth import get_password_hash
+
+    db = SessionLocal()
+    try:
+        db.add(
+            User(
+                username="banned_alice",
+                password_hash=get_password_hash("Password123!"),
+                access_link="http://testserver/access/banned-alice",
+                is_active=False,
+                credit_balance=0,
+            )
+        )
+        db.commit()
+    finally:
+        db.close()
+
+    response = client.post(
+        "/api/auth/login",
+        json={"username": "banned_alice", "password": "Password123!"},
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "账号已被封禁，请联系管理员"
+
+
+def test_banned_user_with_wrong_password_does_not_disclose_ban(client):
+    from app.database import SessionLocal
+    from app.models.models import User
+    from app.utils.auth import get_password_hash
+
+    db = SessionLocal()
+    try:
+        db.add(
+            User(
+                username="banned_bob",
+                password_hash=get_password_hash("Password123!"),
+                access_link="http://testserver/access/banned-bob",
+                is_active=False,
+                credit_balance=0,
+            )
+        )
+        db.commit()
+    finally:
+        db.close()
+
+    response = client.post(
+        "/api/auth/login",
+        json={"username": "banned_bob", "password": "WrongPassword123!"},
+    )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "用户名或密码错误"
+
+
 def test_register_with_invite_creates_user_and_disables_invite(client):
     from app.database import SessionLocal
     from app.models.models import RegistrationInvite
@@ -165,6 +223,35 @@ def test_user_me_returns_profile_for_bearer_token(client):
     assert response.json()["nickname"] == "Alice Chen"
     assert response.json()["credit_balance"] == 3
     assert response.json()["created_at"]
+
+
+def test_user_me_rejects_token_after_user_is_banned(client):
+    from app.database import SessionLocal
+    from app.models.models import User
+    from app.utils.auth import create_user_access_token, get_password_hash
+
+    db = SessionLocal()
+    try:
+        user = User(
+            username="token_banned_alice",
+            password_hash=get_password_hash("Password123!"),
+            access_link="http://testserver/access/token-banned-alice",
+            is_active=True,
+            credit_balance=0,
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        token = create_user_access_token(user.id, user.username)
+        user.is_active = False
+        db.commit()
+    finally:
+        db.close()
+
+    response = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "用户不存在或已禁用"
 
 
 def test_user_can_update_own_nickname(client):

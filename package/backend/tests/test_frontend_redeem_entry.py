@@ -143,6 +143,9 @@ def test_user_menu_hides_word_formatter_entry_until_feature_is_ready():
 def test_admin_dashboard_hides_legacy_card_key_management():
     admin_dashboard = (FRONTEND_SRC / "pages" / "AdminDashboard.jsx").read_text(encoding="utf-8")
 
+    assert "操作日志" in admin_dashboard
+    assert "/api/admin/audit-logs" in admin_dashboard
+    assert "auditLogs" in admin_dashboard
     assert "啤酒兑换码" in admin_dashboard
     assert "用户啤酒余额" in admin_dashboard
     assert "按啤酒" in admin_dashboard
@@ -243,6 +246,19 @@ def test_admin_dashboard_exposes_user_management_ban_controls():
     assert "封禁" in admin_dashboard
     assert "解封" in admin_dashboard
     assert "已封禁" in admin_dashboard
+    assert "window.confirm" in admin_dashboard
+    assert "确认封禁用户" in admin_dashboard
+    assert "ID #${user.id}" in admin_dashboard
+
+
+def test_api_interceptor_clears_user_token_for_unauthorized_and_forbidden():
+    api = (FRONTEND_SRC / "api" / "index.js").read_text(encoding="utf-8")
+
+    assert "const status = error.response?.status" in api
+    assert "status === 401 || status === 403" in api
+    assert "localStorage.removeItem('userToken')" in api
+    assert "window.location.pathname.startsWith('/admin')" in api
+    assert "window.location.href = '/login'" in api
 
 
 def test_admin_dashboard_preserves_selected_tab_in_url():

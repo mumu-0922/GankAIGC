@@ -4,9 +4,10 @@
 
 ## 代码与测试
 
-- 后端全量测试通过：`cd package/backend; python -m pytest tests -q`。
-- 前端生产构建通过：`cd package/frontend; npm run build`。
-- Playwright 主流程通过：`cd package/frontend; npm run test:e2e`。
+- 发布前必须跑后端全量测试：`cd package/backend; python -m pytest tests -q`。
+- 前端必须通过生产构建：`cd package/frontend; npm run build`。
+- Playwright 必须单 worker 跑主流程：`cd package/frontend; npm run test:e2e -- --workers=1`。
+- 涉及管理后台创建邀请码、创建兑换码、充值啤酒、封禁/解封、配置变更等关键操作时，确认审计/操作日志可用且能查询到对应记录。
 - 涉及数据库结构时，新增 Alembic migration，并确认 `python -m alembic upgrade head` 可执行。
 - 涉及前端生产包时，同步 `package/frontend/dist` 到 `package/static`，并用 `git add -f package/static` 加入新的 hash 文件。
 

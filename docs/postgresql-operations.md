@@ -19,6 +19,22 @@ docker compose --env-file .env.docker up --build -d
 
 Docker Compose 会创建 `ai_polish` 数据库、`ai_polish` 用户和 `postgres_data` 数据卷。
 
+## 本地启动排障
+
+Windows 本地开发优先使用一键诊断脚本确认环境：
+
+```powershell
+PowerShell -NoProfile -ExecutionPolicy Bypass -File scripts/start-dev.ps1 -NoRun
+```
+
+排障顺序建议：
+
+- 先确认 `package/.env` 存在，且 `DATABASE_URL` 使用 `postgresql://` 或 `postgresql+psycopg://`；日志和截图中不要暴露明文密码。
+- 如果 `9800` 被占用，先确认 PID/进程名是否是已有 GankAIGC 实例；脚本不会自动杀进程，需要你手动决定是否关闭。
+- 如果 `127.0.0.1:5432` 不通，可以先尝试 `docker start gankaigc-postgres`；没有该容器时再用 `docker compose up -d postgres`。
+- 如果只想诊断、不希望脚本碰 Docker，使用 `-SkipDocker -NoRun`。
+- 不要为了“重启干净”随便执行 `docker compose down -v`。`-v` 会删除 Compose 数据卷，可能导致 PostgreSQL 数据丢失；需要重建前必须先备份，并确认不再需要旧数据。
+
 ## 新机器创建数据库和用户
 
 如果不用 Docker，在 PostgreSQL 管理账号下执行：
