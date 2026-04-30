@@ -87,27 +87,11 @@ GankAIGC/
 
 ---
 
-## 🚀 新手最快启动（Windows 本地）
+## 🚀 运行与部署
 
-适合本机开发或试运行。脚本会检查 Docker、PostgreSQL、端口、`package/.env` 和 `DATABASE_URL`。
+下面按 3 种场景说明：**本地运行**、**Linux 运行**、**Docker 部署**。
 
-```powershell
-git clone https://github.com/mumu-0922/GankAIGC.git
-cd GankAIGC
-PowerShell -NoProfile -ExecutionPolicy Bypass -File scripts/start-dev.ps1
-```
-
-常用参数：
-
-```powershell
-# 只检查环境，不启动项目
-PowerShell -NoProfile -ExecutionPolicy Bypass -File scripts/start-dev.ps1 -NoRun
-
-# 不尝试启动 Docker，只检查本机已有服务
-PowerShell -NoProfile -ExecutionPolicy Bypass -File scripts/start-dev.ps1 -SkipDocker -NoRun
-```
-
-启动成功后访问：
+通用访问地址：
 
 - 🌐 用户首页：<http://localhost:9800>
 - 🛠 管理后台：<http://localhost:9800/admin>
@@ -115,15 +99,153 @@ PowerShell -NoProfile -ExecutionPolicy Bypass -File scripts/start-dev.ps1 -SkipD
 
 ---
 
-## 🐳 Docker 部署（推荐生产方式）
+### 1. 本地运行（Windows）
 
-Docker Compose 会启动：
+适合开发、测试和个人电脑使用。本地运行有两种方式：`python main.py` 直接运行，或打包成 exe 后运行。
 
-- `app`：FastAPI + 前端静态页面
-- `worker`：独立任务处理进程
-- `postgres`：PostgreSQL 16 数据库
+#### 方式 A：一键诊断并启动（推荐新手）
 
-### 1. 复制配置模板
+```powershell
+git clone https://github.com/mumu-0922/GankAIGC.git
+cd GankAIGC
+PowerShell -NoProfile -ExecutionPolicy Bypass -File scripts/start-dev.ps1
+```
+
+这个脚本会检查：Docker、PostgreSQL、`5432`、`9800`、`package/.env` 和 `DATABASE_URL`。只想检查不启动：
+
+```powershell
+PowerShell -NoProfile -ExecutionPolicy Bypass -File scripts/start-dev.ps1 -NoRun
+```
+
+#### 方式 B：手动用 `python main.py` 运行
+
+1）准备 PostgreSQL。最省事是用 Docker 只启动数据库：
+
+```powershell
+Copy-Item .env.docker.example .env.docker
+# 打开 .env.docker，至少修改 POSTGRES_PASSWORD
+notepad .env.docker
+
+docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.local.yml up -d postgres
+```
+
+2）启动项目：
+
+```powershell
+cd package
+pip install -r requirements.txt
+python main.py
+```
+
+首次运行会生成 `package/.env`。如果提示数据库连接失败，打开 `package/.env`，把数据库地址改成：
+
+```env
+DATABASE_URL=postgresql://ai_polish:你在.env.docker里的POSTGRES_PASSWORD@127.0.0.1:5432/ai_polish
+```
+
+然后重新运行：
+
+```powershell
+python main.py
+```
+
+#### 方式 C：本地打包 exe 后运行
+
+适合不想每次手动启动 Python 的 Windows 用户。
+
+```powershell
+cd package
+.\build.ps1
+```
+
+构建完成后运行：
+
+```powershell
+.\dist\GankAIGC.exe
+```
+
+exe 首次运行会在 exe 同目录生成 `.env`，编辑里面的 `DATABASE_URL`、`ADMIN_PASSWORD`、`SECRET_KEY`、`ENCRYPTION_KEY` 后，再重新打开 exe。
+
+---
+
+### 2. Linux 运行
+
+适合 VPS、Linux 服务器或本地 Linux 开发环境。
+
+#### 方式 A：源码直接运行
+
+```bash
+git clone https://github.com/mumu-0922/GankAIGC.git
+cd GankAIGC
+```
+
+准备 PostgreSQL。可以使用 Docker 只启动数据库，并把 `5432` 暴露给源码服务：
+
+```bash
+cp .env.docker.example .env.docker
+nano .env.docker   # 至少修改 POSTGRES_PASSWORD
+
+docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.local.yml up -d postgres
+```
+
+安装依赖并启动：
+
+```bash
+cd package
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+python main.py
+```
+
+如果首次启动生成 `.env` 后提示数据库连接失败，编辑 `package/.env`：
+
+```bash
+nano .env
+```
+
+至少设置：
+
+```env
+DATABASE_URL=postgresql://ai_polish:你在.env.docker里的POSTGRES_PASSWORD@127.0.0.1:5432/ai_polish
+AUTO_OPEN_BROWSER=false
+```
+
+保存后重新运行：
+
+```bash
+python main.py
+```
+
+#### 方式 B：Linux 打包为可执行文件
+
+```bash
+cd package
+chmod +x build.sh
+./build.sh
+```
+
+构建完成后运行：
+
+```bash
+./dist/GankAIGC
+```
+
+> 服务器长期运行建议用 Docker 部署，或自行用 `systemd` / `supervisor` 托管源码进程。
+
+---
+
+### 3. Docker 部署（推荐上线方式）
+
+Docker Compose 会启动完整生产栈：
+
+- `app`：Web 应用，提供 API 和前端页面。
+- `worker`：独立任务处理进程。
+- `postgres`：PostgreSQL 16 数据库。
+
+#### 1）复制配置文件
+
+Windows PowerShell：
 
 ```powershell
 git clone https://github.com/mumu-0922/GankAIGC.git
@@ -131,9 +253,17 @@ cd GankAIGC
 Copy-Item .env.docker.example .env.docker
 ```
 
-### 2. 生成安全密钥
+Linux：
 
-```powershell
+```bash
+git clone https://github.com/mumu-0922/GankAIGC.git
+cd GankAIGC
+cp .env.docker.example .env.docker
+```
+
+#### 2）生成安全密钥
+
+```bash
 # SECRET_KEY
 python -c "import secrets; print(secrets.token_urlsafe(32))"
 
@@ -150,86 +280,52 @@ ADMIN_PASSWORD=换成强后台密码
 ENCRYPTION_KEY=上面生成的Fernet密钥
 ```
 
-> `.env.docker` 是真实密钥文件，不要提交到 GitHub。
-
-### 3. 启动服务
-
-```powershell
-docker compose --env-file .env.docker up --build -d
-```
-
-### 4. 检查状态
-
-```powershell
-docker compose --env-file .env.docker ps
-Invoke-WebRequest http://127.0.0.1:9800/health -UseBasicParsing
-```
-
-返回 `healthy` 后，打开：
-
-```text
-http://你的服务器IP:9800
-```
-
-### 5. 反向代理建议
-
-如果使用 Nginx，把域名代理到本机 `9800` 端口，并在 `.env.docker` 中设置：
+如果使用域名，继续修改：
 
 ```env
 ALLOWED_ORIGINS=https://你的域名
 APP_PORT=9800
 ```
 
+> `.env.docker` 是真实密钥文件，不要提交到 GitHub。
+
+#### 3）启动
+
+```bash
+docker compose --env-file .env.docker up --build -d
+```
+
+#### 4）检查
+
+```bash
+docker compose --env-file .env.docker ps
+curl http://127.0.0.1:9800/health
+```
+
+返回 `{"status":"healthy"}` 后，访问：
+
+```text
+http://你的服务器IP:9800
+```
+
+查看日志：
+
+```bash
+docker compose --env-file .env.docker logs -f app
+docker compose --env-file .env.docker logs -f worker
+```
+
+停止服务但保留数据：
+
+```bash
+docker compose --env-file .env.docker down
+```
+
+> 不要随便执行 `docker compose down -v`，`-v` 会删除 PostgreSQL 数据卷。
+
 更多细节见：[Docker / PostgreSQL Deployment](docs/docker-deployment.md)。
 
 ---
-
-## 💻 源码运行
-
-### 后端一体化运行
-
-```powershell
-cd package
-pip install -r requirements.txt
-python main.py
-```
-
-### 前端开发模式
-
-先启动后端：
-
-```powershell
-cd package
-python main.py
-```
-
-另开一个终端启动 Vite：
-
-```powershell
-cd package/frontend
-npm ci
-npm run dev
-```
-
-Vite 默认运行在 `5174`，并将 `/api` 代理到后端。
-
-### 修改前端后同步生产静态文件
-
-```powershell
-cd package/frontend
-npm run build
-cd ../..
-Copy-Item -Path .\package\frontend\dist\* -Destination .\package\static -Recurse -Force
-```
-
-`package/static/` 被 `.gitignore` 忽略；如果需要提交新的生产 bundle，请使用：
-
-```powershell
-git add -f package/static
-```
-
----
-
 ## ⚙️ 配置说明
 
 源码运行读取 `package/.env`；打包后的 exe 读取 exe 同目录 `.env`；Docker 读取 `.env.docker`。
@@ -344,27 +440,6 @@ docker exec gankaigc-postgres rm "/tmp/$file"
 ```
 
 备份、恢复和换机器说明见：[PostgreSQL 运维指南](docs/postgresql-operations.md)。
-
----
-
-## 📦 构建可执行文件
-
-Windows：
-
-```powershell
-cd package
-.\build.ps1
-```
-
-Linux / macOS：
-
-```bash
-cd package
-chmod +x build.sh
-./build.sh
-```
-
-构建产物位于 `package/dist/`。推送 `v*` 标签会触发 GitHub Actions 构建各平台可执行文件。
 
 ---
 
