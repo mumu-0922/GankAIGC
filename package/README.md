@@ -14,7 +14,9 @@ package/
 ├── app.spec           # PyInstaller 打包配置
 ├── requirements.txt   # Python 依赖
 ├── build.sh           # Linux/macOS 构建脚本
-├── build.ps1          # Windows 构建脚本
+├── build.ps1          # Windows 普通 exe 构建脚本
+├── build-oneclick.ps1 # Windows 一键整合包构建脚本
+├── windows-oneclick/  # 一键包 start/stop/env 模板
 └── README.md          # 本文件
 ```
 
@@ -35,13 +37,26 @@ chmod +x build.sh
 ./build.sh
 ```
 
-**Windows:**
+**Windows 普通 exe:**
 ```powershell
 cd package
 .\build.ps1
 ```
 
-构建完成后，可执行文件位于 `dist/` 目录。
+普通 exe 位于 `dist/GankAIGC.exe`，运行时仍需要外部 PostgreSQL。
+
+**Windows 一键整合包（内置便携 PostgreSQL）:**
+```powershell
+cd package
+
+# 传入已解压 PostgreSQL 目录
+.\build-oneclick.ps1 -PostgresRoot C:\pgsql -CreateZip
+
+# 或传入 PostgreSQL Windows binaries ZIP
+.\build-oneclick.ps1 -PostgresZip C:\Downloads\postgresql-windows-x64-binaries.zip -CreateZip
+```
+
+一键包位于 `dist/GankAIGC-Windows/`，压缩包位于 `dist/GankAIGC-Windows-OneClick.zip`。
 
 ## GitHub Actions 自动构建
 
@@ -59,23 +74,28 @@ cd package
 
 ### 构建产物
 
-- `GankAIGC-Windows-{version}.zip` - Windows 可执行文件
+- `GankAIGC-Windows-{version}.zip` - Windows 普通可执行文件，需要外部 PostgreSQL
+- `GankAIGC-Windows-OneClick.zip` - Windows 一键整合包，内置便携 PostgreSQL
 - `GankAIGC-Linux-{version}.tar.gz` - Linux 可执行文件
 - `GankAIGC-macOS-{version}.tar.gz` - macOS 可执行文件
 
 ## 运行说明
 
-1. 下载对应平台的可执行文件
-2. 解压到任意目录
-3. 首次运行会自动创建 `.env` 配置文件模板
-4. 编辑 `.env` 文件，填入必要的配置：
-   - PostgreSQL 连接地址（DATABASE_URL）
-   - API Key（OPENAI_API_KEY、POLISH_API_KEY 等）
-   - 管理员密码（ADMIN_PASSWORD）
-   - JWT 密钥（SECRET_KEY）
-   - 可选任务队列配置（INLINE_TASK_WORKER_ENABLED、TASK_WORKER_POLL_INTERVAL、TASK_WORKER_HEARTBEAT_INTERVAL、TASK_WORKER_STALE_TIMEOUT_SECONDS）
-5. 再次运行程序
-6. 程序会自动打开浏览器访问 http://localhost:9800
+普通 exe：
+
+1. 下载对应平台的可执行文件。
+2. 解压到任意目录。
+3. 首次运行会自动创建 `.env` 配置文件模板。
+4. 编辑 `.env`，填入 PostgreSQL `DATABASE_URL`、API Key、管理员密码和密钥。
+5. 再次运行程序。
+
+Windows 一键整合包：
+
+1. 解压 `GankAIGC-Windows-OneClick.zip`。
+2. 双击 `start.bat`。
+3. 首次运行会自动初始化 `data/` 下的 PostgreSQL，并生成 `.env`。
+4. 后台密码会显示在窗口中，并保存到 `logs/first-run-admin.txt`。
+5. 停止服务双击 `stop.bat`。
 
 ### 配置文件说明
 

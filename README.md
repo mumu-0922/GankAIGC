@@ -328,24 +328,46 @@ docker compose --env-file .env.docker up --build -d
 
 ---
 
-### 3. Windows 一键整合包（占位，暂未实现）
+### 3. Windows 一键整合包（已支持构建）
 
-当前普通 Windows exe 已支持打包，但 **仍需要外部 PostgreSQL**，不适合完全零基础用户直接双击使用。
+这个方案面向 Windows 小白用户：**最终用户不用安装 PostgreSQL**，解压后双击 `start.bat` 即可运行。仓库不会提交 PostgreSQL 二进制文件，构建发布包时需要你提供官方 Windows PostgreSQL binaries ZIP 或已解压目录。
 
-计划中的一键整合包会变成类似结构：
+构建方式：
+
+```powershell
+cd package
+
+# 方式 A：传入已解压的 PostgreSQL 目录，例如里面有 bin\initdb.exe
+.\build-oneclick.ps1 -PostgresRoot C:\pgsql -CreateZip
+
+# 方式 B：传入 PostgreSQL Windows binaries ZIP
+.\build-oneclick.ps1 -PostgresZip C:\Downloads\postgresql-windows-x64-binaries.zip -CreateZip
+```
+
+生成目录：
 
 ```text
-GankAIGC-Windows/
+package/dist/GankAIGC-Windows/
 ├── start.bat
 ├── stop.bat
 ├── GankAIGC.exe
 ├── postgres/       # 便携 PostgreSQL
-├── data/           # 数据库数据
-├── logs/
-└── .env
+├── data/           # 数据库数据，首次运行自动初始化
+├── logs/           # PostgreSQL 日志和首次后台密码
+├── runtime/        # 启停脚本
+├── .env
+└── README.txt
 ```
 
-目标效果：解压后双击 `start.bat`，自动启动内置 PostgreSQL 和 GankAIGC。该方案后续实现后再补充详细说明。
+用户使用方式：
+
+1. 解压 `GankAIGC-Windows-OneClick.zip`。
+2. 双击 `start.bat`。
+3. 首次运行会自动生成数据库密码、后台密码、JWT 密钥和加密密钥。
+4. 后台账号密码会显示在窗口里，也会保存到 `logs/first-run-admin.txt`。
+5. 停止服务双击 `stop.bat`。
+
+> 注意：不要删除 `data/`，否则用户、邀请码、兑换码、会话等数据会丢失。
 
 ---
 
