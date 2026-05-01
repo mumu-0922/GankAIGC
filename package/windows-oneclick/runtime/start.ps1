@@ -1,4 +1,4 @@
-﻿Set-StrictMode -Version Latest
+Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
@@ -23,17 +23,23 @@ function Write-Warn([string]$Message) {
 
 function New-RandomBytes([int]$Length) {
     $bytes = New-Object byte[] $Length
-    [System.Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
-    return $bytes
+    $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+    try {
+        $rng.GetBytes($bytes)
+    } finally {
+        $rng.Dispose()
+    }
+    return ,$bytes
 }
 
-function New-RandomHex([int]$Bytes) {
-    $bytes = New-RandomBytes $Bytes
-    return ([BitConverter]::ToString($bytes) -replace '-', '').ToLowerInvariant()
+function New-RandomHex([int]$ByteCount) {
+    $randomBytes = [byte[]](New-RandomBytes $ByteCount)
+    return -join ($randomBytes | ForEach-Object { $_.ToString('x2') })
 }
 
-function New-UrlSafeBase64([int]$Bytes) {
-    $raw = [Convert]::ToBase64String((New-RandomBytes $Bytes))
+function New-UrlSafeBase64([int]$ByteCount) {
+    $randomBytes = [byte[]](New-RandomBytes $ByteCount)
+    $raw = [Convert]::ToBase64String($randomBytes)
     return $raw.Replace('+', '-').Replace('/', '_')
 }
 
@@ -82,60 +88,64 @@ function Set-Default($Settings, [string]$Name, [string]$Default) {
 function Write-DotEnv($Settings, [string]$Path) {
     $Settings['DATABASE_URL'] = "postgresql://$($Settings['POSTGRES_USER']):$($Settings['POSTGRES_PASSWORD'])@$($Settings['POSTGRES_HOST']):$($Settings['POSTGRES_PORT'])/$($Settings['POSTGRES_DB'])"
 
+    function EnvLine([string]$Name) {
+        return "$Name=$($Settings[$Name])"
+    }
+
     $lines = @(
         '# GankAIGC Windows 一键整合包配置',
         '# 可修改 API Key、模型、后台密码；不要删除 POSTGRES_* 和 DATABASE_URL。',
         '',
-        'SERVER_HOST=' + $Settings['SERVER_HOST'],
-        'SERVER_PORT=' + $Settings['SERVER_PORT'],
-        'APP_ENV=' + $Settings['APP_ENV'],
-        'ALLOWED_ORIGINS=' + $Settings['ALLOWED_ORIGINS'],
-        'AUTO_OPEN_BROWSER=' + $Settings['AUTO_OPEN_BROWSER'],
-        'ENABLE_VERBOSE_AI_LOGS=' + $Settings['ENABLE_VERBOSE_AI_LOGS'],
+        (EnvLine 'SERVER_HOST'),
+        (EnvLine 'SERVER_PORT'),
+        (EnvLine 'APP_ENV'),
+        (EnvLine 'ALLOWED_ORIGINS'),
+        (EnvLine 'AUTO_OPEN_BROWSER'),
+        (EnvLine 'ENABLE_VERBOSE_AI_LOGS'),
         '',
-        'POSTGRES_HOST=' + $Settings['POSTGRES_HOST'],
-        'POSTGRES_PORT=' + $Settings['POSTGRES_PORT'],
-        'POSTGRES_DB=' + $Settings['POSTGRES_DB'],
-        'POSTGRES_USER=' + $Settings['POSTGRES_USER'],
-        'POSTGRES_PASSWORD=' + $Settings['POSTGRES_PASSWORD'],
-        'DATABASE_URL=' + $Settings['DATABASE_URL'],
-        'REDIS_URL=' + $Settings['REDIS_URL'],
+        (EnvLine 'POSTGRES_HOST'),
+        (EnvLine 'POSTGRES_PORT'),
+        (EnvLine 'POSTGRES_DB'),
+        (EnvLine 'POSTGRES_USER'),
+        (EnvLine 'POSTGRES_PASSWORD'),
+        (EnvLine 'DATABASE_URL'),
+        (EnvLine 'REDIS_URL'),
         '',
-        'AUTH_RATE_LIMIT_PER_MINUTE=' + $Settings['AUTH_RATE_LIMIT_PER_MINUTE'],
-        'REDEEM_RATE_LIMIT_PER_MINUTE=' + $Settings['REDEEM_RATE_LIMIT_PER_MINUTE'],
-        'REGISTRATION_ENABLED=' + $Settings['REGISTRATION_ENABLED'],
-        'WORD_FORMATTER_ENABLED=' + $Settings['WORD_FORMATTER_ENABLED'],
-        'ADMIN_DATABASE_MANAGER_ENABLED=' + $Settings['ADMIN_DATABASE_MANAGER_ENABLED'],
-        'ADMIN_DATABASE_WRITE_ENABLED=' + $Settings['ADMIN_DATABASE_WRITE_ENABLED'],
-        'INLINE_TASK_WORKER_ENABLED=' + $Settings['INLINE_TASK_WORKER_ENABLED'],
-        'TASK_WORKER_POLL_INTERVAL=' + $Settings['TASK_WORKER_POLL_INTERVAL'],
-        'TASK_WORKER_HEARTBEAT_INTERVAL=' + $Settings['TASK_WORKER_HEARTBEAT_INTERVAL'],
-        'TASK_WORKER_STALE_TIMEOUT_SECONDS=' + $Settings['TASK_WORKER_STALE_TIMEOUT_SECONDS'],
+        (EnvLine 'AUTH_RATE_LIMIT_PER_MINUTE'),
+        (EnvLine 'REDEEM_RATE_LIMIT_PER_MINUTE'),
+        (EnvLine 'REGISTRATION_ENABLED'),
+        (EnvLine 'WORD_FORMATTER_ENABLED'),
+        (EnvLine 'ADMIN_DATABASE_MANAGER_ENABLED'),
+        (EnvLine 'ADMIN_DATABASE_WRITE_ENABLED'),
+        (EnvLine 'INLINE_TASK_WORKER_ENABLED'),
+        (EnvLine 'TASK_WORKER_POLL_INTERVAL'),
+        (EnvLine 'TASK_WORKER_HEARTBEAT_INTERVAL'),
+        (EnvLine 'TASK_WORKER_STALE_TIMEOUT_SECONDS'),
         '',
-        'OPENAI_API_KEY=' + $Settings['OPENAI_API_KEY'],
-        'OPENAI_BASE_URL=' + $Settings['OPENAI_BASE_URL'],
-        'POLISH_MODEL=' + $Settings['POLISH_MODEL'],
-        'POLISH_API_KEY=' + $Settings['POLISH_API_KEY'],
-        'POLISH_BASE_URL=' + $Settings['POLISH_BASE_URL'],
-        'ENHANCE_MODEL=' + $Settings['ENHANCE_MODEL'],
-        'ENHANCE_API_KEY=' + $Settings['ENHANCE_API_KEY'],
-        'ENHANCE_BASE_URL=' + $Settings['ENHANCE_BASE_URL'],
-        'EMOTION_MODEL=' + $Settings['EMOTION_MODEL'],
-        'EMOTION_API_KEY=' + $Settings['EMOTION_API_KEY'],
-        'EMOTION_BASE_URL=' + $Settings['EMOTION_BASE_URL'],
-        'COMPRESSION_MODEL=' + $Settings['COMPRESSION_MODEL'],
-        'COMPRESSION_API_KEY=' + $Settings['COMPRESSION_API_KEY'],
-        'COMPRESSION_BASE_URL=' + $Settings['COMPRESSION_BASE_URL'],
+        (EnvLine 'OPENAI_API_KEY'),
+        (EnvLine 'OPENAI_BASE_URL'),
+        (EnvLine 'POLISH_MODEL'),
+        (EnvLine 'POLISH_API_KEY'),
+        (EnvLine 'POLISH_BASE_URL'),
+        (EnvLine 'ENHANCE_MODEL'),
+        (EnvLine 'ENHANCE_API_KEY'),
+        (EnvLine 'ENHANCE_BASE_URL'),
+        (EnvLine 'EMOTION_MODEL'),
+        (EnvLine 'EMOTION_API_KEY'),
+        (EnvLine 'EMOTION_BASE_URL'),
+        (EnvLine 'COMPRESSION_MODEL'),
+        (EnvLine 'COMPRESSION_API_KEY'),
+        (EnvLine 'COMPRESSION_BASE_URL'),
         '',
-        'SECRET_KEY=' + $Settings['SECRET_KEY'],
-        'ENCRYPTION_KEY=' + $Settings['ENCRYPTION_KEY'],
-        'ALGORITHM=' + $Settings['ALGORITHM'],
-        'ACCESS_TOKEN_EXPIRE_MINUTES=' + $Settings['ACCESS_TOKEN_EXPIRE_MINUTES'],
-        'USER_ACCESS_TOKEN_EXPIRE_MINUTES=' + $Settings['USER_ACCESS_TOKEN_EXPIRE_MINUTES'],
-        'ADMIN_USERNAME=' + $Settings['ADMIN_USERNAME'],
-        'ADMIN_PASSWORD=' + $Settings['ADMIN_PASSWORD'],
-        'DEFAULT_USAGE_LIMIT=' + $Settings['DEFAULT_USAGE_LIMIT'],
-        'SEGMENT_SKIP_THRESHOLD=' + $Settings['SEGMENT_SKIP_THRESHOLD']
+        (EnvLine 'SECRET_KEY'),
+        (EnvLine 'ENCRYPTION_KEY'),
+        (EnvLine 'ALGORITHM'),
+        (EnvLine 'ACCESS_TOKEN_EXPIRE_MINUTES'),
+        (EnvLine 'USER_ACCESS_TOKEN_EXPIRE_MINUTES'),
+        (EnvLine 'ADMIN_USERNAME'),
+        (EnvLine 'ADMIN_PASSWORD'),
+        (EnvLine 'DEFAULT_USAGE_LIMIT'),
+        (EnvLine 'SEGMENT_SKIP_THRESHOLD')
     )
 
     $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
@@ -274,10 +284,18 @@ function Invoke-WithPgPassword([string]$Password, [scriptblock]$Script) {
 }
 
 function Test-PostgresLogin([string]$Psql, [string]$HostName, [string]$Port, [string]$User, [string]$Password) {
-    Invoke-WithPgPassword $Password {
-        & $Psql -h $HostName -p $Port -U $User -d postgres -tAc 'SELECT 1' > $null 2> $null
+    $oldErrorActionPreference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = 'Continue'
+        Invoke-WithPgPassword $Password {
+            & $Psql -h $HostName -p $Port -U $User -d postgres -tAc 'SELECT 1' *> $null
+        }
+        return ($LASTEXITCODE -eq 0)
+    } catch {
+        return $false
+    } finally {
+        $ErrorActionPreference = $oldErrorActionPreference
     }
-    return ($LASTEXITCODE -eq 0)
 }
 
 function Initialize-Postgres($Settings) {
@@ -321,13 +339,13 @@ function Start-Postgres($Settings) {
 
     Initialize-Postgres $Settings
 
-    if (Test-PostgresLogin $psql $hostName $port $user $password) {
-        Write-Ok "PostgreSQL 已在 $hostName`:$port 运行"
-    } else {
-        if (Test-TcpPort $hostName ([int]$port)) {
+    if (Test-TcpPort $hostName ([int]$port)) {
+        if (Test-PostgresLogin $psql $hostName $port $user $password) {
+            Write-Ok "PostgreSQL 已在 $hostName`:$port 运行"
+        } else {
             throw "端口 $hostName`:$port 已被占用，且不是当前一键包数据库。请修改 .env 里的 POSTGRES_PORT 后重试。"
         }
-
+    } else {
         $postgresLog = Join-Path $LogDir 'postgres.log'
         Write-Step "启动内置 PostgreSQL：$hostName`:$port"
         & $pgCtl -D $DataDir -l $postgresLog -o "-p $port -h $hostName" start
