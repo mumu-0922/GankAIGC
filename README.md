@@ -24,6 +24,38 @@ GankAIGC 是一个面向论文文本的降 AI 与学术润色工具，采用 **F
 
 ---
 
+## 🧪 降 AI 效果展示
+
+以下截图来自朱雀 AI 检测，用于展示中文与英文文本处理前后的检测变化；实际效果会受原文质量、模型配置和处理模式影响。
+
+### 中文文本
+
+<table>
+  <tr>
+    <td width="50%" align="center"><strong>降 AI 前</strong></td>
+    <td width="50%" align="center"><strong>降 AI 后</strong></td>
+  </tr>
+  <tr>
+    <td><img src="docs/assets/zhuque-chinese-before.png" alt="中文文本降 AI 前朱雀 AI 检测截图" /></td>
+    <td><img src="docs/assets/zhuque-chinese-after.png" alt="中文文本降 AI 后朱雀 AI 检测截图" /></td>
+  </tr>
+</table>
+
+### 英文文本
+
+<table>
+  <tr>
+    <td width="50%" align="center"><strong>降 AI 前</strong></td>
+    <td width="50%" align="center"><strong>降 AI 后</strong></td>
+  </tr>
+  <tr>
+    <td><img src="docs/assets/zhuque-english-before.png" alt="英文文本降 AI 前朱雀 AI 检测截图" /></td>
+    <td><img src="docs/assets/zhuque-english-after.png" alt="英文文本降 AI 后朱雀 AI 检测截图" /></td>
+  </tr>
+</table>
+
+---
+
 ## 🧩 核心功能
 
 | 功能        | 说明                                                                        |
