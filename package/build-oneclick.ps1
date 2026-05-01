@@ -1,4 +1,4 @@
-﻿param(
+param(
     [string]$PostgresRoot = "",
     [string]$PostgresZip = "",
     [string]$PostgresZipUrl = "",
@@ -55,6 +55,21 @@ function Find-PostgresRoot([string]$SearchRoot) {
     return $null
 }
 
+
+function Expand-PostgresArchive([string]$ZipPath, [string]$DestinationPath) {
+    New-Item -ItemType Directory -Force -Path $DestinationPath | Out-Null
+
+    $tar = Get-Command tar.exe -ErrorAction SilentlyContinue
+    if ($null -ne $tar) {
+        Write-Step '使用 tar.exe 解压 PostgreSQL ZIP'
+        & $tar.Source -xf $ZipPath -C $DestinationPath
+        if ($LASTEXITCODE -eq 0) { return }
+        Write-Host 'tar.exe 解压失败，尝试 PowerShell Expand-Archive...' -ForegroundColor Yellow
+    }
+
+    Expand-Archive -LiteralPath $ZipPath -DestinationPath $DestinationPath -Force
+}
+
 function Resolve-PortablePostgresRoot() {
     $tempRoot = $null
 
@@ -77,7 +92,7 @@ function Resolve-PortablePostgresRoot() {
         }
         $extractDir = Join-Path $tempRoot 'extract'
         Write-Step "解压便携 PostgreSQL：$PostgresZip"
-        Expand-Archive -LiteralPath $PostgresZip -DestinationPath $extractDir -Force
+        Expand-PostgresArchive -ZipPath $PostgresZip -DestinationPath $extractDir
         $root = Find-PostgresRoot $extractDir
         if ($null -eq $root) { throw 'ZIP 中没有找到可用的 PostgreSQL bin/initdb.exe。' }
         return $root
