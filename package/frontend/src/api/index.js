@@ -112,8 +112,8 @@ export const optimizationAPI = {
     api.delete(`/optimization/sessions/${sessionId}`, {
       timeout: 10000, // 10秒超时
     }),
-  retryFailedSegments: (sessionId) =>
-    api.post(`/optimization/sessions/${sessionId}/retry`, null, {
+  retryFailedSegments: (sessionId, data = {}) =>
+    api.post(`/optimization/sessions/${sessionId}/retry`, data, {
       timeout: 15000, // 15秒超时
     }),
   getStreamUrl: (sessionId) => {

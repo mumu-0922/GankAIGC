@@ -10,7 +10,8 @@ from app.database import get_db
 from app.models.models import User, OptimizationSession, OptimizationSegment, ChangeLog, PaperProject
 from app.schemas import (
     OptimizationCreate, SessionResponse, SessionDetailResponse,
-    QueueStatusResponse, ProgressUpdate, ChangeLogResponse, ExportConfirmation
+    QueueStatusResponse, ProgressUpdate, ChangeLogResponse, ExportConfirmation,
+    SessionRetryRequest
 )
 from app.services.concurrency import concurrency_manager
 from app.services.credit_service import CreditService, calculate_optimization_credits
@@ -62,6 +63,69 @@ def _build_docx_base64(text: str) -> str:
 async def run_optimization(session_id: int):
     """后台运行已入队的优化任务。"""
     await process_session_by_id(session_id)
+
+
+def _clear_session_provider_fields(session: OptimizationSession) -> None:
+    session.polish_model = None
+    session.polish_api_key = None
+    session.polish_base_url = None
+    session.enhance_model = None
+    session.enhance_api_key = None
+    session.enhance_base_url = None
+    session.emotion_model = None
+    session.emotion_api_key = None
+    session.emotion_base_url = None
+
+
+def _apply_retry_billing_mode(
+    *,
+    session: OptimizationSession,
+    user: User,
+    requested_billing_mode: str,
+    db: Session,
+) -> None:
+    """重试失败任务时按用户当前选择的计费/API 模式刷新会话运行配置。"""
+    target_billing_mode = session.billing_mode if requested_billing_mode == "keep" else requested_billing_mode
+
+    if target_billing_mode == "byok":
+        provider_config = ProviderConfigService(db).get_runtime_config(user)
+        CreditService(db).refund_held_platform_credit(session)
+
+        session.billing_mode = "byok"
+        session.credential_source = "user_saved"
+        session.charge_status = "not_charged"
+        session.charged_credits = 0
+        session.polish_model = provider_config["polish_model"]
+        session.polish_api_key = None
+        session.polish_base_url = provider_config["base_url"]
+        session.enhance_model = provider_config["enhance_model"]
+        session.enhance_api_key = None
+        session.enhance_base_url = provider_config["base_url"]
+        session.emotion_model = provider_config["emotion_model"]
+        session.emotion_api_key = None
+        session.emotion_base_url = provider_config["base_url"] if provider_config["emotion_model"] else None
+        return
+
+    if target_billing_mode == "platform":
+        already_held = (
+            session.billing_mode == "platform"
+            and session.charge_status == "held"
+        )
+        required_credits = calculate_optimization_credits(session.original_text, session.processing_mode)
+
+        session.billing_mode = "platform"
+        session.credential_source = "system"
+        _clear_session_provider_fields(session)
+
+        if not already_held:
+            CreditService(db).hold_platform_credit(
+                user,
+                reason="optimization_start",
+                session_id=session.id,
+                amount=required_credits,
+            )
+            session.charge_status = "held"
+            session.charged_credits = 0 if user.is_unlimited else required_credits
 
 
 @router.post("/start", response_model=SessionResponse)
@@ -502,6 +566,7 @@ async def delete_session(
 async def retry_session(
     session_id: str,
     background_tasks: BackgroundTasks,
+    data: Optional[SessionRetryRequest] = None,
     user: User = Depends(get_current_user_with_legacy_fallback),
     db: Session = Depends(get_db)
 ):
@@ -517,6 +582,14 @@ async def retry_session(
     if session.status not in ["failed", "stopped"]:
         raise HTTPException(status_code=400, detail="仅可对失败或已停止的会话执行重试")
 
+    requested_billing_mode = data.billing_mode if data else "keep"
+    _apply_retry_billing_mode(
+        session=session,
+        user=user,
+        requested_billing_mode=requested_billing_mode,
+        db=db,
+    )
+
     # 保留历史错误信息
     old_error = session.error_message or "未知错误"
     session.status = "queued"
@@ -530,7 +603,11 @@ async def retry_session(
     if settings.INLINE_TASK_WORKER_ENABLED:
         background_tasks.add_task(run_optimization, session.id)
 
-    return {"message": "已重新排队处理未完成段落"}
+    return {
+        "message": "已重新排队处理未完成段落",
+        "billing_mode": session.billing_mode,
+        "credential_source": session.credential_source,
+    }
 
 
 @router.post("/sessions/{session_id}/stop")

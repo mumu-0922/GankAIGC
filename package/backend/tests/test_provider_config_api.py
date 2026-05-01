@@ -174,3 +174,76 @@ def test_byok_start_optimization_uses_saved_user_provider(client, monkeypatch):
         assert session.credential_source == "user_saved"
     finally:
         db.close()
+
+
+def test_retry_failed_session_can_switch_to_saved_user_provider(client, monkeypatch):
+    from app.routes import optimization
+
+    monkeypatch.setattr(config_module.settings, "ENCRYPTION_KEY", Fernet.generate_key().decode())
+    monkeypatch.setattr(optimization, "BackgroundTasks", NoRunBackgroundTasks)
+    monkeypatch.setattr(optimization, "run_optimization", lambda *args, **kwargs: None)
+    user_id, token = _create_user()
+    client.put(
+        "/api/user/provider-config",
+        json={
+            "base_url": "https://api.example/v1/",
+            "api_key": "sk-test-secret",
+            "polish_model": "gpt-5.5",
+            "enhance_model": "gpt-5.5",
+            "emotion_model": "gpt-5.4-mini",
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    db = SessionLocal()
+    try:
+        failed_session = OptimizationSession(
+            user_id=user_id,
+            session_id="failed-platform-session",
+            original_text="test paragraph",
+            current_stage="polish",
+            status="failed",
+            error_message="platform api failed",
+            billing_mode="platform",
+            credential_source="system",
+            charge_status="refunded",
+            charged_credits=0,
+            polish_model="bad-platform-model",
+            polish_base_url="https://bad.example/v1",
+        )
+        db.add(failed_session)
+        db.commit()
+    finally:
+        db.close()
+
+    response = client.post(
+        "/api/optimization/sessions/failed-platform-session/retry",
+        json={"billing_mode": "byok"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["billing_mode"] == "byok"
+    assert response.json()["credential_source"] == "user_saved"
+
+    db = SessionLocal()
+    try:
+        session = db.query(OptimizationSession).filter(OptimizationSession.session_id == "failed-platform-session").one()
+        user = db.query(User).filter(User.id == user_id).one()
+        assert user.credit_balance == 0
+        assert session.status == "queued"
+        assert session.billing_mode == "byok"
+        assert session.credential_source == "user_saved"
+        assert session.charge_status == "not_charged"
+        assert session.charged_credits == 0
+        assert session.polish_model == "gpt-5.5"
+        assert session.enhance_model == "gpt-5.5"
+        assert session.emotion_model == "gpt-5.4-mini"
+        assert session.polish_base_url == "https://api.example/v1"
+        assert session.enhance_base_url == "https://api.example/v1"
+        assert session.emotion_base_url == "https://api.example/v1"
+        assert session.polish_api_key is None
+        assert session.enhance_api_key is None
+        assert session.emotion_api_key is None
+    finally:
+        db.close()

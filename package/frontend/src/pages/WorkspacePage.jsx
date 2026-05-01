@@ -141,6 +141,8 @@ const WorkspacePage = () => {
   const [hasProviderConfig, setHasProviderConfig] = useState(false);
   const [billingMode, setBillingMode] = useState('platform');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [retryDialogSession, setRetryDialogSession] = useState(null);
+  const [isRetrying, setIsRetrying] = useState(false);
   const [isLoadingSessions, setIsLoadingSessions] = useState(false);
   const [projects, setProjects] = useState([]);
   const [activeProjectId, setActiveProjectId] = useState(null);
@@ -434,26 +436,43 @@ const WorkspacePage = () => {
     navigate(`/session/${sessionId}`);
   }, [navigate]);
 
-  const handleRetrySegment = useCallback(async (session) => {
+  const handleRetrySegment = useCallback((session) => {
     if (session.status !== 'failed') {
       return;
     }
 
-    const confirmRetry = window.confirm('检测到会话执行失败。是否继续处理未完成的段落?');
-    if (!confirmRetry) {
+    setRetryDialogSession(session);
+  }, []);
+
+  const confirmRetrySegment = useCallback(async () => {
+    if (!retryDialogSession || isRetrying) {
+      return;
+    }
+
+    if (billingMode === 'byok' && !hasProviderConfig) {
+      setRetryDialogSession(null);
+      toast.error('请先保存自带 API 配置');
+      navigate('/api-settings');
       return;
     }
 
     try {
-      const response = await optimizationAPI.retryFailedSegments(session.session_id);
-      setActiveSession(session.session_id);
+      setIsRetrying(true);
+      const response = await optimizationAPI.retryFailedSegments(retryDialogSession.session_id, {
+        billing_mode: billingMode,
+      });
+      setActiveSession(retryDialogSession.session_id);
       toast.success(response.data?.message || '已重新继续处理未完成段落');
       await loadSessions();
+      await loadAccountState();
+      setRetryDialogSession(null);
     } catch (error) {
       console.error('重试失败:', error);
       toast.error(error.response?.data?.detail || '重试失败，请稍后再试');
+    } finally {
+      setIsRetrying(false);
     }
-  }, [loadSessions]);
+  }, [billingMode, hasProviderConfig, isRetrying, loadAccountState, loadSessions, navigate, retryDialogSession]);
 
   // 使用 useMemo 缓存当前活跃会话的数据
   const currentActiveSessionData = useMemo(() => {
@@ -910,6 +929,79 @@ const WorkspacePage = () => {
           </div>
         </div>
       </div>
+
+      {retryDialogSession && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 py-8">
+          <div
+            className="absolute inset-0 bg-slate-900/30 backdrop-blur-md"
+            onClick={() => !isRetrying && setRetryDialogSession(null)}
+          />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="retry-dialog-title"
+            className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-white/60 bg-white/85 shadow-[0_24px_80px_rgba(15,23,42,0.22)] backdrop-blur-2xl"
+          >
+            <div className="absolute -top-20 -right-16 h-40 w-40 rounded-full bg-blue-200/50 blur-3xl" />
+            <div className="absolute -bottom-24 -left-16 h-44 w-44 rounded-full bg-amber-200/50 blur-3xl" />
+            <div className="relative p-6">
+              <div className="mb-4 flex items-start gap-3">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-600 shadow-inner">
+                  <AlertCircle className="h-6 w-6" />
+                </div>
+                <div>
+                  <h3 id="retry-dialog-title" className="text-xl font-bold tracking-tight text-slate-950">
+                    继续处理失败任务？
+                  </h3>
+                  <p className="mt-1 text-sm leading-6 text-slate-600">
+                    将从未完成段落继续执行，并使用你当前选择的
+                    <span className="mx-1 font-semibold text-slate-950">
+                      {billingMode === 'byok' ? '自带 API 模式' : '平台模式'}
+                    </span>
+                    重新连接模型。
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-white/70 bg-white/60 p-4 text-sm text-slate-600">
+                <div className="font-semibold text-slate-900">
+                  {retryDialogSession.task_title || retryDialogSession.project_title || '未命名任务'}
+                </div>
+                <div className="mt-1 line-clamp-2">
+                  {retryDialogSession.preview_text || '暂无预览'}
+                </div>
+                {billingMode === 'byok' && (
+                  <div className="mt-3 rounded-xl bg-blue-50 px-3 py-2 text-xs text-blue-700">
+                    会切换为你保存的自带 API 配置，不再沿用上次失败的平台 API。
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => setRetryDialogSession(null)}
+                  disabled={isRetrying}
+                  className="rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  取消
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmRetrySegment}
+                  disabled={isRetrying}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-ios-blue px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition hover:bg-blue-600 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
+                >
+                  {isRetrying && (
+                    <span className="h-4 w-4 rounded-full border-2 border-white/40 border-t-white animate-spin" />
+                  )}
+                  继续处理
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

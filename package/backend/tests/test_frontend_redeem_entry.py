@@ -136,6 +136,21 @@ def test_workspace_queue_status_uses_processing_task_label():
     assert "Users className" not in workspace
 
 
+def test_workspace_retry_uses_internal_dialog_and_current_billing_mode():
+    workspace = (FRONTEND_SRC / "pages" / "WorkspacePage.jsx").read_text(encoding="utf-8")
+    api = (FRONTEND_SRC / "api" / "index.js").read_text(encoding="utf-8")
+
+    assert "retryDialogSession" in workspace
+    assert "confirmRetrySegment" in workspace
+    assert "继续处理失败任务？" in workspace
+    assert "window.confirm('检测到会话执行失败" not in workspace
+    assert "billing_mode: billingMode" in workspace
+    assert "请先保存自带 API 配置" in workspace
+    assert "navigate('/api-settings')" in workspace
+    assert "retryFailedSegments: (sessionId, data = {})" in api
+    assert "api.post(`/optimization/sessions/${sessionId}/retry`, data" in api
+
+
 def test_user_menu_hides_word_formatter_entry_until_feature_is_ready():
     user_menu = (FRONTEND_SRC / "components" / "UserMenu.jsx").read_text(encoding="utf-8")
 

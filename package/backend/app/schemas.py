@@ -184,6 +184,11 @@ class OptimizationCreate(BaseModel):
     task_title: Optional[str] = Field(default=None, max_length=255)
 
 
+class SessionRetryRequest(BaseModel):
+    """失败会话重试请求"""
+    billing_mode: str = Field(default="keep", pattern="^(keep|platform|byok)$")
+
+
 class SegmentResponse(BaseModel):
     """段落响应"""
     id: int
