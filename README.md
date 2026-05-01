@@ -81,7 +81,11 @@ GankAIGC/
 
 ## 🚀 运行与部署
 
-下面按 3 种场景说明：**本地运行**、**Linux 运行**、**Docker 部署**。
+当前按 3 种方式说明：前两种已经可用，第三种是后续规划占位：
+
+1. **`python main.py` 源码运行**：适合本机开发、调试和自己使用。
+2. **Docker Compose 部署**：适合本机 Docker、VPS 和正式上线，自动包含 PostgreSQL。
+3. **Windows 一键整合包**：规划中，未来会内置便携 PostgreSQL；当前暂未实现。
 
 通用访问地址：
 
@@ -91,151 +95,135 @@ GankAIGC/
 
 ---
 
-### 1. 本地运行（Windows）
+### 1. `python main.py` 源码运行（详细步骤）
 
-适合开发、测试和个人电脑使用。本地运行有两种方式：`python main.py` 直接运行，或打包成 exe 后运行。
+这种方式需要 **Python + PostgreSQL**。如果不想手动安装 PostgreSQL，推荐用 Docker 只启动数据库，项目本体仍用 `python main.py` 跑。
 
-#### 方式 A：一键诊断并启动（推荐新手）
+#### 1）拉取项目
 
-```powershell
+Windows / Linux 都一样：
+
+```bash
 git clone https://github.com/mumu-0922/GankAIGC.git
 cd GankAIGC
-PowerShell -NoProfile -ExecutionPolicy Bypass -File scripts/start-dev.ps1
 ```
 
-这个脚本会检查：Docker、PostgreSQL、`5432`、`9800`、`package/.env` 和 `DATABASE_URL`。只想检查不启动：
+#### 2）准备 PostgreSQL 数据库（推荐 Docker 方式）
 
-```powershell
-PowerShell -NoProfile -ExecutionPolicy Bypass -File scripts/start-dev.ps1 -NoRun
-```
-
-#### 方式 B：手动用 `python main.py` 运行
-
-1）准备 PostgreSQL。最省事是用 Docker 只启动数据库：
+Windows PowerShell：
 
 ```powershell
 Copy-Item .env.docker.example .env.docker
-# 打开 .env.docker，至少修改 POSTGRES_PASSWORD
 notepad .env.docker
-
-docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.local.yml up -d postgres
 ```
 
-2）启动项目：
-
-```powershell
-cd package
-pip install -r requirements.txt
-python main.py
-```
-
-首次运行会生成 `package/.env`。如果提示数据库连接失败，打开 `package/.env`，把数据库地址改成：
-
-```env
-DATABASE_URL=postgresql://ai_polish:你在.env.docker里的POSTGRES_PASSWORD@127.0.0.1:5432/ai_polish
-```
-
-然后重新运行：
-
-```powershell
-python main.py
-```
-
-#### 方式 C：本地打包 exe 后运行
-
-适合不想每次手动启动 Python 的 Windows 用户。
-
-```powershell
-cd package
-.\build.ps1
-```
-
-构建完成后运行：
-
-```powershell
-.\dist\GankAIGC.exe
-```
-
-exe 首次运行会在 exe 同目录生成 `.env`，编辑里面的 `DATABASE_URL`、`ADMIN_PASSWORD`、`SECRET_KEY`、`ENCRYPTION_KEY` 后，再重新打开 exe。
-
----
-
-### 2. Linux 运行
-
-适合 VPS、Linux 服务器或本地 Linux 开发环境。
-
-#### 方式 A：源码直接运行
-
-```bash
-git clone https://github.com/mumu-0922/GankAIGC.git
-cd GankAIGC
-```
-
-准备 PostgreSQL。可以使用 Docker 只启动数据库，并把 `5432` 暴露给源码服务：
+Linux：
 
 ```bash
 cp .env.docker.example .env.docker
-nano .env.docker   # 至少修改 POSTGRES_PASSWORD
+nano .env.docker
+```
 
+在 `.env.docker` 里至少修改数据库密码：
+
+```env
+POSTGRES_PASSWORD=换成你自己的数据库密码
+```
+
+然后只启动 PostgreSQL：
+
+```bash
 docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.local.yml up -d postgres
 ```
 
-安装依赖并启动：
+> 如果你已经自己安装了 PostgreSQL，也可以不用这一步，但需要手动创建 `ai_polish` 用户和 `ai_polish` 数据库。
+
+#### 3）安装 Python 依赖
+
+Windows PowerShell：
+
+```powershell
+cd package
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+```
+
+Linux：
 
 ```bash
 cd package
 python3 -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
+```
+
+推荐使用 Python 3.11 或 3.12。
+
+#### 4）生成并修改配置文件
+
+第一次运行会在 `package/.env` 生成配置模板：
+
+```bash
 python main.py
 ```
 
-如果首次启动生成 `.env` 后提示数据库连接失败，编辑 `package/.env`：
-
-```bash
-nano .env
-```
-
-至少设置：
+打开 `package/.env`，重点修改这些配置：
 
 ```env
 DATABASE_URL=postgresql://ai_polish:你在.env.docker里的POSTGRES_PASSWORD@127.0.0.1:5432/ai_polish
-AUTO_OPEN_BROWSER=false
+SECRET_KEY=随机长字符串
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=你的后台密码
+ENCRYPTION_KEY=Fernet加密密钥
+
+POLISH_MODEL=gpt-5.5
+POLISH_API_KEY=你的API密钥
+POLISH_BASE_URL=https://api.openai.com/v1
+
+ENHANCE_MODEL=gpt-5.5
+ENHANCE_API_KEY=你的API密钥
+ENHANCE_BASE_URL=https://api.openai.com/v1
+
+EMOTION_MODEL=gpt-5.5
+EMOTION_API_KEY=你的API密钥
+EMOTION_BASE_URL=https://api.openai.com/v1
 ```
 
-保存后重新运行：
+生成密钥示例：
+
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
+
+第一个填 `SECRET_KEY`，第二个填 `ENCRYPTION_KEY`。
+
+#### 5）启动项目
 
 ```bash
 python main.py
 ```
 
-#### 方式 B：Linux 打包为可执行文件
+访问：
 
-```bash
-cd package
-chmod +x build.sh
-./build.sh
+```text
+http://localhost:9800
 ```
-
-构建完成后运行：
-
-```bash
-./dist/GankAIGC
-```
-
-> 服务器长期运行建议用 Docker 部署，或自行用 `systemd` / `supervisor` 托管源码进程。
 
 ---
 
-### 3. Docker 部署（推荐上线方式）
+### 2. Docker Compose 部署（推荐上线方式）
 
-Docker Compose 会启动完整生产栈：
+Docker Compose 会一次启动完整服务：
 
-- `app`：Web 应用，提供 API 和前端页面。
-- `worker`：独立任务处理进程。
+- `app`：GankAIGC Web 应用。
+- `worker`：后台任务处理进程。
 - `postgres`：PostgreSQL 16 数据库。
 
-#### 1）复制配置文件
+这种方式 **不需要单独安装 PostgreSQL**。
+
+#### 1）拉取项目并复制配置
 
 Windows PowerShell：
 
@@ -243,43 +231,59 @@ Windows PowerShell：
 git clone https://github.com/mumu-0922/GankAIGC.git
 cd GankAIGC
 Copy-Item .env.docker.example .env.docker
+notepad .env.docker
 ```
 
-Linux：
+Linux / VPS：
 
 ```bash
 git clone https://github.com/mumu-0922/GankAIGC.git
 cd GankAIGC
 cp .env.docker.example .env.docker
+nano .env.docker
 ```
 
-#### 2）生成安全密钥
+#### 2）修改 `.env.docker`
 
-```bash
-# SECRET_KEY
-python -c "import secrets; print(secrets.token_urlsafe(32))"
-
-# ENCRYPTION_KEY
-python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-```
-
-打开 `.env.docker`，至少修改：
+至少修改：
 
 ```env
 POSTGRES_PASSWORD=换成强数据库密码
-SECRET_KEY=上面生成的随机字符串
-ADMIN_PASSWORD=换成强后台密码
-ENCRYPTION_KEY=上面生成的Fernet密钥
+SECRET_KEY=换成随机长字符串
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=换成后台强密码
+ENCRYPTION_KEY=换成Fernet加密密钥
+ALLOWED_ORIGINS=http://localhost:9800
 ```
 
-如果使用域名，继续修改：
+如果部署到 VPS，并直接用 IP 访问：
+
+```env
+ALLOWED_ORIGINS=http://你的服务器IP:9800
+```
+
+如果绑定域名：
 
 ```env
 ALLOWED_ORIGINS=https://你的域名
-APP_PORT=9800
 ```
 
-> `.env.docker` 是真实密钥文件，不要提交到 GitHub。
+生成密钥：
+
+```bash
+python3 -c "import secrets; print(secrets.token_urlsafe(32))"
+python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
+
+Docker 会自动根据 `POSTGRES_PASSWORD` 拼出容器内的 `DATABASE_URL`，一般不要在 `.env.docker` 里手动添加 `DATABASE_URL`。
+
+还可以在 `.env.docker` 中配置平台 API：
+
+```env
+POLISH_MODEL=gpt-5.5
+POLISH_API_KEY=你的API密钥
+POLISH_BASE_URL=https://api.openai.com/v1
+```
 
 #### 3）启动
 
@@ -287,17 +291,17 @@ APP_PORT=9800
 docker compose --env-file .env.docker up --build -d
 ```
 
-#### 4）检查
+#### 4）检查状态
 
 ```bash
 docker compose --env-file .env.docker ps
 curl http://127.0.0.1:9800/health
 ```
 
-返回 `{"status":"healthy"}` 后，访问：
+返回类似下面内容表示正常：
 
-```text
-http://你的服务器IP:9800
+```json
+{"status":"healthy"}
 ```
 
 查看日志：
@@ -307,17 +311,44 @@ docker compose --env-file .env.docker logs -f app
 docker compose --env-file .env.docker logs -f worker
 ```
 
-停止服务但保留数据：
+停止服务但保留数据库数据：
 
 ```bash
 docker compose --env-file .env.docker down
 ```
 
+更新项目：
+
+```bash
+git pull
+docker compose --env-file .env.docker up --build -d
+```
+
 > 不要随便执行 `docker compose down -v`，`-v` 会删除 PostgreSQL 数据卷。
 
-更多细节见：[Docker / PostgreSQL Deployment](docs/docker-deployment.md)。
+---
+
+### 3. Windows 一键整合包（占位，暂未实现）
+
+当前普通 Windows exe 已支持打包，但 **仍需要外部 PostgreSQL**，不适合完全零基础用户直接双击使用。
+
+计划中的一键整合包会变成类似结构：
+
+```text
+GankAIGC-Windows/
+├── start.bat
+├── stop.bat
+├── GankAIGC.exe
+├── postgres/       # 便携 PostgreSQL
+├── data/           # 数据库数据
+├── logs/
+└── .env
+```
+
+目标效果：解压后双击 `start.bat`，自动启动内置 PostgreSQL 和 GankAIGC。该方案后续实现后再补充详细说明。
 
 ---
+
 ## ⚙️ 配置说明
 
 源码运行读取 `package/.env`；打包后的 exe 读取 exe 同目录 `.env`；Docker 读取 `.env.docker`。
