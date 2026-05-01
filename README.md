@@ -5,11 +5,12 @@
 
 **论文降 AI、学术润色与原创性表达增强工具**
 
-[![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-3.11%20recommended-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-Backend-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![React](https://img.shields.io/badge/React%2018-Frontend-61DAFB?logo=react&logoColor=111)](https://react.dev/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Only-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Docker](https://img.shields.io/badge/Docker-Deploy-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
+[![Release](https://img.shields.io/github/v/release/mumu-0922/GankAIGC?label=Release)](https://github.com/mumu-0922/GankAIGC/releases/latest)
 [![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey)](LICENSE)
 
 如果这个项目对你有帮助，欢迎点一个 ⭐ Star。
@@ -20,7 +21,7 @@
 
 ## ✨ 项目简介
 
-GankAIGC 是一个面向论文文本的降 AI 与学术润色工具，采用 **FastAPI + React/Vite + PostgreSQL** 架构，支持源码运行、Docker 部署和 PyInstaller 打包。
+GankAIGC 是一个面向论文文本的降 AI 与学术润色工具，采用 **FastAPI + React/Vite + PostgreSQL** 架构，支持源码运行、Docker 部署和 Windows 一键整合包。
 
 ---
 
@@ -67,6 +68,7 @@ GankAIGC 是一个面向论文文本的降 AI 与学术润色工具，采用 **F
 | 🔑 自带 API  | 用户可保存自己的 OpenAI 兼容接口配置，使用 BYOK 模式处理任务                |
 | 📚 论文项目  | 支持按论文项目归档任务，查看历史会话、分段结果和改写记录                    |
 | 📦 结果导出  | 支持导出 Word `.docx` 和 Markdown `.md`                                     |
+| 🖥 Windows 包 | Release 提供一键整合包，内置便携 PostgreSQL，解压后双击 `start.bat`        |
 | 🛠 管理后台  | 数据面板、会话监控、用户管理、兑换码、封禁/解封、操作日志、系统配置         |
 
 ---
@@ -76,8 +78,8 @@ GankAIGC 是一个面向论文文本的降 AI 与学术润色工具，采用 **F
 - **后端**：FastAPI、SQLAlchemy、Alembic、PostgreSQL、JWT、OpenAI Python SDK
 - **前端**：React 18、Vite、Tailwind CSS、React Router、Axios、Lucide React
 - **任务处理**：PostgreSQL 队列；Docker 部署使用独立 worker
-- **部署**：Docker Compose + PostgreSQL
-- **打包**：PyInstaller
+- **部署**：Docker Compose + PostgreSQL；Windows 一键包内置便携 PostgreSQL
+- **打包**：PyInstaller、`build-oneclick.ps1`
 
 ---
 
@@ -99,25 +101,33 @@ GankAIGC/
 │   │   └── src/api/             # 前端 API 封装
 │   ├── static/                  # 前端生产构建产物
 │   ├── requirements.txt
-│   ├── build.ps1                # Windows 可执行文件构建脚本
-│   └── build.sh                 # Linux/macOS 可执行文件构建脚本
+│   ├── build.ps1                # Windows 普通 exe 构建脚本
+│   ├── build-oneclick.ps1       # Windows 一键整合包构建脚本
+│   ├── windows-oneclick/        # 一键包 start/stop/env 模板
+│   └── build.sh                 # Linux/macOS 普通可执行文件构建脚本
 ├── docker-compose.yml
+├── docker-compose.local.yml     # 本地暴露 PostgreSQL 5432 的附加配置
 ├── Dockerfile
 ├── scripts/                     # 启动诊断、PostgreSQL 备份/恢复脚本
-├── docs/                        # 部署、运维和维护清单
-├── .env.docker.example          # Docker 环境变量模板，不是真实密钥
-└── AGENTS.md                    # 贡献者/Agent 开发指南
+├── docs/                        # 部署、运维、维护清单和 README 图片资源
+└── .env.docker.example          # Docker 环境变量模板，不是真实密钥
 ```
 
 ---
 
 ## 🚀 运行与部署
 
-当前按 3 种方式说明：前两种已经可用，第三种是后续规划占位：
+当前按 3 种方式说明，均可使用：
 
 1. **`python main.py` 源码运行**：适合本机开发、调试和自己使用。
 2. **Docker Compose 部署**：适合本机 Docker、VPS 和正式上线，自动包含 PostgreSQL。
-3. **Windows 一键整合包**：规划中，未来会内置便携 PostgreSQL；当前暂未实现。
+3. **Windows 一键整合包**：适合 Windows 新手，Release 下载后解压即用，内置便携 PostgreSQL。
+
+Windows 用户如果只想直接使用，优先下载：
+
+```text
+https://github.com/mumu-0922/GankAIGC/releases/latest
+```
 
 通用访问地址：
 
@@ -364,6 +374,26 @@ docker compose --env-file .env.docker up --build -d
 
 这个方案面向 Windows 小白用户：**最终用户不用安装 PostgreSQL**，解压后双击 `start.bat` 即可运行。仓库不会提交 PostgreSQL 二进制文件，构建发布包时需要你提供官方 Windows PostgreSQL binaries ZIP 或已解压目录。
 
+#### 直接下载使用
+
+进入 [Releases](https://github.com/mumu-0922/GankAIGC/releases/latest)，下载：
+
+```text
+GankAIGC-Windows-OneClick.zip
+```
+
+使用方式：
+
+1. 解压 `GankAIGC-Windows-OneClick.zip`。
+2. 双击 `start.bat`。
+3. 首次运行会自动初始化内置 PostgreSQL，并生成 `.env`、数据库密码、后台密码、JWT 密钥和加密密钥。
+4. 后台账号密码会显示在窗口里，也会保存到 `logs/first-run-admin.txt`。
+5. 停止服务双击 `stop.bat`。
+
+> 注意：不要删除 `data/`，否则用户、邀请码、兑换码、会话等数据会丢失。
+
+#### 自行构建一键包
+
 构建方式：
 
 ```powershell
@@ -390,16 +420,6 @@ package/dist/GankAIGC-Windows/
 ├── .env
 └── README.txt
 ```
-
-用户使用方式：
-
-1. 解压 `GankAIGC-Windows-OneClick.zip`。
-2. 双击 `start.bat`。
-3. 首次运行会自动生成数据库密码、后台密码、JWT 密钥和加密密钥。
-4. 后台账号密码会显示在窗口里，也会保存到 `logs/first-run-admin.txt`。
-5. 停止服务双击 `stop.bat`。
-
-> 注意：不要删除 `data/`，否则用户、邀请码、兑换码、会话等数据会丢失。
 
 ---
 

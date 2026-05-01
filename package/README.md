@@ -1,6 +1,6 @@
 # GankAIGC - 可执行文件打包
 
-本目录包含将前后端项目打包为单个可执行文件 (exe) 的代码和配置。
+本目录包含将前后端项目打包为普通可执行文件和 Windows 一键整合包的代码与配置。
 
 当前稳定主线是「账号注册 + 用户登录 + 邀请码注册 + 兑换码充值啤酒 + 啤酒流水 + 降 AI 工作台」。Word 排版相关后端代码仍作为实验模块保留，但默认关闭，前端不暴露排版入口。
 
@@ -24,7 +24,7 @@ package/
 
 ### 前置条件
 
-- Python 3.9+
+- Python 3.11 或 3.12（推荐 3.11，避免 Python 3.13 与旧版 PyInstaller 兼容问题）
 - Node.js 18+
 - pip 和 npm
 
@@ -58,21 +58,37 @@ cd package
 
 一键包位于 `dist/GankAIGC-Windows/`，压缩包位于 `dist/GankAIGC-Windows-OneClick.zip`。
 
-## GitHub Actions 自动构建
+## 发布方式
 
-项目配置了 GitHub Actions 工作流，可以自动构建 Windows、Linux 和 macOS 版本的可执行文件。
+当前公开 Release 主要发布 Windows 一键整合包：
 
-### 触发方式
+```text
+GankAIGC-Windows-OneClick.zip
+```
 
-1. **打标签触发**: 推送以 `v` 开头的标签时自动触发构建并创建 Release
-   ```bash
-   git tag v1.0.0
-   git push origin v1.0.0
-   ```
+上传前建议本地重新构建：
 
-2. **手动触发**: 在 GitHub Actions 页面手动运行工作流
+```powershell
+cd package
+.\build-oneclick.ps1 -PostgresZip C:\Downloads\postgresql-windows-x64-binaries.zip -CreateZip
+```
 
-### 构建产物
+然后用 GitHub CLI 覆盖 Release 附件：
+
+```powershell
+gh release upload v1.0.0 .\dist\GankAIGC-Windows-OneClick.zip --clobber
+```
+
+GitHub Actions 工作流仍保留用于普通可执行文件构建参考；若要正式启用自动发布，需要先确认产物名称与当前 `app.spec` 的 `GankAIGC` 一致。
+
+### 标签发布
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+### 常见构建产物
 
 - `GankAIGC-Windows-{version}.zip` - Windows 普通可执行文件，需要外部 PostgreSQL
 - `GankAIGC-Windows-OneClick.zip` - Windows 一键整合包，内置便携 PostgreSQL
