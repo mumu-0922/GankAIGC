@@ -79,7 +79,7 @@ cd package
 gh release upload v1.0.0 .\dist\GankAIGC-Windows-OneClick.zip --clobber
 ```
 
-GitHub Actions 工作流仍保留用于普通可执行文件构建参考；若要正式启用自动发布，需要先确认产物名称与当前 `app.spec` 的 `GankAIGC` 一致。
+GitHub Actions 工作流会在推送 `v*` 标签时构建普通 Windows/Linux/macOS 可执行文件；当前公开 Release 仍优先使用本地构建并上传的 Windows 一键整合包。
 
 ### 标签发布
 

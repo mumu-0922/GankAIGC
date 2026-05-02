@@ -77,14 +77,14 @@ jobs:
         working-directory: package
         run: |
           $version = "${{ steps.version.outputs.version }}"
-          Compress-Archive -Path "dist\AI学术写作助手.exe" -DestinationPath "AI学术写作助手-Windows-${version}.zip"
+          Compress-Archive -Path "dist\GankAIGC.exe" -DestinationPath "GankAIGC-Windows-${version}.zip"
         shell: pwsh
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AI学术写作助手-Windows-${{ steps.version.outputs.version }}
-          path: package/AI学术写作助手-Windows-*.zip
+          name: GankAIGC-Windows-${{ steps.version.outputs.version }}
+          path: package/GankAIGC-Windows-*.zip
           retention-days: 30
 
   build-linux:
@@ -146,13 +146,13 @@ jobs:
         working-directory: package
         run: |
           version="${{ steps.version.outputs.version }}"
-          tar -czvf "AI学术写作助手-Linux-${version}.tar.gz" -C dist "AI学术写作助手"
+          tar -czvf "GankAIGC-Linux-${version}.tar.gz" -C dist "GankAIGC"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AI学术写作助手-Linux-${{ steps.version.outputs.version }}
-          path: package/AI学术写作助手-Linux-*.tar.gz
+          name: GankAIGC-Linux-${{ steps.version.outputs.version }}
+          path: package/GankAIGC-Linux-*.tar.gz
           retention-days: 30
 
   build-macos:
@@ -214,13 +214,13 @@ jobs:
         working-directory: package
         run: |
           version="${{ steps.version.outputs.version }}"
-          tar -czvf "AI学术写作助手-macOS-${version}.tar.gz" -C dist "AI学术写作助手"
+          tar -czvf "GankAIGC-macOS-${version}.tar.gz" -C dist "GankAIGC"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AI学术写作助手-macOS-${{ steps.version.outputs.version }}
-          path: package/AI学术写作助手-macOS-*.tar.gz
+          name: GankAIGC-macOS-${{ steps.version.outputs.version }}
+          path: package/GankAIGC-macOS-*.tar.gz
           retention-days: 30
 
   release:
