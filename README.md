@@ -1,4 +1,4 @@
-<div align="center">
+﻿<div align="center">
   <img src="package/frontend/public/gankaigc-logo.svg" alt="GankAIGC Logo" width="96" />
 
 # GankAIGC
@@ -13,8 +13,6 @@
 [![Release](https://img.shields.io/github/v/release/mumu-0922/GankAIGC?label=Release)](https://github.com/mumu-0922/GankAIGC/releases/latest)
 [![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey)](LICENSE)
 
-如果这个项目对你有帮助，欢迎点一个 ⭐ Star。
-
 </div>
 
 ---
@@ -27,7 +25,7 @@ GankAIGC 是一个面向论文文本的降 AI 与学术润色工具，采用 **F
 
 ## 🧪 降 AI 效果展示
 
-以下截图来自朱雀 AI 检测，用于展示中文与英文文本处理前后的检测变化；实际效果会受原文质量、模型配置和处理模式影响。
+以下来自朱雀 AI 检测，用于展示中文与英文文本处理前后的检测变化；实际效果会受原文质量、模型配置和处理模式影响。
 
 ### 中文文本
 
@@ -59,17 +57,17 @@ GankAIGC 是一个面向论文文本的降 AI 与学术润色工具，采用 **F
 
 ## 🧩 核心功能
 
-| 功能        | 说明                                                                        |
-| ----------- | --------------------------------------------------------------------------- |
-| 📝 论文降 AI | 支持论文润色、原创性增强、润色 + 增强、感情文章润色等模式                   |
-| 👤 账号体系  | 用户通过邀请码注册，登录后进入工作台，可修改昵称和查看个人信息              |
-| 📨 邀请机制  | 管理员可无限创建邀请码，普通用户只能生成 1 个自己的邀请码                   |
-| 🍺 啤酒额度  | 用户使用兑换码充值啤酒；平台模式按字符折算啤酒，约 1000 个非空白字符消耗 1 啤酒 |
-| 🔑 自带 API  | 用户可保存自己的 OpenAI 兼容接口配置，使用 BYOK 模式处理任务                |
-| 📚 论文项目  | 支持按论文项目归档任务，查看历史会话、分段结果和改写记录                    |
-| 📦 结果导出  | 支持导出 Word `.docx` 和 Markdown `.md`                                     |
-| 🖥 Windows 包 | Release 提供一键整合包，内置便携 PostgreSQL，解压后双击 `start.bat`        |
-| 🛠 管理后台  | 数据面板、会话监控、用户管理、兑换码、封禁/解封、操作日志、系统配置         |
+| 功能         | 说明                                                                            |
+| ------------ | ------------------------------------------------------------------------------- |
+| 📝 论文降 AI  | 支持论文润色、原创性增强、润色 + 增强、感情文章润色等模式                       |
+| 👤 账号体系   | 用户通过邀请码注册，登录后进入工作台，可修改昵称和查看个人信息                  |
+| 📨 邀请机制   | 管理员可无限创建邀请码，普通用户只能生成 1 个自己的邀请码                       |
+| 🍺 啤酒额度   | 用户使用兑换码充值啤酒；平台模式按字符折算啤酒，约 1000 个非空白字符消耗 1 啤酒 |
+| 🔑 自带 API   | 用户可保存自己的 OpenAI 兼容接口配置，使用 BYOK 模式处理任务                    |
+| 📚 论文项目   | 支持按论文项目归档任务，查看历史会话、分段结果和改写记录                        |
+| 📦 结果导出   | 支持导出 Word `.docx` 和 Markdown `.md`                                         |
+| 🖥 Windows 包 | Release 提供一键整合包，内置便携 PostgreSQL，解压后双击 `start.bat`             |
+| 🛠 管理后台   | 数据面板、会话监控、用户管理、兑换码、封禁/解封、操作日志、系统配置             |
 
 ---
 
@@ -200,7 +198,7 @@ source venv/bin/activate
 python -m pip install -r requirements.txt
 ```
 
-推荐使用 Python 3.11 或 3.12。
+推荐使用 Python 3.11。
 
 #### 4）生成并修改配置文件
 
@@ -255,7 +253,7 @@ http://localhost:9800
 
 ---
 
-### 2. Docker Compose 部署（推荐上线方式）
+### 2. Docker Compose 部署
 
 Docker Compose 会一次启动完整服务：
 
@@ -263,7 +261,7 @@ Docker Compose 会一次启动完整服务：
 - `worker`：后台任务处理进程。
 - `postgres`：PostgreSQL 16 数据库。
 
-这种方式 **不需要单独安装 PostgreSQL**。
+
 
 #### 1）拉取项目并复制配置
 
@@ -370,9 +368,9 @@ docker compose --env-file .env.docker up --build -d
 
 ---
 
-### 3. Windows 一键整合包（已支持构建）
+### 3. Windows 一键整合包
 
-这个方案面向 Windows 小白用户：**最终用户不用安装 PostgreSQL**，解压后双击 `start.bat` 即可运行。仓库不会提交 PostgreSQL 二进制文件，构建发布包时需要你提供官方 Windows PostgreSQL binaries ZIP 或已解压目录。
+解压后双击 `start.bat` 即可运行。
 
 #### 直接下载使用
 
@@ -392,34 +390,7 @@ GankAIGC-Windows-OneClick.zip
 
 > 注意：不要删除 `data/`，否则用户、邀请码、兑换码、会话等数据会丢失。
 
-#### 自行构建一键包
 
-构建方式：
-
-```powershell
-cd package
-
-# 方式 A：传入已解压的 PostgreSQL 目录，例如里面有 bin\initdb.exe
-.\build-oneclick.ps1 -PostgresRoot C:\pgsql -CreateZip
-
-# 方式 B：传入 PostgreSQL Windows binaries ZIP
-.\build-oneclick.ps1 -PostgresZip C:\Downloads\postgresql-windows-x64-binaries.zip -CreateZip
-```
-
-生成目录：
-
-```text
-package/dist/GankAIGC-Windows/
-├── start.bat
-├── stop.bat
-├── GankAIGC.exe
-├── postgres/       # 便携 PostgreSQL
-├── data/           # 数据库数据，首次运行自动初始化
-├── logs/           # PostgreSQL 日志和首次后台密码
-├── runtime/        # 启停脚本
-├── .env
-└── README.txt
-```
 
 ---
 
