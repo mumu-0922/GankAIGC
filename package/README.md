@@ -90,10 +90,10 @@ git push origin v1.0.0
 
 ### 常见构建产物
 
-- `GankAIGC-Windows-{version}.zip` - Windows 普通可执行文件，需要外部 PostgreSQL
+- `GankAIGC-Windows.zip` - GitHub Actions 自动构建的 Windows 普通可执行文件，需要外部 PostgreSQL
 - `GankAIGC-Windows-OneClick.zip` - Windows 一键整合包，内置便携 PostgreSQL
-- `GankAIGC-Linux-{version}.tar.gz` - Linux 可执行文件
-- `GankAIGC-macOS-{version}.tar.gz` - macOS 可执行文件
+- `GankAIGC-Linux.tar.gz` - GitHub Actions 自动构建的 Linux 可执行文件
+- `GankAIGC-macOS.tar.gz` - GitHub Actions 自动构建的 macOS 可执行文件
 
 ## 运行说明
 

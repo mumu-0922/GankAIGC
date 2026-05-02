@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version tag (e.g., v1.0.0)'
-        required: false
-        default: 'dev'
+        description: 'Release tag to upload assets to (e.g., v1.0.0)'
+        required: true
+        default: 'v1.0.0'
 
 # Default permissions for all jobs
 permissions:
@@ -76,15 +76,14 @@ jobs:
       - name: Create zip archive
         working-directory: package
         run: |
-          $version = "${{ steps.version.outputs.version }}"
-          Compress-Archive -Path "dist\GankAIGC.exe" -DestinationPath "GankAIGC-Windows-${version}.zip"
+          Compress-Archive -Path "dist\GankAIGC.exe" -DestinationPath "GankAIGC-Windows.zip"
         shell: pwsh
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: GankAIGC-Windows-${{ steps.version.outputs.version }}
-          path: package/GankAIGC-Windows-*.zip
+          name: GankAIGC-Windows
+          path: package/GankAIGC-Windows.zip
           retention-days: 30
 
   build-linux:
@@ -145,14 +144,13 @@ jobs:
       - name: Create tar archive
         working-directory: package
         run: |
-          version="${{ steps.version.outputs.version }}"
-          tar -czvf "GankAIGC-Linux-${version}.tar.gz" -C dist "GankAIGC"
+          tar -czvf "GankAIGC-Linux.tar.gz" -C dist "GankAIGC"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: GankAIGC-Linux-${{ steps.version.outputs.version }}
-          path: package/GankAIGC-Linux-*.tar.gz
+          name: GankAIGC-Linux
+          path: package/GankAIGC-Linux.tar.gz
           retention-days: 30
 
   build-macos:
@@ -213,20 +211,19 @@ jobs:
       - name: Create tar archive
         working-directory: package
         run: |
-          version="${{ steps.version.outputs.version }}"
-          tar -czvf "GankAIGC-macOS-${version}.tar.gz" -C dist "GankAIGC"
+          tar -czvf "GankAIGC-macOS.tar.gz" -C dist "GankAIGC"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: GankAIGC-macOS-${{ steps.version.outputs.version }}
-          path: package/GankAIGC-macOS-*.tar.gz
+          name: GankAIGC-macOS
+          path: package/GankAIGC-macOS.tar.gz
           retention-days: 30
 
   release:
     needs: [build-windows, build-linux, build-macos]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     permissions:
       contents: write
     steps:
@@ -235,14 +232,21 @@ jobs:
         with:
           path: artifacts
 
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: |
-            artifacts/**/*.zip
-            artifacts/**/*.tar.gz
-          draft: false
-          prerelease: false
-          generate_release_notes: true
+      - name: Upload release assets
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ github.event.inputs.version || github.ref_name }}
+        run: |
+          set -euo pipefail
+          mapfile -d '' files < <(find artifacts -type f \( -name '*.zip' -o -name '*.tar.gz' \) -print0)
+          printf 'Release tag: %s\n' "$TAG_NAME"
+          printf 'Assets:\n'
+          printf ' - %s\n' "${files[@]}"
+
+          if gh release view "$TAG_NAME" >/dev/null 2>&1; then
+            gh release upload "$TAG_NAME" "${files[@]}" --clobber
+          else
+            gh release create "$TAG_NAME" "${files[@]}" \
+              --title "GankAIGC $TAG_NAME" \
+              --notes "自动构建普通可执行包。Windows 一键整合包如已存在会保留。"
+          fi
