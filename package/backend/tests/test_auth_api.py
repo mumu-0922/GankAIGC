@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 from cryptography.fernet import Fernet
 from starlette.requests import Request
@@ -478,6 +480,116 @@ def test_admin_config_updates_runtime_env_file_from_override(client, monkeypatch
     assert response.status_code == 200
     assert "POLISH_MODEL=new-model" in env_file.read_text(encoding="utf-8")
     assert config_module.settings.POLISH_MODEL == "new-model"
+
+
+def test_admin_config_creates_runtime_env_file_when_missing(client, monkeypatch, tmp_path):
+    env_file = tmp_path / ".env"
+
+    monkeypatch.setattr(config_module, "get_env_file_path", lambda: str(env_file))
+    monkeypatch.setattr(config_module.settings, "APP_ENV", "development")
+    monkeypatch.setattr(config_module.settings, "SECRET_KEY", "test-secret-key")
+    monkeypatch.setattr(config_module.settings, "ADMIN_PASSWORD", "test-admin-password")
+    monkeypatch.setattr(config_module.settings, "POLISH_MODEL", "old-model")
+
+    response = client.post(
+        "/api/admin/config",
+        json={"POLISH_MODEL": "new-model"},
+        headers=_admin_auth_headers(client),
+    )
+
+    assert response.status_code == 200
+    assert env_file.exists()
+    assert env_file.read_text(encoding="utf-8") == "POLISH_MODEL=new-model\n"
+    assert config_module.settings.POLISH_MODEL == "new-model"
+
+
+def test_admin_config_save_keeps_compose_env_secrets_when_env_file_has_defaults(client, monkeypatch, tmp_path):
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "\n".join(
+            [
+                "APP_ENV=production",
+                "SECRET_KEY=your-secret-key-change-this-in-production",
+                "ADMIN_USERNAME=admin",
+                "ADMIN_PASSWORD=admin123",
+                "POLISH_MODEL=old-model",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    docker_secret = "docker-compose-secret-key-32-chars"
+    docker_admin_password = "docker-compose-admin-password"
+
+    monkeypatch.setattr(config_module, "get_env_file_path", lambda: str(env_file))
+    monkeypatch.setattr(config_module.settings, "APP_ENV", "production")
+    monkeypatch.setattr(config_module.settings, "SECRET_KEY", docker_secret)
+    monkeypatch.setattr(config_module.settings, "ADMIN_USERNAME", "admin")
+    monkeypatch.setattr(config_module.settings, "ADMIN_PASSWORD", docker_admin_password)
+    monkeypatch.setattr(config_module.settings, "POLISH_MODEL", "old-model")
+
+    admin_token = create_access_token({"sub": "admin", "role": "admin"})
+    response = client.post(
+        "/api/admin/config",
+        json={"POLISH_MODEL": "new-model"},
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+
+    assert response.status_code == 200
+    assert config_module.settings.POLISH_MODEL == "new-model"
+    assert config_module.settings.SECRET_KEY == docker_secret
+    assert config_module.settings.ADMIN_PASSWORD == docker_admin_password
+
+    login_response = client.post(
+        "/api/admin/login",
+        json={"username": "admin", "password": docker_admin_password},
+    )
+    assert login_response.status_code == 200
+
+
+def test_worker_healthcheck_is_disabled_in_docker_compose():
+    compose_path = Path(__file__).resolve().parents[3] / "docker-compose.yml"
+    compose_text = compose_path.read_text(encoding="utf-8")
+    worker_section = compose_text.split("\n  worker:", 1)[1].split("\n  postgres:", 1)[0]
+
+    assert "healthcheck:" in worker_section
+    assert "disable: true" in worker_section
+
+
+def test_docker_services_mount_env_docker_as_runtime_config():
+    compose_path = Path(__file__).resolve().parents[3] / "docker-compose.yml"
+    compose_text = compose_path.read_text(encoding="utf-8")
+    app_section = compose_text.split("\n  app:", 1)[1].split("\n  worker:", 1)[0]
+    worker_section = compose_text.split("\n  worker:", 1)[1].split("\n  postgres:", 1)[0]
+
+    for section in (app_section, worker_section):
+        assert "GANKAIGC_ENV_FILE: /app/config/.env.docker" in section
+        assert "./.env.docker:/app/config/.env.docker" in section
+
+
+def test_dockerfile_creates_runtime_config_mount_directory():
+    dockerfile = (Path(__file__).resolve().parents[3] / "Dockerfile").read_text(encoding="utf-8")
+
+    assert "mkdir -p /app/config" in dockerfile
+
+
+def test_package_main_preserves_preconfigured_runtime_env_file():
+    main_py = (Path(__file__).resolve().parents[2] / "main.py").read_text(encoding="utf-8")
+
+    assert "os.environ.get('GANKAIGC_ENV_FILE') or os.path.join(APP_DIR, '.env')" in main_py
+    assert "os.environ['GANKAIGC_ENV_FILE'] = ENV_FILE" in main_py
+
+
+def test_worker_refreshes_runtime_config_file_during_loop():
+    worker_py = (Path(__file__).resolve().parents[1] / "worker.py").read_text(encoding="utf-8")
+
+    assert "from app.config import reload_settings, settings" in worker_py
+    assert "reload_settings()" in worker_py
+
+
+def test_root_head_probe_is_supported(client):
+    response = client.head("/")
+
+    assert response.status_code == 200
 
 
 def test_admin_config_exposes_registration_enabled(client, monkeypatch):

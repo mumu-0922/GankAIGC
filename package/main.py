@@ -27,14 +27,15 @@ else:
 # 设置工作目录为应用目录（确保配置文件在正确位置）
 os.chdir(APP_DIR)
 
-# 设置环境变量指向 exe 同目录的 .env 文件
-ENV_FILE = os.path.join(APP_DIR, '.env')
+# 默认读取程序目录下的 .env；Docker/VPS 可提前注入 GANKAIGC_ENV_FILE
+# 指向 bind mount 的 .env.docker，后台系统配置也会写回同一个文件。
+ENV_FILE = os.environ.get('GANKAIGC_ENV_FILE') or os.path.join(APP_DIR, '.env')
 os.environ['GANKAIGC_ENV_FILE'] = ENV_FILE
 
 # 加载环境变量
 if os.path.exists(ENV_FILE):
     from dotenv import load_dotenv
-    load_dotenv(ENV_FILE)
+    load_dotenv(ENV_FILE, encoding="utf-8-sig")
 
 # 添加 backend 到 Python 路径
 backend_path = os.path.join(APP_DIR, 'backend') if not getattr(sys, 'frozen', False) else APP_DIR
@@ -407,6 +408,12 @@ async def serve_root():
     return _serve_spa_index_or_api_info()
 
 
+@app.head("/")
+async def head_root():
+    """允许 curl -I / 这类 VPS 可达性探测。"""
+    return Response(status_code=200)
+
+
 @app.get("/admin")
 @app.get("/admin/{path:path}")
 async def serve_admin(path: str = ""):
@@ -495,6 +502,11 @@ def pause_before_exit_if_frozen(prompt: str = "\n按 Enter 退出..."):
 
 def create_sample_env():
     """创建示例 .env 文件（如果不存在）"""
+    if is_server_deployment():
+        # Docker/VPS 部署应以 .env.docker / 环境变量为准。
+        # 不自动生成带默认密钥的 .env，避免后续后台热加载时混淆配置来源。
+        return False
+
     if not os.path.exists(ENV_FILE):
         sample_content = """# GankAIGC配置文件
 # 请根据实际情况修改以下配置

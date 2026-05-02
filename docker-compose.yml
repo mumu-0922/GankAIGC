@@ -14,9 +14,12 @@ services:
       SERVER_PORT: 9800
       APP_ENV: production
       AUTO_OPEN_BROWSER: "false"
+      GANKAIGC_ENV_FILE: /app/config/.env.docker
       DATABASE_URL: postgresql://ai_polish:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.docker}@postgres:5432/ai_polish
       INLINE_TASK_WORKER_ENABLED: "false"
     command: python main.py
+    volumes:
+      - ./.env.docker:/app/config/.env.docker
     ports:
       - "${APP_PORT:-9800}:9800"
     depends_on:
@@ -35,13 +38,18 @@ services:
     environment:
       APP_ENV: production
       AUTO_OPEN_BROWSER: "false"
+      GANKAIGC_ENV_FILE: /app/config/.env.docker
       DATABASE_URL: postgresql://ai_polish:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.docker}@postgres:5432/ai_polish
       INLINE_TASK_WORKER_ENABLED: "false"
       TASK_WORKER_ID: docker-worker-1
     command: python backend/worker.py
+    volumes:
+      - ./.env.docker:/app/config/.env.docker
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      disable: true
     restart: unless-stopped
 
   postgres:

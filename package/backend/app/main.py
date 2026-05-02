@@ -217,6 +217,12 @@ async def root():
     }
 
 
+@app.head("/")
+async def head_root():
+    """允许 curl -I / 这类 VPS 可达性探测。"""
+    return Response(status_code=200)
+
+
 @app.get("/health")
 async def health_check():
     """健康检查"""

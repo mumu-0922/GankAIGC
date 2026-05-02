@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import Optional
+from typing import Any, Mapping, Optional
 import os
 import sys
 
@@ -210,11 +210,9 @@ def ensure_runtime_secrets_safe(target_settings: Optional["Settings"] = None) ->
         )
 
 
-def reload_settings():
-    """重新加载配置 - 直接更新现有 settings 对象的属性"""
-    global settings
-
-    pending_updates = {}
+def _read_env_file_values() -> dict[str, str]:
+    """读取运行时 .env 文件中的 key/value。"""
+    env_values: dict[str, str] = {}
     env_path = get_env_file_path()
     if os.path.exists(env_path):
         with open(env_path, 'r', encoding='utf-8-sig') as f:
@@ -222,14 +220,45 @@ def reload_settings():
                 line = line.strip()
                 if line and not line.startswith('#') and '=' in line:
                     key, value = line.split('=', 1)
-                    pending_updates[key.strip()] = value.strip()
+                    env_values[key.strip()] = value.strip()
+    return env_values
+
+
+def _normalize_reload_updates(updates: Mapping[str, Any]) -> dict[str, str]:
+    """只保留 Settings 已知字段，避免未知 .env 项污染运行配置。"""
+    allowed_fields = set(Settings.model_fields)
+    normalized: dict[str, str] = {}
+    for key, value in updates.items():
+        normalized_key = str(key).strip()
+        if normalized_key in allowed_fields:
+            normalized[normalized_key] = "" if value is None else str(value).strip()
+    return normalized
+
+
+def reload_settings(updates: Optional[Mapping[str, Any]] = None):
+    """重新加载配置 - 直接更新现有 settings 对象的属性。
+
+    updates 为 None 时：兼容旧行为，完整读取运行时 .env。
+    updates 有值时：只热加载本次后台保存的 key，避免 Docker/.env.docker
+    注入的 ADMIN_PASSWORD、SECRET_KEY、DATABASE_URL 等被容器内 .env 默认值覆盖。
+    """
+    global settings
+
+    pending_updates = _read_env_file_values() if updates is None else _normalize_reload_updates(updates)
+    if not pending_updates:
+        return settings
 
     original_env = {key: os.environ.get(key) for key in pending_updates}
+    original_settings = {key: getattr(settings, key) for key in Settings.model_fields}
     try:
-        for key, value in pending_updates.items():
-            os.environ[key] = value
-
-        candidate_settings = Settings()
+        if updates is None:
+            for key, value in pending_updates.items():
+                os.environ[key] = value
+            candidate_settings = Settings()
+        else:
+            candidate_values = dict(original_settings)
+            candidate_values.update(pending_updates)
+            candidate_settings = Settings(**candidate_values)
         ensure_runtime_secrets_safe(candidate_settings)
     except Exception:
         for key, value in original_env.items():
@@ -237,9 +266,11 @@ def reload_settings():
                 os.environ.pop(key, None)
             else:
                 os.environ[key] = value
+        for key, value in original_settings.items():
+            setattr(settings, key, value)
         raise
 
-    for key in candidate_settings.model_fields:
+    for key in Settings.model_fields:
         setattr(settings, key, getattr(candidate_settings, key))
 
     return settings

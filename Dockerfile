@@ -18,6 +18,7 @@ WORKDIR /app/package
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends curl \
+    && mkdir -p /app/config \
     && rm -rf /var/lib/apt/lists/*
 
 COPY package/requirements.txt ./

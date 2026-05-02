@@ -1060,11 +1060,12 @@ async def update_config(
     from app.config import get_env_file_path
     env_path = get_env_file_path()
 
-    if not os.path.exists(env_path):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f".env 文件不存在: {env_path}")
-
-    with open(env_path, "r", encoding="utf-8") as handle:
-        lines = handle.readlines()
+    env_existed = os.path.exists(env_path)
+    if env_existed:
+        with open(env_path, "r", encoding="utf-8") as handle:
+            lines = handle.readlines()
+    else:
+        lines = []
 
     updated_keys = set()
     new_lines: List[str] = []
@@ -1088,14 +1089,20 @@ async def update_config(
     new_content = "".join(new_lines)
 
     try:
+        env_dir = os.path.dirname(env_path)
+        if env_dir:
+            os.makedirs(env_dir, exist_ok=True)
         with open(env_path, "w", encoding="utf-8") as handle:
             handle.write(new_content)
 
-        reload_settings()
+        reload_settings(updates)
         refresh_cors_middleware(request.app)
     except Exception as exc:
-        with open(env_path, "w", encoding="utf-8") as handle:
-            handle.write(original_content)
+        if env_existed:
+            with open(env_path, "w", encoding="utf-8") as handle:
+                handle.write(original_content)
+        elif os.path.exists(env_path):
+            os.remove(env_path)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
     if "MAX_CONCURRENT_USERS" in updates:
