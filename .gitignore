@@ -81,3 +81,7 @@ package/postgres-portable/
 # Local Codex/Superpowers data
 .superpowers/
 
+
+# Internal planning files
+docs/superpowers/
+
