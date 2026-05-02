@@ -500,7 +500,7 @@ const ApiConfigGuide = () => {
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 mb-1">API Key</p>
-                    <CodeBlock code="sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" label="ex-key" />
+                    <CodeBlock code="sk-..." label="ex-key" />
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Base URL</p>
