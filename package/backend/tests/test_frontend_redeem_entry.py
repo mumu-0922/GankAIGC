@@ -99,18 +99,30 @@ def test_frontend_uses_brand_logo_as_favicon():
 
 def test_welcome_page_focuses_on_ai_reduction_not_word_formatting():
     welcome_page = (FRONTEND_SRC / "pages" / "WelcomePage.jsx").read_text(encoding="utf-8")
+    welcome_css = (FRONTEND_SRC / "pages" / "WelcomePage.css").read_text(encoding="utf-8")
 
-    assert "让论文原创更简单" in welcome_page
+    assert "论文表达更自然" in welcome_page
+    assert "原意依然清晰" in welcome_page
     assert "开始使用" in welcome_page
-    assert "登录 / 注册" in welcome_page
-    assert "优化前" in welcome_page
-    assert "优化后" in welcome_page
-    assert "AI 率检测结果" in welcome_page
+    assert "邀请码注册" in welcome_page
+    assert 'data-home-preview="workbench"' in welcome_page
+    assert "AI 风险率" in welcome_page
+    assert "智能检测" in welcome_page
+    assert "语义改写" in welcome_page
+    assert "结果复核" in welcome_page
     assert 'data-home-scenarios="workflow"' in welcome_page
     assert "论文处理链路" in welcome_page
-    assert "阶段 01" in welcome_page
-    assert "从初稿到投稿前的三步优化" in welcome_page
-    assert "阶段 04" not in welcome_page
+    assert "从检测到复核，只保留三步" in welcome_page
+    assert "step: '01'" in welcome_page
+    assert "step: '04'" not in welcome_page
+    assert "管理后台" not in welcome_page
+    assert welcome_page.count("home-glass") == 2
+    assert ".home-glass" in welcome_css
+    assert "backdrop-filter: blur(26px)" in welcome_css
+    assert "@media (prefers-reduced-transparency: reduce)" in welcome_css
+    assert "@media (prefers-reduced-motion: reduce)" in welcome_css
+    assert "@media (prefers-contrast: more)" in welcome_css
+    assert "home-preview-float" in welcome_css
     assert "有自有模型额度时，可切换为自带 API 模式" not in welcome_page
     assert "账号次数与自带 API 双模式" not in welcome_page
     assert "论文原创性工作台" not in welcome_page
@@ -1959,19 +1971,22 @@ def test_served_static_bundle_includes_admin_tab_url_persistence():
 
 def test_served_static_bundle_includes_ai_reduction_homepage():
     static_bundle = _read_static_js_assets()
+    welcome_css_assets = list((STATIC_DIR / "assets").glob("WelcomePage-*.css"))
 
-    assert "让论文原创更简单" in static_bundle
-    assert "登录 / 注册" in static_bundle
-    assert "优化前" in static_bundle
-    assert "优化后" in static_bundle
-    assert "AI 率检测结果" in static_bundle
+    assert "论文表达更自然" in static_bundle
+    assert "原意依然清晰" in static_bundle
+    assert "邀请码注册" in static_bundle
+    assert "data-home-preview" in static_bundle
+    assert "AI 风险率" in static_bundle
+    assert "智能检测" in static_bundle
+    assert "语义改写" in static_bundle
+    assert "结果复核" in static_bundle
     assert "data-home-scenarios" in static_bundle
     assert "论文处理链路" in static_bundle
-    assert "阶段 01" in static_bundle
-    assert "从初稿到投稿前的三步优化" in static_bundle
+    assert "从检测到复核，只保留三步" in static_bundle
     assert "阶段 04" not in static_bundle
-    assert "兑换码充值啤酒" in static_bundle
-    assert "啤酒与自带 API 双模式" in static_bundle
+    assert "按啤酒使用" in static_bundle
+    assert "支持自带 API" in static_bundle
     assert "千字额度" not in static_bundle
     assert "兑换码充值额度" not in static_bundle
     assert "有自有模型额度时，可切换为自带 API 模式" not in static_bundle
@@ -1984,6 +1999,10 @@ def test_served_static_bundle_includes_ai_reduction_homepage():
     assert "GitHub 项目" in static_bundle
     assert "求 Star" in static_bundle
     assert "data-home-github-star" in static_bundle
+    assert len(welcome_css_assets) == 1
+    static_welcome_css = welcome_css_assets[0].read_text(encoding="utf-8")
+    assert ".home-glass" in static_welcome_css
+    assert "prefers-reduced-motion" in static_welcome_css
 
 def test_session_monitor_uses_real_statistics_not_fake_placeholders():
     session_monitor = (FRONTEND_SRC / "components" / "SessionMonitor.jsx").read_text(encoding="utf-8")

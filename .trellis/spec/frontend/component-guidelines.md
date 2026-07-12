@@ -60,6 +60,99 @@ Questions to answer:
 
 ---
 
+## Scenario: Public Homepage Liquid Glass Contract
+
+### 1. Scope / Trigger
+
+- Trigger: changes to `package/frontend/src/pages/WelcomePage.jsx`,
+  `WelcomePage.css`, public entry-point copy, navigation, or served homepage
+  assets.
+- The public homepage uses a light Apple-inspired Liquid Glass language: blue
+  and white environmental light, restrained typography, one product preview,
+  and minimal product claims backed by current code.
+
+### 2. Signatures
+
+- Source component: `src/pages/WelcomePage.jsx`.
+- Route-scoped stylesheet: `src/pages/WelcomePage.css`, imported only by the
+  lazy-loaded welcome route.
+- Stable test anchors:
+  - `data-home-preview="workbench"`.
+  - `data-home-scenarios="workflow"`.
+  - `data-home-github-star="footer"`.
+- Navigation destinations: `#features`, `#workflow`, `#security`, GitHub,
+  `/login`, and `/register`.
+
+### 3. Contracts
+
+- The hero headline stays moderate and product-specific: `论文表达更自然，原意依然清晰。` Do not return to a viewport-dominating generic slogan.
+- The preview may show only real product concepts: original text, AI risk,
+  Zhuque-backed detection, semantic rewriting, result review, and history.
+  Do not invent citation checking, institutional endorsement, accuracy claims,
+  or fake live statistics.
+- Public navigation must not expose `管理后台` as a primary marketing action.
+  Use `登录` and `邀请码注册`; keep admin access behind its normal route/auth
+  boundary.
+- Live blur is limited to the fixed navigation and hero preview (`home-glass`
+  occurs exactly twice). Scrolling feature/workflow cards use opaque gradients,
+  borders, and low shadows rather than additional `backdrop-filter` layers.
+- Motion is decorative only: ambient drift, preview float/sheen, and score
+  entrance. `prefers-reduced-motion`, `prefers-reduced-transparency`,
+  `prefers-contrast: more`, and no-backdrop support must all have explicit
+  fallbacks.
+- Homepage text colors must maintain WCAG AA contrast against their actual
+  light surfaces; body copy uses `#5f7087` or darker.
+
+### 4. Validation & Error Matrix
+
+- Browser lacks `backdrop-filter` -> `.home-glass` becomes near-opaque white.
+- Reduced transparency/contrast requested -> ambient/refraction layers are
+  removed and surfaces become solid.
+- Reduced motion requested -> all ambient, preview, sheen, and score animations
+  stop without hiding content.
+- Mobile width -> brand text/nav links collapse, CTA remains named through
+  `aria-label="登录"`, preview becomes one column, and workflow becomes stacked.
+- New homepage claim is not supported by source behavior -> reject the claim
+  even if it improves the mockup.
+
+### 5. Good/Base/Bad Cases
+
+- Good: two live frosted surfaces, restrained hero copy, blue/white palette,
+  responsive workbench preview, three capability cards, and three workflow
+  steps.
+- Base: blur is unavailable; hierarchy remains clear with solid white cards.
+- Bad: a full-width opaque navbar, repeated CTA links, giant marketing copy,
+  more than three blur surfaces, fake metrics/claims, or an exposed admin CTA.
+
+### 6. Tests Required
+
+- E2E: homepage headline, login, invite registration, workbench preview, and
+  GitHub footer are visible.
+- Static source: real product labels and stable data anchors are present;
+  `管理后台`, Word-formatting claims, and a fourth workflow stage are absent.
+- CSS/static bundle: `.home-glass`, reduced-motion/transparency/contrast
+  fallbacks, and the route-scoped `WelcomePage-*.css` asset are present.
+- Run `npm run build`, sync `dist/` to `package/static/`, then run the homepage
+  E2E and `test_frontend_redeem_entry.py`.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```jsx
+<button onClick={() => navigate('/admin')}>管理后台</button>
+<h1 className="text-8xl">一站式论文神器</h1>
+```
+
+#### Correct
+
+```jsx
+<button aria-label="登录" onClick={() => navigate('/login')}>登录</button>
+<div className="home-preview home-glass" data-home-preview="workbench">...</div>
+```
+
+---
+
 
 ## Scenario: Apple Product Tile Workspace Theme
 

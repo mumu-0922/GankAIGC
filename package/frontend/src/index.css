@@ -426,92 +426,6 @@ code {
   text-transform: uppercase;
 }
 
-.gank-home-page {
-  background:
-    radial-gradient(circle at 50% 0%, rgba(0, 102, 204, 0.055), transparent 30rem),
-    linear-gradient(180deg, #ffffff 0%, #f5f5f7 100%);
-}
-
-.gank-home-page .gank-ambient-orb {
-  opacity: 0.52;
-  filter: none;
-  transform: none;
-}
-
-.gank-home-page .gank-ambient-orb.orb-one {
-  background: radial-gradient(circle, rgba(0, 102, 204, 0.12) 0%, rgba(0, 102, 204, 0.055) 36%, transparent 70%);
-}
-
-.gank-home-page .gank-ambient-orb.orb-two {
-  background: radial-gradient(circle, rgba(210, 210, 215, 0.28) 0%, rgba(210, 210, 215, 0.10) 42%, transparent 72%);
-}
-
-.gank-home-nav {
-  background: rgba(251, 251, 253, 0.78);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.075);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.82), 0 10px 28px rgba(15, 23, 42, 0.045);
-  backdrop-filter: blur(18px) saturate(1.32);
-  -webkit-backdrop-filter: blur(18px) saturate(1.32);
-  transform: translateZ(0);
-}
-
-.gank-home-eyebrow-pill {
-  border: 1px solid rgba(0, 102, 204, 0.18);
-  background: rgba(255, 255, 255, 0.76);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.86), 0 8px 22px rgba(0, 102, 204, 0.075);
-  backdrop-filter: blur(14px) saturate(1.2);
-  -webkit-backdrop-filter: blur(14px) saturate(1.2);
-  transform: translateZ(0);
-}
-
-.gank-home-secondary-button {
-  color: var(--apple-ink);
-  border: 1px solid rgba(0, 0, 0, 0.085);
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.052);
-}
-
-.gank-home-secondary-button:hover {
-  border-color: rgba(0, 102, 204, 0.28);
-  background: #ffffff;
-}
-
-.gank-home-surface,
-.gank-home-section,
-.gank-home-card {
-  border: 1px solid rgba(226, 232, 240, 0.86);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
-  box-shadow: 0 12px 34px rgba(15, 23, 42, 0.055), inset 0 1px 0 rgba(255, 255, 255, 0.92);
-}
-
-.gank-home-surface {
-  position: relative;
-  border-radius: var(--glass-radius-xl);
-  background:
-    radial-gradient(circle at 100% 0%, rgba(0, 102, 204, 0.075), transparent 34%),
-    linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
-}
-
-.gank-home-section {
-  position: relative;
-  overflow: hidden;
-  border-radius: var(--glass-radius-lg);
-}
-
-.gank-home-card {
-  background:
-    radial-gradient(circle at 0% 0%, rgba(255, 255, 255, 0.92), transparent 38%),
-    linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
-}
-
-.gank-home-card-active {
-  border-color: rgba(0, 102, 204, 0.28);
-  background:
-    radial-gradient(circle at 0% 0%, rgba(0, 102, 204, 0.13), transparent 38%),
-    linear-gradient(180deg, #ffffff 0%, #f5faff 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92), 0 0 0 1px rgba(0, 102, 204, 0.065), 0 12px 30px rgba(0, 102, 204, 0.09);
-}
-
 .apple-global-nav {
   min-height: 44px;
   color: var(--apple-nav-text);
@@ -808,8 +722,6 @@ code {
 }
 
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .gank-home-nav,
-  .gank-home-eyebrow-pill,
   .gank-glass-toolbar,
   .gank-topbar-pill,
   .gank-glass-card,
@@ -834,8 +746,6 @@ code {
 }
 
 @media (prefers-reduced-transparency: reduce) {
-  .gank-home-nav,
-  .gank-home-eyebrow-pill,
   .gank-glass-toolbar,
   .gank-topbar-pill,
   .gank-glass-card,
