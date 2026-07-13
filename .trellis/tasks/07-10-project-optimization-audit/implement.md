@@ -60,13 +60,11 @@ The user reviewed the plan and authorized implementation on 2026-07-10. The task
   regression tests pass, the frontend production bundle is synchronized, all
   558 backend tests pass, and a no-cache/pulled Docker rebuild passes the Trivy
   `HIGH,CRITICAL --ignore-unfixed` gate with zero findings.
-- [x] The public homepage was refined after visual review rejected the first
-  split-hero/card-wall pass as an AI SaaS template. It now uses a thin global
-  header, centered product narrative, one dominant real workbench preview,
-  continuous white/soft-gray sections, a contained navy workflow stage, two
-  live blur surfaces, mobile layouts, and reduced-motion/transparency/contrast
-  fallbacks. The production bundle, homepage E2E, and static frontend contract
-  tests pass locally.
+- [x] The public homepage now uses a route-scoped Apple-inspired Liquid Glass
+  design with a restrained split hero, real workbench preview, simplified
+  navigation, blue/white motion, two live blur surfaces, mobile layouts, and
+  reduced-motion/transparency/contrast fallbacks. The production bundle,
+  homepage E2E, and all 73 static frontend contract tests pass locally.
 
 ## Phase 0 — Containment and Baseline (S, before public go-live)
 
