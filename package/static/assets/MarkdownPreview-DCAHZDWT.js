@@ -1,4 +1,4 @@
-import{c as e}from"./BrandLogo-DwUW6eOH.js";import{j as s}from"./index-Cvbq2om3.js";import"./vendor-BzyJ9Pgt.js";
+import{c as e}from"./BrandLogo-Dx7EmxDL.js";import{j as s}from"./index-DY0sdbVp.js";import"./vendor-BzyJ9Pgt.js";
 /**
  * @license lucide-react v0.298.0 - ISC
  *

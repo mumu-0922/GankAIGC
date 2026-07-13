@@ -56,10 +56,13 @@ async function mockUserApis(page) {
 test('home page exposes current product entry points', async ({ page }) => {
   await page.goto('/');
 
-  await expect(page.getByRole('heading', { name: /论文表达更自然.*原意依然清晰/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /保留你的论点.*只调整机器味/ })).toBeVisible();
   await expect(page.getByRole('button', { name: '登录' })).toBeVisible();
   await expect(page.getByRole('button', { name: /邀请码注册/ })).toBeVisible();
   await expect(page.locator('[data-home-preview="workbench"]')).toBeVisible();
+  await page.getByRole('button', { name: '改写视图' }).click();
+  await expect(page.getByText('语义保持')).toBeVisible();
+  await expect(page.getByText('待复核')).toBeVisible();
   await expect(page.locator('[data-home-github-star="footer"]')).toBeVisible();
   await expect(page.getByText(/Word 排版|论文排版/)).toHaveCount(0);
 });

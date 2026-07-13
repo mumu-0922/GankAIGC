@@ -101,9 +101,9 @@ def test_welcome_page_focuses_on_ai_reduction_not_word_formatting():
     welcome_page = (FRONTEND_SRC / "pages" / "WelcomePage.jsx").read_text(encoding="utf-8")
     welcome_css = (FRONTEND_SRC / "pages" / "WelcomePage.css").read_text(encoding="utf-8")
 
-    assert "论文表达更自然" in welcome_page
-    assert "原意依然清晰" in welcome_page
-    assert "开始使用" in welcome_page
+    assert "保留你的论点" in welcome_page
+    assert "只调整机器味" in welcome_page
+    assert "打开工作台" in welcome_page
     assert "邀请码注册" in welcome_page
     assert 'data-home-preview="workbench"' in welcome_page
     assert "AI 风险率" in welcome_page
@@ -111,18 +111,21 @@ def test_welcome_page_focuses_on_ai_reduction_not_word_formatting():
     assert "语义改写" in welcome_page
     assert "结果复核" in welcome_page
     assert 'data-home-scenarios="workflow"' in welcome_page
-    assert "论文处理链路" in welcome_page
-    assert "从检测到复核，只保留三步" in welcome_page
+    assert "一条处理链路" in welcome_page
+    assert "从检测到采用，每一步都看得见" in welcome_page
+    assert "检测视图" in welcome_page
+    assert "改写视图" in welcome_page
     assert "step: '01'" in welcome_page
     assert "step: '04'" not in welcome_page
     assert "管理后台" not in welcome_page
     assert welcome_page.count("home-glass") == 2
     assert ".home-glass" in welcome_css
-    assert "backdrop-filter: blur(26px)" in welcome_css
+    assert "backdrop-filter: blur(24px)" in welcome_css
     assert "@media (prefers-reduced-transparency: reduce)" in welcome_css
     assert "@media (prefers-reduced-motion: reduce)" in welcome_css
     assert "@media (prefers-contrast: more)" in welcome_css
-    assert "home-preview-float" in welcome_css
+    assert "home-paper-enter" in welcome_css
+    assert "home-copy-change" in welcome_css
     assert "有自有模型额度时，可切换为自带 API 模式" not in welcome_page
     assert "账号次数与自带 API 双模式" not in welcome_page
     assert "论文原创性工作台" not in welcome_page
@@ -1973,8 +1976,8 @@ def test_served_static_bundle_includes_ai_reduction_homepage():
     static_bundle = _read_static_js_assets()
     welcome_css_assets = list((STATIC_DIR / "assets").glob("WelcomePage-*.css"))
 
-    assert "论文表达更自然" in static_bundle
-    assert "原意依然清晰" in static_bundle
+    assert "保留你的论点" in static_bundle
+    assert "只调整机器味" in static_bundle
     assert "邀请码注册" in static_bundle
     assert "data-home-preview" in static_bundle
     assert "AI 风险率" in static_bundle
@@ -1982,8 +1985,10 @@ def test_served_static_bundle_includes_ai_reduction_homepage():
     assert "语义改写" in static_bundle
     assert "结果复核" in static_bundle
     assert "data-home-scenarios" in static_bundle
-    assert "论文处理链路" in static_bundle
-    assert "从检测到复核，只保留三步" in static_bundle
+    assert "一条处理链路" in static_bundle
+    assert "从检测到采用，每一步都看得见" in static_bundle
+    assert "检测视图" in static_bundle
+    assert "改写视图" in static_bundle
     assert "阶段 04" not in static_bundle
     assert "按啤酒使用" in static_bundle
     assert "支持自带 API" in static_bundle

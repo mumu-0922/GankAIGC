@@ -60,22 +60,22 @@ Questions to answer:
 
 ---
 
-## Scenario: Public Homepage Liquid Glass Contract
+## Scenario: Public Homepage Editorial Review-Desk Contract
 
 ### 1. Scope / Trigger
 
 - Trigger: changes to `package/frontend/src/pages/WelcomePage.jsx`,
   `WelcomePage.css`, public entry-point copy, navigation, or served homepage
   assets.
-- The public homepage uses a light Apple-inspired Liquid Glass language: blue
-  and white environmental light, restrained typography, one product preview,
-  and minimal product claims backed by current code.
+- The homepage is an Apple-inspired editorial tool page, not a generic AI SaaS
+  landing page. Its single visual signature is a paper manuscript paired with a
+  compact interactive review panel.
 
 ### 2. Signatures
 
 - Source component: `src/pages/WelcomePage.jsx`.
-- Route-scoped stylesheet: `src/pages/WelcomePage.css`, imported only by the
-  lazy-loaded welcome route.
+- Route-scoped stylesheet: `src/pages/WelcomePage.css`.
+- Local interaction state: `previewMode` is either `detect` or `rewrite`.
 - Stable test anchors:
   - `data-home-preview="workbench"`.
   - `data-home-scenarios="workflow"`.
@@ -85,53 +85,67 @@ Questions to answer:
 
 ### 3. Contracts
 
-- The hero headline stays moderate and product-specific: `论文表达更自然，原意依然清晰。` Do not return to a viewport-dominating generic slogan.
-- The preview may show only real product concepts: original text, AI risk,
-  Zhuque-backed detection, semantic rewriting, result review, and history.
-  Do not invent citation checking, institutional endorsement, accuracy claims,
-  or fake live statistics.
-- Public navigation must not expose `管理后台` as a primary marketing action.
-  Use `登录` and `邀请码注册`; keep admin access behind its normal route/auth
-  boundary.
-- Live blur is limited to the fixed navigation and hero preview (`home-glass`
-  occurs exactly twice). Scrolling feature/workflow cards use opaque gradients,
-  borders, and low shadows rather than additional `backdrop-filter` layers.
-- Motion is decorative only: ambient drift, preview float/sheen, and score
-  entrance. `prefers-reduced-motion`, `prefers-reduced-transparency`,
-  `prefers-contrast: more`, and no-backdrop support must all have explicit
+- The hero states the product action in the user's language: `保留你的论点。只调整机器味。`
+  and sends the primary action to `/login` using `打开工作台`.
+- The preview uses real product concepts only: Zhuque-backed detection, risky
+  passages, semantic rewriting, result review, and saved history. Sample risk
+  values belong to the visibly illustrative manuscript; they must never be
+  presented as platform-wide accuracy or customer statistics.
+- `检测视图` and `改写视图` are real buttons with `aria-pressed`; switching
+  modes changes the manuscript text treatment, score label, and review state.
+- Use the subject's visual materials: a Songti manuscript face, editorial
+  margin rule, paragraph marks, change highlights, and a floating review panel.
+  Do not replace the manuscript with a generic dashboard skeleton.
+- Live blur is limited to the thin global header and the review panel
+  (`home-glass` occurs exactly twice). The manuscript and content sections are
+  opaque for reading quality.
+- Public navigation must not expose `管理后台`. Use `登录` and `邀请码注册`.
+- Capability content uses ruled editorial rows rather than repeated rounded
+  cards. Numbering is reserved for the actual ordered three-step workflow, not
+  decorative feature labels.
+- Motion is one orchestrated entrance plus meaningful mode-change feedback.
+  Avoid ambient light orbs, sweep effects, parallax, and scattered animation.
+- `prefers-reduced-motion`, `prefers-reduced-transparency`,
+  `prefers-contrast: more`, and missing-backdrop support require explicit
   fallbacks.
-- Homepage text colors must maintain WCAG AA contrast against their actual
-  light surfaces; body copy uses `#5f7087` or darker.
 
 ### 4. Validation & Error Matrix
 
-- Browser lacks `backdrop-filter` -> `.home-glass` becomes near-opaque white.
-- Reduced transparency/contrast requested -> ambient/refraction layers are
-  removed and surfaces become solid.
-- Reduced motion requested -> all ambient, preview, sheen, and score animations
-  stop without hiding content.
-- Mobile width -> brand text/nav links collapse, CTA remains named through
-  `aria-label="登录"`, preview becomes one column, and workflow becomes stacked.
-- New homepage claim is not supported by source behavior -> reject the claim
-  even if it improves the mockup.
+- Browser lacks `backdrop-filter` -> the header and review panel use an opaque
+  near-white surface.
+- Reduced transparency/contrast requested -> glass becomes solid without
+  hiding controls or manuscript content.
+- Reduced motion requested -> paper/review entrance and copy-change animations
+  stop; both preview modes remain usable.
+- Mobile width -> paper and review panel leave absolute positioning, stack in a
+  pale-blue reading mat, and keep all actions keyboard/touch accessible.
+- `previewMode=detect` -> original text and risk highlights are visible.
+- `previewMode=rewrite` -> revised copy, blue change marks, `语义保持`, and
+  `待复核` are visible.
+- A new claim is unsupported by source behavior -> reject it even if it makes
+  the marketing page sound stronger.
 
 ### 5. Good/Base/Bad Cases
 
-- Good: two live frosted surfaces, restrained hero copy, blue/white palette,
-  responsive workbench preview, three capability cards, and three workflow
-  steps.
-- Base: blur is unavailable; hierarchy remains clear with solid white cards.
-- Bad: a full-width opaque navbar, repeated CTA links, giant marketing copy,
-  more than three blur surfaces, fake metrics/claims, or an exposed admin CTA.
+- Good: thin frosted navigation, restrained split hero, real manuscript copy,
+  interactive review modes, ruled information sections, and one blue/white
+  visual language.
+- Base: blur and animation are unavailable; the manuscript, controls, and page
+  hierarchy remain readable and operable.
+- Bad: generic dashboard skeletons, gradient mesh/orbs, floating capsule nav,
+  repeated icon cards, decorative feature numbering, giant marketing copy,
+  dark corporate information walls, fake adoption metrics, or an admin CTA.
 
 ### 6. Tests Required
 
-- E2E: homepage headline, login, invite registration, workbench preview, and
-  GitHub footer are visible.
-- Static source: real product labels and stable data anchors are present;
-  `管理后台`, Word-formatting claims, and a fourth workflow stage are absent.
-- CSS/static bundle: `.home-glass`, reduced-motion/transparency/contrast
-  fallbacks, and the route-scoped `WelcomePage-*.css` asset are present.
+- E2E: headline, login, invitation registration, manuscript preview, GitHub
+  footer, and detect-to-rewrite interaction are visible and operable.
+- Static source: current hero copy, both preview modes, real workflow labels,
+  stable data anchors, and exactly two `home-glass` uses are present;
+  `管理后台`, Word-formatting claims, and a fourth stage are absent.
+- CSS/static bundle: `backdrop-filter: blur(24px)`, manuscript/rewrite
+  animations, accessibility fallbacks, and the route-scoped
+  `WelcomePage-*.css` asset are present.
 - Run `npm run build`, sync `dist/` to `package/static/`, then run the homepage
   E2E and `test_frontend_redeem_entry.py`.
 
@@ -140,19 +154,20 @@ Questions to answer:
 #### Wrong
 
 ```jsx
-<button onClick={() => navigate('/admin')}>管理后台</button>
-<h1 className="text-8xl">一站式论文神器</h1>
+<div className="gradient-orb" />
+<section>{features.map((item) => <GenericRoundedCard {...item} />)}</section>
 ```
 
 #### Correct
 
 ```jsx
-<button aria-label="登录" onClick={() => navigate('/login')}>登录</button>
-<div className="home-preview home-glass" data-home-preview="workbench">...</div>
+<button aria-pressed={previewMode === 'rewrite'} onClick={() => setPreviewMode('rewrite')}>
+  改写视图
+</button>
+<article className="home-paper" data-view={previewMode}>...</article>
 ```
 
 ---
-
 
 ## Scenario: Apple Product Tile Workspace Theme
 

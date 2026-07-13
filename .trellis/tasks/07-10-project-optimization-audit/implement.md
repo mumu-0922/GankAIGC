@@ -60,11 +60,11 @@ The user reviewed the plan and authorized implementation on 2026-07-10. The task
   regression tests pass, the frontend production bundle is synchronized, all
   558 backend tests pass, and a no-cache/pulled Docker rebuild passes the Trivy
   `HIGH,CRITICAL --ignore-unfixed` gate with zero findings.
-- [x] The public homepage now uses a route-scoped Apple-inspired Liquid Glass
-  design with a restrained split hero, real workbench preview, simplified
-  navigation, blue/white motion, two live blur surfaces, mobile layouts, and
-  reduced-motion/transparency/contrast fallbacks. The production bundle,
-  homepage E2E, and all 73 static frontend contract tests pass locally.
+- [x] After two visually rejected generic passes, the public homepage now uses
+  the `frontend-design` editorial review-desk direction: a real manuscript,
+  interactive detect/rewrite modes, one compact glass review panel, ruled
+  content sections, subject-specific typography, and restrained Apple blue/white
+  system styling. Responsive and accessibility fallbacks remain mandatory.
 
 ## Phase 0 — Containment and Baseline (S, before public go-live)
 
