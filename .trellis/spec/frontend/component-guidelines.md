@@ -60,16 +60,16 @@ Questions to answer:
 
 ---
 
-## Scenario: Public Homepage Liquid Glass Contract
+## Scenario: Public Homepage Apple Product-Page Contract
 
 ### 1. Scope / Trigger
 
 - Trigger: changes to `package/frontend/src/pages/WelcomePage.jsx`,
   `WelcomePage.css`, public entry-point copy, navigation, or served homepage
   assets.
-- The public homepage uses a light Apple-inspired Liquid Glass language: blue
-  and white environmental light, restrained typography, one product preview,
-  and minimal product claims backed by current code.
+- The public homepage uses an Apple product-page language rather than an AI
+  SaaS template: white/soft-gray continuous sections, restrained Action Blue,
+  one dominant product preview, and minimal claims backed by current code.
 
 ### 2. Signatures
 
@@ -93,36 +93,39 @@ Questions to answer:
 - Public navigation must not expose `管理后台` as a primary marketing action.
   Use `登录` and `邀请码注册`; keep admin access behind its normal route/auth
   boundary.
-- Live blur is limited to the fixed navigation and hero preview (`home-glass`
-  occurs exactly twice). Scrolling feature/workflow cards use opaque gradients,
-  borders, and low shadows rather than additional `backdrop-filter` layers.
-- Motion is decorative only: ambient drift, preview float/sheen, and score
-  entrance. `prefers-reduced-motion`, `prefers-reduced-transparency`,
+- Live blur is limited to the thin fixed header and hero preview (`home-glass`
+  occurs exactly twice). Do not wrap navigation in a large floating glass pill.
+  Scrolling sections are flat white, soft gray, or one contained navy product
+  stage; repeated outlined card grids and ambient gradient orbs are forbidden.
+- Motion is decorative only: a restrained preview float, score entrance, and
+  small hover/press feedback. `prefers-reduced-motion`, `prefers-reduced-transparency`,
   `prefers-contrast: more`, and no-backdrop support must all have explicit
   fallbacks.
 - Homepage text colors must maintain WCAG AA contrast against their actual
-  light surfaces; body copy uses `#5f7087` or darker.
+  surfaces; body copy uses Apple-style neutral gray `#6e6e73` or darker.
 
 ### 4. Validation & Error Matrix
 
 - Browser lacks `backdrop-filter` -> `.home-glass` becomes near-opaque white.
-- Reduced transparency/contrast requested -> ambient/refraction layers are
-  removed and surfaces become solid.
-- Reduced motion requested -> all ambient, preview, sheen, and score animations
-  stop without hiding content.
-- Mobile width -> brand text/nav links collapse, CTA remains named through
-  `aria-label="登录"`, preview becomes one column, and workflow becomes stacked.
+- Reduced transparency/contrast requested -> the product halo is removed and
+  frosted surfaces become solid.
+- Reduced motion requested -> preview and score animations stop without hiding
+  content.
+- Mobile width -> navigation links collapse, login remains named through
+  `aria-label="登录"`, preview becomes one column, and workflow rows remain
+  readable without their descriptions.
 - New homepage claim is not supported by source behavior -> reject the claim
   even if it improves the mockup.
 
 ### 5. Good/Base/Bad Cases
 
-- Good: two live frosted surfaces, restrained hero copy, blue/white palette,
-  responsive workbench preview, three capability cards, and three workflow
-  steps.
+- Good: thin frosted global header, centered hero, one dominant responsive
+  workbench preview, flat three-column capability band, and one contained navy
+  three-step workflow stage.
 - Base: blur is unavailable; hierarchy remains clear with solid white cards.
-- Bad: a full-width opaque navbar, repeated CTA links, giant marketing copy,
-  more than three blur surfaces, fake metrics/claims, or an exposed admin CTA.
+- Bad: a floating capsule navbar, pastel ambient orbs, repeated badge icons,
+  generic bordered card walls, giant marketing copy, fake metrics/claims, or an
+  exposed admin CTA.
 
 ### 6. Tests Required
 
@@ -130,8 +133,9 @@ Questions to answer:
   GitHub footer are visible.
 - Static source: real product labels and stable data anchors are present;
   `管理后台`, Word-formatting claims, and a fourth workflow stage are absent.
-- CSS/static bundle: `.home-glass`, reduced-motion/transparency/contrast
-  fallbacks, and the route-scoped `WelcomePage-*.css` asset are present.
+- CSS/static bundle: `.home-glass`, `backdrop-filter: blur(26px)`,
+  reduced-motion/transparency/contrast fallbacks, and the route-scoped
+  `WelcomePage-*.css` asset are present.
 - Run `npm run build`, sync `dist/` to `package/static/`, then run the homepage
   E2E and `test_frontend_redeem_entry.py`.
 
@@ -148,6 +152,7 @@ Questions to answer:
 
 ```jsx
 <button aria-label="登录" onClick={() => navigate('/login')}>登录</button>
+<header className="home-header home-glass">...</header>
 <div className="home-preview home-glass" data-home-preview="workbench">...</div>
 ```
 

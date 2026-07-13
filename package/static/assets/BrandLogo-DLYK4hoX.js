@@ -1,4 +1,4 @@
-import{r as e}from"./vendor-BzyJ9Pgt.js";import{j as r}from"./index-Cvbq2om3.js";
+import{r as e}from"./vendor-BzyJ9Pgt.js";import{j as r}from"./index-CBtVBn-G.js";
 /**
  * @license lucide-react v0.298.0 - ISC
  *
