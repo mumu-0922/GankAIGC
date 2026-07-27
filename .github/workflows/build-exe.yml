@@ -323,6 +323,12 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Checkout release notes
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.version || github.ref }}
+          fetch-depth: 1
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
@@ -335,6 +341,7 @@ jobs:
           TAG_NAME: ${{ github.event.inputs.version || github.ref_name }}
         run: |
           set -euo pipefail
+          notes_file=".github/release-notes/${TAG_NAME}.md"
           mapfile -d '' files < <(find artifacts -type f \( -name '*.zip' -o -name '*.tar.gz' \) -print0)
           printf 'Release tag: %s\n' "$TAG_NAME"
           printf 'Assets:\n'
@@ -350,8 +357,19 @@ jobs:
               fi
             done
             gh release upload "$TAG_NAME" "${files[@]}"
+            if test -f "$notes_file"; then
+              gh release edit "$TAG_NAME" \
+                --title "GankAIGC $TAG_NAME" \
+                --notes-file "$notes_file"
+            fi
           else
-            gh release create "$TAG_NAME" "${files[@]}" \
-              --title "GankAIGC $TAG_NAME" \
-              --notes "自动构建 Windows 一键整合包和普通 Windows/Linux/macOS 可执行包。"
+            if test -f "$notes_file"; then
+              gh release create "$TAG_NAME" "${files[@]}" \
+                --title "GankAIGC $TAG_NAME" \
+                --notes-file "$notes_file"
+            else
+              gh release create "$TAG_NAME" "${files[@]}" \
+                --title "GankAIGC $TAG_NAME" \
+                --notes "自动构建 Windows 一键整合包和普通 Windows/Linux/macOS 可执行包。"
+            fi
           fi
