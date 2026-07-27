@@ -124,7 +124,8 @@ app:
 ### 1. Scope / Trigger
 
 - Trigger: changes to `app/schema.py`, `app/database.py`, Alembic revisions,
-  `python main.py` local startup, or workspace task-start error handling.
+  `app.spec`, `python main.py` local/Windows one-click startup, or workspace
+  task-start error handling.
 - This protects source/one-click users who reuse an unversioned database from
   an older release. `create_all()` alone does not add columns to existing
   tables and must not be treated as a completed upgrade.
@@ -136,6 +137,9 @@ app:
   metadata comparison -> Alembic head.
 - Manual recovery/verification: `python schema_migrate.py upgrade` and
   `python schema_migrate.py verify` from `package/backend`.
+- Frozen one-file paths: `schema.py` resolves `alembic.ini` and `migrations/`
+  from the PyInstaller `_MEIPASS` root. `app.spec` therefore maps
+  `backend/alembic.ini -> .` and `backend/migrations -> migrations`.
 - Task-start UI: `WorkspacePage.jsx` must decode FastAPI string/list details
   and provide explicit timeout, HTTP-status, and network fallbacks.
 
@@ -148,6 +152,10 @@ app:
 - Adopting an unversioned/outdated local schema requires an exact SQLAlchemy
   metadata comparison before stamping head. An already-current local schema
   takes the idempotent revision-only fast path after the compatibility pass.
+- A Windows one-file build must contain `alembic.ini`, `migrations/env.py`,
+  `migrations/script.py.mako`, and every revision under
+  `migrations/versions/`; bundling only `backend/app` is incomplete because
+  Alembic loads its script directory as runtime data.
 - Frontend errors must never concatenate an absent `detail` into user-visible
   `undefined`; a detail-less HTTP 500 reports its status and directs the user
   to backend logs without exposing SQL or credentials.
@@ -160,6 +168,9 @@ app:
   stamp or start.
 - Production DB is unversioned/outdated -> reject startup and require the
   one-shot migrator.
+- Frozen executable lacks `migrations/` -> Alembic raises `CommandError: Path
+  doesn't exist` after database initialization; reject the artifact and fix
+  `app.spec` instead of bypassing revision verification.
 - FastAPI validation list -> join its `msg` entries for the task-start toast.
 - Axios timeout -> show an explicit backend/database timeout message.
 - Detail-less HTTP error -> show `HTTP <status>`; no response -> show the
@@ -171,9 +182,12 @@ app:
   `worker_attempt_count`; startup adds it, backfills zero, stamps head, and a
   rollback-only start-route probe can insert a queued session.
 - Base: a current local DB is already exact; startup verifies idempotently.
+- Good one-click: `pyi-archive-viewer` lists the Alembic config, environment,
+  template, and head revision inside the packaged `GankAIGC.exe`.
 - Bad: local startup prints success after `create_all()` while an existing
   table still lacks a model column, causing task creation to fail with SQL 500
-  and the browser to display `undefined`.
+  and the browser to display `undefined`; or a frozen build omits migration
+  runtime data and dies immediately after that compatibility pass.
 
 ### 6. Tests Required
 
@@ -183,6 +197,9 @@ app:
 - `test_frontend_redeem_entry.py`: assert task-start has validation, timeout,
   HTTP-status, and network fallbacks and that the old `undefined` concatenation
   is absent.
+- `test_release_workflow.py`: assert `app.spec` retains both Alembic data
+  mappings. After a real Windows build, inspect the executable and assert the
+  head revision file is present before publishing the ZIP.
 - Manual smoke: execute the start route inside a rolled-back transaction and
   assert it returns a queued `SessionResponse` without running the worker.
 
@@ -195,6 +212,11 @@ def prepare_database():
     init_db()  # create_all does not alter an existing table
 ```
 
+```python
+# app.spec: bundling backend/app alone omits Alembic's runtime script directory.
+datas=[('backend/app', 'app')]
+```
+
 ```jsx
 toast.error('Start failed: ' + error.response?.data?.detail);
 ```
@@ -204,6 +226,14 @@ toast.error('Start failed: ' + error.response?.data?.detail);
 ```python
 init_db()
 revision = expected if current == (expected,) else upgrade_database_schema()
+```
+
+```python
+datas=[
+    ('backend/app', 'app'),
+    ('backend/alembic.ini', '.'),
+    ('backend/migrations', 'migrations'),
+]
 ```
 
 ```jsx

@@ -115,6 +115,13 @@ The user reviewed the plan and authorized implementation on 2026-07-10. The task
   three-class layouts, with pure regression coverage for the boundary case.
   Chrome manual acceptance confirmed the result now returns to GankAIGC and
   releases the task from the detection wait state.
+- [x] Windows one-click manual startup exposed a frozen-runtime packaging gap:
+  local schema preparation reached Alembic, but `GankAIGC.exe` did not contain
+  `alembic.ini` or `migrations/` and aborted after database initialization.
+  `app.spec` now bundles the complete Alembic runtime tree, a release regression
+  locks both mappings, and the rebuilt executable was inspected through
+  `pyi-archive-viewer` to prove `env.py`, `script.py.mako`, and revision `0010`
+  exist inside the final ZIP.
 
 Validation:
 
@@ -127,6 +134,8 @@ Validation:
   and backend services. The nine Medium `random` findings are the pre-existing
   non-cryptographic Zhuque browser-motion/timing jitter already accepted in
   `design.md`.
+- Windows one-click release contracts: 8/8 passed; rebuilt ZIP integrity passed,
+  and frozen Alembic runtime assets were verified inside the packaged EXE.
 - `git diff --check` passed. The quality scanner's single warning is the
   documented 542-code-line Zhuque page adapter; job decision logic is isolated
   in the tested `zhuque-job.js` helper.

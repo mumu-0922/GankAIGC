@@ -105,6 +105,13 @@ def test_windows_oneclick_defaults_to_local_zhuque_browser_flow():
     assert "zhuque_capture_window.py" not in local_transport.split("open_detection_page = getattr", 1)[0]
 
 
+def test_windows_oneclick_bundles_alembic_schema_assets():
+    app_spec = (PROJECT_ROOT / "package" / "app.spec").read_text(encoding="utf-8")
+
+    assert "('backend/alembic.ini', '.')" in app_spec
+    assert "('backend/migrations', 'migrations')" in app_spec
+
+
 def test_windows_build_script_uses_dedicated_windows_venv():
     script = (PROJECT_ROOT / "package" / "build.ps1").read_text(encoding="utf-8-sig")
 

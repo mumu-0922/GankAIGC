@@ -97,6 +97,10 @@ a = Analysis(
         ('VERSION', '.'),
         # 包含后端 app 目录
         ('backend/app', 'app'),
+        # 本地/一键包启动会用 Alembic 对旧数据库补迁移并校验 head。
+        # schema.py 在冻结运行时从 _MEIPASS 根目录查找这两项。
+        ('backend/alembic.ini', '.'),
+        ('backend/migrations', 'migrations'),
         # Playwright Python package includes its driver/runtime resources.
         *collect_data_files('playwright'),
         # MarkItDown 依赖 magika 的本地模型/配置文件
