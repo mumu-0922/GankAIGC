@@ -768,16 +768,90 @@ ZHUQUE_BROWSER_AGENT_LONG_POLL_SECONDS=25
 INLINE_TASK_WORKER_ENABLED=false
 ```
 
-用户连接流程：
+#### 1. 安装或升级插件
 
-1. 在 Chrome 打开 `chrome://extensions`，开启开发者模式。
-2. 加载项目里的 `browser-extension/` 目录；若已经加载旧插件，先点击「重新加载」，确认版本是 `0.1.9` 或更高。
-3. 如果你的 VPS 域名不是 `https://ga.mumubuku.top`，需要先把你的站点 Origin 加进 `browser-extension/manifest.json` 的 `host_permissions`，例如 `https://你的域名/*`，再重新加载插件；不要使用 `<all_urls>`。
-4. 在 GankAIGC 工作台选择 `AI检测 + 降重`，点击「生成配对码」。
-5. 打开插件弹窗，填写 VPS 站点地址、配对码和设备名。
-6. 工作台显示「插件在线」后，点击「打开朱雀页面」；页面显示游客检测可用时可直接执行，只有朱雀要求时才需在本机 Chrome 完成登录/验证码。
-7. 回到 GankAIGC 工作台，确认 `朱雀账号` 和 `剩余次数`；如未立即显示，点击剩余次数右侧刷新按钮同步。
-8. 提交任务。插件会打开或复用本机 `https://matrix.tencent.com/ai-detect/` 执行检测；检测消耗次数后，插件会主动回传最新剩余次数。
+1. 下载/更新本项目源码，确认本机存在完整的 `browser-extension/` 目录。
+2. 在 Chrome 地址栏打开 `chrome://extensions`，开启右上角「开发者模式」。
+3. 首次安装点击「加载已解压的扩展程序」，选择项目里的 `browser-extension/` 目录。
+4. 已安装旧版本时点击插件卡片上的「重新加载」，不要重复加载第二份插件。
+5. 在插件卡片的「详细信息」中确认版本为 `0.1.9` 或更高；升级后同时刷新已打开的朱雀页面，让新版 content script 重新注入。
+
+如果 GankAIGC 使用自定义域名，先把站点 Origin 加入 `browser-extension/manifest.json` 的 `host_permissions`，然后重新加载插件。例如：
+
+```json
+"https://gankaigc.example.com/*"
+```
+
+只填写实际使用的 GankAIGC Origin，不要添加 `<all_urls>`，也不要把 `/api` 拼进 Origin。
+
+#### 2. 将插件与 GankAIGC 配对
+
+1. 登录 GankAIGC，进入工作台并选择 `AI检测 + 降重`。
+2. 在「朱雀 AI 检测」卡片中点击「生成配对码」。配对码默认 10 分钟过期且只能成功使用一次；失效后重新生成即可。
+3. 点击 Chrome 工具栏中的 GankAIGC 插件图标，在弹窗中填写：
+   - **GankAIGC 地址**：完整站点地址，例如 `https://gankaigc.example.com`；本地测试使用 `http://127.0.0.1:9800`。不要填写 `/api`，末尾 `/` 可省略。
+   - **配对码**：工作台刚生成的 `GANK-XXXX`。
+   - **设备名**：用于区分浏览器，例如 `Chrome on Windows`。
+4. 点击「配对插件」。插件弹窗应显示「已配对」，工作台应在数秒内显示「插件在线」。
+
+配对信息保存在当前 Chrome Profile 的 `chrome.storage.local`。正常升级/重新加载插件不会丢失配对；清除浏览器扩展数据或点击「清除本机配对」后需要重新生成配对码。
+
+#### 3. 打开朱雀并执行检测
+
+1. 在工作台点击「打开朱雀页面」，插件会打开或复用本机 `https://matrix.tencent.com/ai-detect/` 标签页。
+2. 朱雀页面显示可用编辑器和「立即检测」时，未登录也可使用游客次数；工作台会显示「游客模式」。只有朱雀明确要求时才登录账号。
+3. 回到工作台，点击剩余次数右侧的刷新按钮，同步 `朱雀账号`、游客状态和 `剩余次数`。
+4. 输入至少 350 个有效字符的自然正文，提交 `AI检测 + 降重` 任务。建议正文中至少有一个 120～200 字的完整段落，避免所有段落被判为短文本。
+5. 保持 Chrome 与朱雀标签页打开。插件会领取任务、写入正文并为同一个 browser-agent job 最多点击一次「立即检测」。
+6. 如果出现验证码，在同一个朱雀标签页中人工完成；不要再次手动点击「立即检测」。插件会继续等待原任务并在验证后读取结果。
+7. 检测完成后，插件会把 AI 率、分类比例和剩余次数回传 GankAIGC；任务随后进入降重，只有发生真实改写时才会再次复检。
+
+正常链路：
+
+```text
+工作台显示插件在线
+→ 插件领取 browser-agent job
+→ 本机朱雀完成检测
+→ 插件回传 /api/browser-agent/jobs/<job_id>/complete
+→ GankAIGC 进入降重或直接完成
+```
+
+#### 4. 本地源码测试插件
+
+本地源码默认使用 `auto`，不会经过 Chrome 插件。需要专门验收 browser-agent 时，把 `package/.env` 临时改为：
+
+```properties
+ZHUQUE_DETECT_TRANSPORT=browser_agent
+ZHUQUE_SERVER_HEADLESS_FALLBACK=false
+INLINE_TASK_WORKER_ENABLED=true
+```
+
+重启 `python main.py` 后，在插件中填写：
+
+```text
+http://127.0.0.1:9800
+```
+
+本地源码测试保留 `INLINE_TASK_WORKER_ENABLED=true`；VPS/Docker 的独立 worker 部署仍使用前文配置的 `false`。
+
+#### 5. 验收标准
+
+- 插件弹窗显示「已配对」，工作台显示「插件在线」。
+- 未登录但朱雀游客入口可用时，工作台显示「游客模式」，不会强制要求登录。
+- 一次初检通常只减少一次朱雀次数；验证码恢复不会为同一个 job 重复点击检测。
+- 朱雀结果页完成后，GankAIGC 不再长时间停留在「处理中 0 秒」。
+- 连续执行两条任务时，第二条不会复用第一条的旧结果。
+
+#### 6. 常见问题
+
+- **插件已配对但工作台显示离线**：确认 Chrome 正在运行、插件中的站点地址可访问、当前域名已加入 `host_permissions`；重新加载插件后等待一个 heartbeat 周期，仍离线则撤销旧设备并重新配对。
+- **显示插件在线但朱雀未登录**：这是两个独立状态。游客入口可用时可以直接检测；只有朱雀页面要求时才登录。
+- **朱雀已出结果但 GankAIGC 没继续**：确认插件版本至少为 `0.1.9`，重新加载插件并刷新朱雀页面后新建测试任务；后端正常会出现 `POST /api/browser-agent/jobs/<job_id>/complete 200`。
+- **配对码无效或已使用**：回到工作台重新生成；不要复用已经成功配对过的配对码。
+- **本地测试始终走内置浏览器**：确认 `ZHUQUE_DETECT_TRANSPORT=browser_agent` 已写入 `package/.env` 并重启后端。
+- **需要升级插件**：更新源码 → `chrome://extensions` 点击「重新加载」→ 确认版本 → 刷新朱雀页面。正常情况下无需重新配对。
+
+如需单独分发或排查插件，可继续查看 [`browser-extension/README.md`](browser-extension/README.md)。
 
 注意：`插件在线` 只代表 Chrome 插件已连接 VPS，不等于朱雀已登录。VPS 模式下朱雀游客可用性、登录、验证码和剩余次数都以用户本机 Chrome 的朱雀页面为准。
 
