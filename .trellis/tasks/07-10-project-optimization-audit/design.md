@@ -183,6 +183,10 @@ Rollback normally switches the app/worker to the previous digest. Database resto
   optional when the anonymous editor and Detect control are present. Heartbeat
   status carries `button_enabled` without converting guest readiness into a
   logged-in/token state.
+- Browser-agent extension `0.1.9` also accepts Zhuque result cards that omit the
+  zero-valued suspicious class and render only human + AI percentages. The
+  binary layout maps the missing suspicious ratio to zero instead of leaving
+  the claimed job waiting after the page has visibly completed.
 - One `job_id` owns one pre-click result baseline and one Detect submission.
   CAPTCHA/manual recovery resumes the existing wait, and unchanged pre-click
   snapshots are accepted only after a full busy-to-idle cycle. Background

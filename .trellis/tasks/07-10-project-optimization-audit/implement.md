@@ -102,6 +102,19 @@ The user reviewed the plan and authorized implementation on 2026-07-10. The task
   Admin and BYOK fields now share an editable combobox with an explicit
   chevron, discovered-count header, automatic opening after a successful probe,
   keyboard/ARIA list semantics, and preservation of custom model names.
+- [x] Browser-agent manual validation exposed a frontend effect loop: every
+  fresh status response changed `browserAgentStatus` object identity, restarted
+  initial synchronization, and forced another heartbeat plus three status
+  reads. The effect now depends on stable scalar state, performs one initial
+  sync, and polls only the aggregate browser-agent status endpoint in plugin
+  mode.
+- [x] Browser-agent manual validation then exposed a result-parser gap: Zhuque
+  completed a binary `0% human / 100% AI` result but omitted the zero suspicious
+  category, while extension `0.1.8` required three percentages and never
+  completed the backend job. Extension `0.1.9` parses both binary and
+  three-class layouts, with pure regression coverage for the boundary case.
+  Chrome manual acceptance confirmed the result now returns to GankAIGC and
+  releases the task from the detection wait state.
 
 Validation:
 

@@ -1,7 +1,7 @@
-import{c as o}from"./BrandLogo-D3Smuz1Y.js";
+import{c as a}from"./BrandLogo-CnfQhOCw.js";
 /**
  * @license lucide-react v0.298.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
- */const r=o("Shield",[["path",{d:"M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10",key:"1irkt0"}]]);export{r as S};
+ */const o=a("Loader2",[["path",{d:"M21 12a9 9 0 1 1-6.219-8.56",key:"13zald"}]]);export{o as L};

@@ -755,6 +755,8 @@ const riskRate = Math.max(aiRate, suspiciousRate);
 - Starting `AI检测 + 降重` while browser-agent is required but offline must fail fast in the workspace with actionable copy before the normal Zhuque preflight/start chain.
 - Pairing codes are short-lived secrets. Render them only after explicit user action, not in passive page load. Do not store them in localStorage.
 - In browser-agent mode, page load, manual quota refresh, and task completion should request an immediate extension-side Zhuque status sync instead of waiting for the next 15-second MV3 heartbeat. The UI must still fall back to backend status if the bridge is unavailable or the extension is stale.
+- The browser-agent status payload is the aggregate polling source in browser-agent mode. The periodic panel refresh should call only `GET /api/browser-agent/status`; do not also poll the headless-only `/optimization/zhuque/browser/status` and `/optimization/zhuque/readiness` endpoints in parallel.
+- Polling effects must depend on stable scalar transitions such as `browserAgentStatusLoaded`, `browserAgentRequired`, and `browserAgentOnline`, not the full `browserAgentStatus` response object. Every fetch creates a new object identity; using that object as an effect dependency restarts the effect, triggers another extension sync/heartbeat, and creates an unbounded request loop.
 - Browser-agent login is optional when the extension reports a usable guest detector. Render `游客模式`, keep the primary action as `打开朱雀页面`, and describe login/CAPTCHA as conditional rather than a prerequisite.
 - Explain automatic detection honestly: one initial whole-text detection, then one recheck only after each real LLM rewrite round. Do not describe stale/repeated extension clicks as normal pipeline retries.
 - Keep the Apple workspace visual language: low-chrome rounded card, Action Blue for pairing action, no new heavy gradients, and static bundle sync after build.
@@ -764,6 +766,7 @@ const riskRate = Math.max(aiRate, suspiciousRate);
 - `required=true`, `online=false` -> show `插件未连接` and generation guidance; start button flow toasts `VPS 朱雀检测需要先连接本机 Chrome 插件`.
 - `required=true`, `online=true` -> show `插件在线`, device name/version when available, and allow task start to continue into Zhuque preflight. Manual refresh should spin the refresh icon, ask the extension to sync, then update `朱雀账号` / `剩余次数` from backend status.
 - `required=true`, `online=true`, `zhuque.logged_in=false`, `zhuque.button_enabled=true` -> show `游客模式`; do not show a login-required blocker.
+- Stable `required=true`, `online=true` payloads -> one immediate extension sync on effect entry, then one aggregate status request per configured poll interval; response-object identity changes must not retrigger the initial sync.
 - `required=false`, `transport=auto/local_browser` -> show `本地浏览器模式`; do not imply plugin is mandatory.
 - Pairing creation fails -> toast backend detail or `生成浏览器插件配对码失败`.
 - Revocation fails -> toast backend detail or `撤销浏览器插件失败`.
@@ -773,6 +776,7 @@ const riskRate = Math.max(aiRate, suspiciousRate);
 - Good: VPS user selects `AI检测 + 降重`, sees plugin offline, generates a code, enters it in the extension, status flips online, then starts the task.
 - Good: user logs into Zhuque in the local Chrome tab, clicks the workspace refresh icon, and sees `朱雀账号` plus real remaining uses without waiting for the next heartbeat. After a detection job completes, the extension syncs status again so consumed quota is reflected.
 - Good: a logged-out user with guest quota sees `游客模式`, opens the Zhuque page, and starts detection without being forced through account login.
+- Good: an idle browser-agent workspace emits the expected bounded status poll plus the extension's independent heartbeat instead of continuously cycling through three status GETs and a forced heartbeat.
 - Good: Local user still sees the normal Zhuque login/quota card plus `本地浏览器模式`, with no blocker demanding extension installation.
 - Base: Browser-agent API is temporarily unreachable; the workspace falls back to non-required `auto` copy and the existing Zhuque readiness error handling remains visible.
 - Bad: Rendering a pairing code automatically on page load, hiding Zhuque quota metrics behind plugin UI, adding a second unrelated朱雀 card that duplicates state, or relying solely on the delayed heartbeat for a user-clicked refresh action.
@@ -781,7 +785,8 @@ const riskRate = Math.max(aiRate, suspiciousRate);
 ### 6. Tests Required
 
 - Static tests must assert `browserAgentAPI`, `/browser-agent/pairings`, `/browser-agent/status`, `/browser-agent/revoke`, local Zhuque API functions (`openZhuqueLocalBrowser`, `syncZhuqueLocalBrowser`), `browserAgentRequired`, `browserAgentOnline`, `requestBrowserAgentZhuqueRefresh`, `GANKAIGC_SYNC_ZHUQUE_STATUS`, `检测传输`, `插件在线`, `插件未连接`, `生成配对码`, `撤销插件`, `配对码`, local-mode copy, offline start-blocking copy, and manifest absence of `<all_urls>`.
-- Static tests must also assert guest-mode copy, extension `0.1.8+`, single-click/baseline job controls, and the initial-detect/real-rewrite-only recheck explanation.
+- Static tests must also assert guest-mode copy, extension `0.1.9+`, two-/three-class result parsing, single-click/baseline job controls, and the initial-detect/real-rewrite-only recheck explanation.
+- Polling regression tests must assert the scalar `browserAgentStatusLoaded` dependency, the browser-agent-only aggregate status branch, absence of the full response object from the effect dependency list, and exactly one immediate `requestBrowserAgentZhuqueRefresh` call in the initial loader.
 - Existing static tests for the compact Zhuque card order and CSS tokens must continue to pass.
 - Run `cd package/frontend && npm run build`, sync `package/frontend/dist` into `package/static`, and force-stage new ignored static assets.
 
@@ -805,4 +810,18 @@ if (processingMode === 'ai_detect_reduce' && browserAgentRequired && !browserAge
   toast.error('VPS 朱雀检测需要先连接本机 Chrome 插件');
   return;
 }
+```
+
+#### Wrong
+
+```jsx
+// Each response replaces browserAgentStatus and immediately restarts this effect.
+useEffect(loadInitialZhuqueStatus, [browserAgentStatus]);
+```
+
+#### Correct
+
+```jsx
+const browserAgentStatusLoaded = browserAgentStatus !== null;
+useEffect(loadInitialZhuqueStatus, [browserAgentStatusLoaded, browserAgentRequired, browserAgentOnline]);
 ```

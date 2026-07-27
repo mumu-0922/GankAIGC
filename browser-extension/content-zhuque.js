@@ -283,18 +283,19 @@ function domResultFallback() {
     });
   if (!resultNode) return null;
   const resultText = resultNode.innerText || resultNode.textContent || '';
-  const percents = [...resultText.matchAll(/(\d+(?:\.\d+)?)\s*%/g)].map((m) => Number(m[1]));
-  if (percents.length >= 3) {
+  const percentages = ZHUQUE_JOB_CONTROL.resultPercentagesFromText(resultText);
+  if (percentages) {
+    const { human, suspicious, ai } = percentages;
     return {
       success: true,
       source: 'browser_agent_dom',
       // 朱雀右侧图例顺序：人工特征、疑似AI、AI特征；GankAIGC：AI、人工、疑似。
-      rate: percents[2],
-      risk_rate: Math.max(percents[2] || 0, percents[1] || 0),
+      rate: ai,
+      risk_rate: Math.max(ai, suspicious),
       rate_label: resultText.split(/\n/).find((line) => /人工创作|AI生成|疑似|人工特征|AI特征/.test(line)) || '朱雀页面检测结果',
-      labels_ratio: { '0': (percents[2] || 0) / 100, '1': (percents[0] || 0) / 100, '2': (percents[1] || 0) / 100 },
+      labels_ratio: { '0': ai / 100, '1': human / 100, '2': suspicious / 100 },
       segment_labels: [],
-      raw_payload: { rate: percents[2], labelsRatio: { '0': (percents[0] || 0) / 100, '1': (percents[2] || 0) / 100, '2': (percents[1] || 0) / 100 }, result_text: resultText.slice(0, 500) }
+      raw_payload: { rate: ai, labelsRatio: { '0': human / 100, '1': ai / 100, '2': suspicious / 100 }, result_text: resultText.slice(0, 500) }
     };
   }
   return null;
@@ -461,6 +462,7 @@ async function waitForResult(timeoutMs, detectionState) {
         candidate: domResult,
         baselineFingerprints: detectionState.baselineFingerprints,
         completedBusyCycle: detectionState.completedBusyCycle,
+        resultClearedAfterBaseline: detectionState.resultClearedAfterBaseline,
       })) return domResult;
       const manual = detectCaptchaOrLogin();
       if (manual) return manual;
@@ -488,6 +490,7 @@ async function runZhuqueDetect(job) {
         detectionStarted: true,
         sawBusy: false,
         completedBusyCycle: false,
+        resultClearedAfterBaseline: false,
       };
       if (jobId) activeDetectionJobs.set(jobId, detectionState);
     }
@@ -502,6 +505,7 @@ async function runZhuqueDetect(job) {
     detectionStarted: false,
     sawBusy: false,
     completedBusyCycle: false,
+    resultClearedAfterBaseline: false,
   };
   if (jobId) activeDetectionJobs.set(jobId, detectionState);
 
@@ -509,6 +513,9 @@ async function runZhuqueDetect(job) {
   if (clearButton) {
     clearButton.click();
     await sleep(300);
+    detectionState.resultClearedAfterBaseline = Boolean(
+      baselineFingerprints.length > 0 && !domResultFallback()
+    );
   }
 
   const input = findInput();

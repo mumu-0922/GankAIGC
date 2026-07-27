@@ -578,7 +578,7 @@ curl -fsS http://127.0.0.1:9800/ready
 
 回滚时只把 `GANKAIGC_IMAGE` 改回保留的上一条已验证 digest，再执行同一组 `pull/up`；数据库仅在迁移不兼容且已有恢复演练时才回滚。
 
-如果这次更新包含 Chrome 插件变更，还需要在用户本机刷新插件：复制最新 `browser-extension/`，到 `chrome://extensions` 点击「重新加载」，确认插件版本号。例如当前 VPS browser-agent 推荐插件版本为 `0.1.8`。
+如果这次更新包含 Chrome 插件变更，还需要在用户本机刷新插件：复制最新 `browser-extension/`，到 `chrome://extensions` 点击「重新加载」，确认插件版本号。例如当前 VPS browser-agent 推荐插件版本为 `0.1.9`。
 
 进入管理后台，点击左上角版本号，可以检查 GitHub 最新 Release 并复制 SSH 升级命令。后台不会直接控制 Docker；需要 SSH 到 VPS 的项目目录手动执行上面的命令。
 
@@ -754,7 +754,7 @@ package/data/zhuque/users/user_<id>/browser_state.json
 
 VPS 上不要把朱雀检测交给服务器无头 Chromium。朱雀会识别 VPS/headless 环境并触发验证码/风控，导致 `AI检测 + 降重` 不稳定。VPS 推荐使用 browser-agent：服务器只创建检测任务，用户本机 Chrome 插件打开/复用朱雀页面并把结果回传。
 
-当前 browser-agent 插件推荐版本：`0.1.8`。该版本会同时读取朱雀页面文本、检测响应和 Vue 运行时配额状态；支持未登录游客检测，并阻止验证码恢复时为同一个作业重复点击检测。页面刷新、手动点击「同步/刷新」和检测任务消耗次数后，都会尽快刷新工作台的 `朱雀账号` / `剩余次数`。
+当前 browser-agent 插件推荐版本：`0.1.9`。该版本会同时读取朱雀页面文本、检测响应和 Vue 运行时配额状态；支持未登录游客检测，并阻止验证码恢复时为同一个作业重复点击检测。朱雀省略零值“疑似 AI”分类、只显示“人工 + AI”两个百分比时也会正常解析并回传。页面刷新、手动点击「同步/刷新」和检测任务消耗次数后，都会尽快刷新工作台的 `朱雀账号` / `剩余次数`。
 
 VPS `.env.docker` 推荐配置：
 
@@ -771,7 +771,7 @@ INLINE_TASK_WORKER_ENABLED=false
 用户连接流程：
 
 1. 在 Chrome 打开 `chrome://extensions`，开启开发者模式。
-2. 加载项目里的 `browser-extension/` 目录；若已经加载旧插件，先点击「重新加载」，确认版本是 `0.1.8` 或更高。
+2. 加载项目里的 `browser-extension/` 目录；若已经加载旧插件，先点击「重新加载」，确认版本是 `0.1.9` 或更高。
 3. 如果你的 VPS 域名不是 `https://ga.mumubuku.top`，需要先把你的站点 Origin 加进 `browser-extension/manifest.json` 的 `host_permissions`，例如 `https://你的域名/*`，再重新加载插件；不要使用 `<all_urls>`。
 4. 在 GankAIGC 工作台选择 `AI检测 + 降重`，点击「生成配对码」。
 5. 打开插件弹窗，填写 VPS 站点地址、配对码和设备名。

@@ -702,6 +702,7 @@ const WorkspacePage = () => {
   ].find((value) => typeof value === 'string' && value.trim())?.trim() || '';
   const zhuqueAccountLabel = zhuqueConnected ? (zhuqueAccountName || '已登录') : '未登录';
   const browserAgentRequired = Boolean(browserAgentStatus?.required || browserAgentStatus?.transport === 'browser_agent');
+  const browserAgentStatusLoaded = browserAgentStatus !== null;
   const browserAgentOnline = Boolean(browserAgentStatus?.online);
   const browserAgentTransport = browserAgentStatus?.transport || 'auto';
   const browserAgentPrimary = Array.isArray(browserAgentStatus?.agents) && browserAgentStatus.agents.length > 0
@@ -960,6 +961,10 @@ const WorkspacePage = () => {
 
     isLoadingZhuqueStatusRef.current = true;
     try {
+      if (browserAgentRequired) {
+        await loadBrowserAgentStatus();
+        return;
+      }
       await Promise.all([
         loadZhuqueAuthStatus(),
         withSoftTimeout(loadZhuqueReadiness(), ZHUQUE_READINESS_SOFT_TIMEOUT_MS),
@@ -968,7 +973,7 @@ const WorkspacePage = () => {
     } finally {
       isLoadingZhuqueStatusRef.current = false;
     }
-  }, [loadBrowserAgentStatus, loadZhuqueAuthStatus, loadZhuqueReadiness]);
+  }, [browserAgentRequired, loadBrowserAgentStatus, loadZhuqueAuthStatus, loadZhuqueReadiness]);
 
   const refreshZhuqueFreeQuota = useCallback(async ({ silent = false } = {}) => {
     if (isRefreshingZhuqueQuotaRef.current || isStartingZhuqueLogin) {
@@ -1059,7 +1064,7 @@ const WorkspacePage = () => {
       const syncResult = await requestBrowserAgentZhuqueRefresh({ focus: false, timeoutMs: 5000 });
       const latestStatus = await loadBrowserAgentStatus();
       if (!syncResult) {
-        toast.error('本机插件未响应同步请求，请重新加载 0.1.8 或更高版本插件');
+        toast.error('本机插件未响应同步请求，请重新加载 0.1.9 或更高版本插件');
         return;
       }
       if (syncResult.ok === false) {
@@ -1231,27 +1236,27 @@ const WorkspacePage = () => {
       hasAutoRefreshedZhuqueQuotaRef.current = false;
       return;
     }
-    if (browserAgentStatus === null) {
+    if (!browserAgentStatusLoaded) {
       return;
     }
 
     let isCancelled = false;
     const loadInitialZhuqueStatus = async () => {
-      if (browserAgentRequired && browserAgentOnline) {
-        await requestBrowserAgentZhuqueRefresh({ timeoutMs: 3000 });
+      if (browserAgentRequired) {
+        if (browserAgentOnline) {
+          await requestBrowserAgentZhuqueRefresh({ timeoutMs: 3000 });
+        }
+        await loadZhuqueStatusPanel();
+        if (!isCancelled) {
+          hasAutoRefreshedZhuqueQuotaRef.current = true;
+        }
+        return;
       }
       await loadZhuqueStatusPanel();
       if (isCancelled || hasAutoRefreshedZhuqueQuotaRef.current) {
         return;
       }
       hasAutoRefreshedZhuqueQuotaRef.current = true;
-      if (browserAgentRequired) {
-        if (browserAgentOnline) {
-          await requestBrowserAgentZhuqueRefresh({ timeoutMs: 3000 });
-          await loadZhuqueStatusPanel();
-        }
-        return;
-      }
       await refreshZhuqueFreeQuota({ silent: true });
     };
     loadInitialZhuqueStatus();
@@ -1269,7 +1274,7 @@ const WorkspacePage = () => {
       isCancelled = true;
       clearInterval(interval);
     };
-  }, [browserAgentOnline, browserAgentRequired, browserAgentStatus, loadZhuqueStatusPanel, processingMode, refreshZhuqueFreeQuota, zhuqueFastPollUntil]);
+  }, [browserAgentOnline, browserAgentRequired, browserAgentStatusLoaded, loadZhuqueStatusPanel, processingMode, refreshZhuqueFreeQuota, zhuqueFastPollUntil]);
 
   const mergeZhuqueLoginSession = useCallback((payload) => {
     if (!payload) {

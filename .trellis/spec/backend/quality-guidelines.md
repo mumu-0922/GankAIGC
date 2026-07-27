@@ -733,7 +733,8 @@ python-docx>=1.1.0
 - `BrowserAgentZhuqueTransport.detect()` creates a `zhuque_agent_jobs` row, waits for completion, and normalizes the extension result through the same Zhuque result normalizer used by local detection. Extension payloads with placeholder scores (`rate < 0` or `> 100`), benchmark-table labels, empty segment labels, or example/card text must be rejected before the reduce pipeline consumes them.
 - Extension/manual states are progress states, not immediate failures. `manual_required` should keep the job alive until the user solves Zhuque login/CAPTCHA locally or the configured timeout expires.
 - A visible login entry is not itself a blocker. Extension `0.1.8+` must allow the logged-out/guest detector when a real editor and Detect control are present, while still returning `zhuque_not_logged_in` when those controls are unavailable.
-- One claimed `job_id` may submit the Zhuque Detect control at most once. Before the click, record the current network-snapshot/DOM result fingerprints; after CAPTCHA/manual recovery, resume waiting with the same per-job baseline instead of filling text and clicking again. Accept a result only when it arrives as a post-click live network event, its fingerprint differs from the baseline, or the page completes a full busy-to-idle cycle. Merely resuming or observing the busy state start does not make an unchanged pre-click result current.
+- One claimed `job_id` may submit the Zhuque Detect control at most once. Before the click, record the current network-snapshot/DOM result fingerprints; after CAPTCHA/manual recovery, resume waiting with the same per-job baseline instead of filling text and clicking again. Accept a result only when it arrives as a post-click live network event, its fingerprint differs from the baseline, the old visible DOM result was cleared before submission and then reappeared, or the page completes a full busy-to-idle cycle. Merely resuming or observing the busy state start does not make an unchanged pre-click result current. Clear-page evidence applies only to the visible DOM candidate; do not use it to accept a Vue/network snapshot that may still contain cached old state.
+- Extension `0.1.9+` must accept both Zhuque summary layouts: three percentages in `human, suspicious, AI` order, or two percentages in `human, AI` order when Zhuque omits the zero-valued suspicious class. The two-value form maps suspicious to zero; a single unlabeled percentage remains ambiguous and must not be fabricated into a complete result.
 - Clear per-job extension state on completion, failure, timeout, or background cleanup so a finished job cannot contaminate a later claim.
 - The extension may open/reuse `https://matrix.tencent.com/ai-detect/` in the user's local Chrome, but backend code must not require public CDP, remote desktop, or `--remote-debugging-port` for VPS browser-agent mode.
 - Full paper text can live in `zhuque_agent_jobs.payload_text` for MVP handoff, but application logs, traces, and progress JSON must avoid logging the full payload.
@@ -758,6 +759,7 @@ python-docx>=1.1.0
   confirm login only; it must not claim that remaining uses were synchronized.
 - Logged-out page exposes an editor and Detect control -> heartbeat preserves `button_enabled=true`, transport remains ready, and UI reports guest mode rather than requiring login.
 - Resume receives the same result fingerprint captured before the original click and no busy-to-idle transition -> keep waiting; do not complete the job from stale state and do not click again.
+- Result DOM reports `0%` human and `100%` AI with no suspicious percentage -> complete with AI rate `100`, human ratio `0`, suspicious ratio `0`, and return the result to the waiting backend job.
 
 ### 5. Good/Base/Bad Cases
 
@@ -769,6 +771,7 @@ python-docx>=1.1.0
 - Good: A completed detection leaves the Zhuque tab on its result view; the
   extension extracts the updated quota from the terminal payload or Vue state
   and the workspace updates without closing/reopening the tab.
+- Good: A binary Zhuque result card omits its zero suspicious slice; the extension parses the remaining human/AI pair and completes the claimed job instead of waiting until timeout.
 - Base: Local `python main.py` or Windows one-click with `ZHUQUE_DETECT_TRANSPORT=auto` uses the local visible-browser path, `POST /api/optimization/zhuque/local/open` can open/focus a local page without relying on `package/backend/app/tools/zhuque_capture_window.py` inside the frozen exe, and `GET /api/browser-agent/status` returns `required=false`.
 - Bad: VPS uses `server_headless` or hidden fallback by default, requires public CDP, or asks users to start Chrome with `--remote-debugging-port`.
 - Bad: Extension host permissions use `<all_urls>` or backend logs include full paper text from `payload_text`.
@@ -782,6 +785,7 @@ python-docx>=1.1.0
 - Extension tests must cover numeric/unknown quota text, nested terminal
   payloads, Vue ref values, and rejection of unrelated `remainingRequests`.
 - Extension tests must also cover anonymous editor readiness, resume-without-reclick state, rejection of pre-click fingerprints on resume/busy start, and acceptance after a live event, changed fingerprint, or completed busy cycle. Backend tests must prove `button_enabled` survives heartbeat sanitization and guest readiness does not imply `logged_in`/`has_token`.
+- Extension tests must cover both three-class and two-class result text, including the `0% human / 100% AI` boundary, and reject an ambiguous single-percentage card.
 - Manual VPS validation must prove no server-headless Zhuque detection starts in `browser_agent` mode and the user's local Chrome performs the Zhuque interaction.
 
 ### 7. Wrong vs Correct

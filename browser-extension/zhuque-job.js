@@ -61,14 +61,38 @@
     }));
   }
 
+  function resultPercentagesFromText(resultText) {
+    const percentages = [...String(resultText || '').matchAll(/(\d+(?:\.\d+)?)\s*%/g)]
+      .map((match) => Number(match[1]))
+      .filter((value) => Number.isFinite(value) && value >= 0 && value <= 100);
+    if (percentages.length >= 3) {
+      return {
+        human: percentages[0],
+        suspicious: percentages[1],
+        ai: percentages[2],
+      };
+    }
+    if (percentages.length === 2) {
+      // Zhuque omits the zero-valued suspicious class on some result pages and
+      // renders only human + AI percentages, in that order.
+      return {
+        human: percentages[0],
+        suspicious: 0,
+        ai: percentages[1],
+      };
+    }
+    return null;
+  }
+
   function shouldAcceptObservedResult({
     candidate,
     baselineFingerprints = [],
     fromLiveEvent = false,
     completedBusyCycle = false,
+    resultClearedAfterBaseline = false,
   }) {
     if (!candidate) return false;
-    if (fromLiveEvent || completedBusyCycle) return true;
+    if (fromLiveEvent || completedBusyCycle || resultClearedAfterBaseline) return true;
     const fingerprint = resultFingerprint(candidate);
     if (!fingerprint) return false;
     const baselines = new Set((baselineFingerprints || []).filter(Boolean));
@@ -79,6 +103,7 @@
     loginBlocksDetection,
     mergeDetectionStarted,
     resultFingerprint,
+    resultPercentagesFromText,
     shouldAcceptObservedResult,
     shouldResumeExistingDetection,
     withResumeState,

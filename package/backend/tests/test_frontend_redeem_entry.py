@@ -274,15 +274,24 @@ def test_workspace_persists_selected_processing_and_billing_modes():
 
 def test_workspace_zhuque_status_polling_avoids_overlapping_requests():
     workspace = (FRONTEND_SRC / "pages" / "WorkspacePage.jsx").read_text(encoding="utf-8")
+    initial_loader = workspace.split("const loadInitialZhuqueStatus = async () => {", 1)[1].split(
+        "loadInitialZhuqueStatus();", 1
+    )[0]
 
     assert "ZHUQUE_STATUS_POLL_INTERVAL_MS = 5000" in workspace
     assert "ZHUQUE_STATUS_FAST_POLL_INTERVAL_MS = 1500" in workspace
     assert "ZHUQUE_STATUS_FAST_POLL_DURATION_MS = 8000" in workspace
     assert "isLoadingZhuqueStatusRef = useRef(false)" in workspace
+    assert "const browserAgentStatusLoaded = browserAgentStatus !== null" in workspace
     assert "loadZhuqueStatusPanel" in workspace
     assert "if (isLoadingZhuqueStatusRef.current)" in workspace
+    assert "if (browserAgentRequired) {\n        await loadBrowserAgentStatus();\n        return;\n      }" in workspace
     assert "Promise.all([" in workspace
     assert "document.visibilityState !== 'visible'" in workspace
+    assert "if (!browserAgentStatusLoaded)" in workspace
+    assert "browserAgentStatusLoaded, loadZhuqueStatusPanel" in workspace
+    assert "browserAgentStatus, loadZhuqueStatusPanel" not in workspace
+    assert initial_loader.count("requestBrowserAgentZhuqueRefresh({ timeoutMs: 3000 })") == 1
     assert "loadZhuqueAuthStatus();" not in workspace
     assert "loadZhuqueReadiness();" not in workspace
 
@@ -1347,7 +1356,7 @@ def test_workspace_guides_browser_agent_pairing_for_vps_mode():
     assert "files: ['zhuque-quota.js', 'zhuque-job.js', 'content-zhuque.js']" in extension_background
     assert "remainingUses: ZHUQUE_QUOTA.extractRemainingUses(response.result)" in extension_background
     assert "content-gankaigc.js" in extension_manifest
-    assert '"version": "0.1.8"' in extension_manifest
+    assert '"version": "0.1.9"' in extension_manifest
     assert '"zhuque-quota.js", "zhuque-job.js", "content-zhuque.js"' in extension_manifest
     assert "<all_urls>" not in extension_manifest
     assert "GANKAIGC_SYNC_ZHUQUE_STATUS" in extension_page_bridge
@@ -1359,8 +1368,11 @@ def test_workspace_guides_browser_agent_pairing_for_vps_mode():
     assert "aiGenTxtRemainingCount" in extension_quota
     assert "remainingRequests" not in extension_quota
     assert "loginBlocksDetection" in extension_job_control
+    assert "resultPercentagesFromText" in extension_job_control
+    assert "ZHUQUE_JOB_CONTROL.resultPercentagesFromText(resultText)" in extension_zhuque_content
     assert "resume_existing_detection" in extension_job_control
     assert "baselineFingerprints" in extension_zhuque_content
+    assert "resultClearedAfterBaseline" in extension_zhuque_content
     assert "activeDetectionJobs" in extension_zhuque_content
     assert "completedBusyCycle" in extension_zhuque_content
     assert "GANKAIGC_ZHUQUE_JOB_CLEANUP" in extension_zhuque_content

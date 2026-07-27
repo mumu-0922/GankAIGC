@@ -5,10 +5,23 @@ const {
   loginBlocksDetection,
   mergeDetectionStarted,
   resultFingerprint,
+  resultPercentagesFromText,
   shouldAcceptObservedResult,
   shouldResumeExistingDetection,
   withResumeState,
 } = require('../zhuque-job.js');
+
+test('parses Zhuque result pages with an omitted zero suspicious class', () => {
+  assert.deepEqual(
+    resultPercentagesFromText('未发现明显的人工创作特征\n0%\n100%\n人工特征\nAI特征'),
+    { human: 0, suspicious: 0, ai: 100 },
+  );
+  assert.deepEqual(
+    resultPercentagesFromText('人工创作特征较弱或混合可疑\n35%\n20%\n45%'),
+    { human: 35, suspicious: 20, ai: 45 },
+  );
+  assert.equal(resultPercentagesFromText('仅有一个值 100%'), null);
+});
 
 test('allows anonymous Zhuque detection when editor controls exist', () => {
   assert.equal(loginBlocksDetection({
@@ -70,5 +83,10 @@ test('rejects stale pre-click snapshots until a live event, change, or full busy
     candidate: stale,
     baselineFingerprints,
     completedBusyCycle: true,
+  }), true);
+  assert.equal(shouldAcceptObservedResult({
+    candidate: stale,
+    baselineFingerprints,
+    resultClearedAfterBaseline: true,
   }), true);
 });
