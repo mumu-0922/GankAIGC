@@ -1,5 +1,5 @@
 (() => {
-  const INJECTED_VERSION = '0.1.7';
+  const INJECTED_VERSION = '0.1.8';
   const previousVersion = window.__GANKAIGC_ZHUQUE_INJECTED__;
   if (previousVersion === INJECTED_VERSION) return;
   window.__GANKAIGC_ZHUQUE_INJECTED__ = INJECTED_VERSION;

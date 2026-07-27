@@ -161,6 +161,16 @@ def test_workspace_queue_status_uses_processing_task_label():
     assert "Users className" not in workspace
 
 
+def test_workspace_start_failure_never_renders_undefined_detail():
+    workspace = (FRONTEND_SRC / "pages" / "WorkspacePage.jsx").read_text(encoding="utf-8")
+
+    assert "const responseDetail = error.response?.data?.detail" in workspace
+    assert "error.code === 'ECONNABORTED'" in workspace
+    assert "`\u670d\u52a1\u8fd4\u56de HTTP ${error.response.status}\uff0c\u8bf7\u68c0\u67e5\u540e\u53f0\u65e5\u5fd7`" in workspace
+    assert "toast.error(`\u542f\u52a8\u4f18\u5316\u5931\u8d25: ${failureDetail}`)" in workspace
+    assert "toast.error('\u542f\u52a8\u4f18\u5316\u5931\u8d25: ' + error.response?.data?.detail)" not in workspace
+
+
 def test_workspace_project_archive_and_history_controls_are_actionable():
     workspace = (FRONTEND_SRC / "pages" / "WorkspacePage.jsx").read_text(encoding="utf-8")
     api = (FRONTEND_SRC / "api" / "index.js").read_text(encoding="utf-8")
@@ -1288,6 +1298,7 @@ def test_workspace_guides_browser_agent_pairing_for_vps_mode():
     extension_zhuque_content = (PACKAGE_ROOT.parents[0] / "browser-extension" / "content-zhuque.js").read_text(encoding="utf-8")
     extension_zhuque_injected = (PACKAGE_ROOT.parents[0] / "browser-extension" / "injected-zhuque.js").read_text(encoding="utf-8")
     extension_quota = (PACKAGE_ROOT.parents[0] / "browser-extension" / "zhuque-quota.js").read_text(encoding="utf-8")
+    extension_job_control = (PACKAGE_ROOT.parents[0] / "browser-extension" / "zhuque-job.js").read_text(encoding="utf-8")
 
     assert "browserAgentAPI" in api
     assert "createPairing" in api
@@ -1310,7 +1321,8 @@ def test_workspace_guides_browser_agent_pairing_for_vps_mode():
     assert "生成配对码" in workspace
     assert "撤销插件" in workspace
     assert "配对码" in workspace
-    assert "打开朱雀登录" in workspace
+    assert "游客次数可直接检测" in workspace
+    assert "游客模式" in workspace
     assert "朱雀账号" in workspace
     assert "同步朱雀登录和剩余次数" in workspace
     assert "requestBrowserAgentZhuqueRefresh" in workspace
@@ -1332,10 +1344,11 @@ def test_workspace_guides_browser_agent_pairing_for_vps_mode():
     assert "SYNC_ZHUQUE_STATUS" in extension_background
     assert "syncZhuqueStatus" in extension_background
     assert "files: ['zhuque-quota.js', 'injected-zhuque.js']" in extension_background
+    assert "files: ['zhuque-quota.js', 'zhuque-job.js', 'content-zhuque.js']" in extension_background
     assert "remainingUses: ZHUQUE_QUOTA.extractRemainingUses(response.result)" in extension_background
     assert "content-gankaigc.js" in extension_manifest
-    assert '"version": "0.1.7"' in extension_manifest
-    assert '"zhuque-quota.js", "content-zhuque.js"' in extension_manifest
+    assert '"version": "0.1.8"' in extension_manifest
+    assert '"zhuque-quota.js", "zhuque-job.js", "content-zhuque.js"' in extension_manifest
     assert "<all_urls>" not in extension_manifest
     assert "GANKAIGC_SYNC_ZHUQUE_STATUS" in extension_page_bridge
     assert "chrome.runtime.sendMessage" in extension_page_bridge
@@ -1345,6 +1358,17 @@ def test_workspace_guides_browser_agent_pairing_for_vps_mode():
     assert "GANKAIGC_ZHUQUE_STATUS_SNAPSHOT_REQUEST" in extension_zhuque_injected
     assert "aiGenTxtRemainingCount" in extension_quota
     assert "remainingRequests" not in extension_quota
+    assert "loginBlocksDetection" in extension_job_control
+    assert "resume_existing_detection" in extension_job_control
+    assert "baselineFingerprints" in extension_zhuque_content
+    assert "activeDetectionJobs" in extension_zhuque_content
+    assert "completedBusyCycle" in extension_zhuque_content
+    assert "GANKAIGC_ZHUQUE_JOB_CLEANUP" in extension_zhuque_content
+    assert "GANKAIGC_ZHUQUE_JOB_CLEANUP" in extension_background
+    assert "detection_started: detectionStarted" in extension_background
+    find_tab_source = extension_background.split("async function findOrCreateZhuqueTab", 1)[1].split("async function waitForTabReady", 1)[0]
+    assert "alreadyOnDetectPage ? { active: true }" in find_tab_source
+    assert "{ active: true, url: MATRIX_URL }" in find_tab_source
     assert "当前页面暂未返回剩余次数" in workspace
     assert "saveDraft" in extension_popup
     assert "status.pairingCode" in extension_popup
@@ -1613,6 +1637,7 @@ def test_config_manager_uses_current_model_placeholders():
 
 def test_config_manager_separates_sub_model_gateway_from_zhuque_detector():
     config_manager = (FRONTEND_SRC / "components" / "ConfigManager.jsx").read_text(encoding="utf-8")
+    model_combobox = (FRONTEND_SRC / "components" / "EditableModelCombobox.jsx").read_text(encoding="utf-8")
     admin_routes = (PACKAGE_ROOT / "backend" / "app" / "routes" / "admin.py").read_text(encoding="utf-8")
 
     assert "模型中转站配置" in config_manager
@@ -1627,8 +1652,13 @@ def test_config_manager_separates_sub_model_gateway_from_zhuque_detector():
     assert "探测模型" in config_manager
     assert "handleFetchModels" in config_manager
     assert "availableModels" in config_manager
-    assert "models.includes(formData.POLISH_MODEL)" in config_manager
-    assert "当前模型不在刚探测到的真实模型列表中" in config_manager
+    assert "models.includes(formData.POLISH_MODEL)" not in config_manager
+    assert "EditableModelCombobox" in config_manager
+    assert "options={availableModels}" in config_manager
+    assert "autoOpenOnOptions" in config_manager
+    assert "[value, ...discoveredOptions]" in model_combobox
+    assert '<datalist id="admin-model-suggestions">' not in config_manager
+    assert "当前模型不在刚探测到的真实模型列表中" not in config_manager
     assert "/api/admin/operations/model-list" in config_manager
     assert "response.data.system.model_provider_name" in config_manager
     assert "MODEL_PROVIDER_NAME" in config_manager
@@ -1664,6 +1694,7 @@ def test_config_manager_separates_sub_model_gateway_from_zhuque_detector():
 
 def test_config_manager_system_config_layout_matches_aurora_actions():
     config_manager = (FRONTEND_SRC / "components" / "ConfigManager.jsx").read_text(encoding="utf-8")
+    model_combobox = (FRONTEND_SRC / "components" / "EditableModelCombobox.jsx").read_text(encoding="utf-8")
     index_css = (FRONTEND_SRC / "index.css").read_text(encoding="utf-8")
 
     assert "applyUnifiedModel" in config_manager
@@ -1716,7 +1747,17 @@ def test_config_manager_system_config_layout_matches_aurora_actions():
     assert "aurora-config-mono-value" in config_manager
     assert ".aurora-config-mono-value" in index_css
     assert "aurora-config-model-picker" in config_manager
+    assert "EditableModelCombobox" in config_manager
+    assert "options={availableModels}" in config_manager
+    assert "autoOpenOnOptions" in config_manager
+    assert 'role="combobox"' in model_combobox
+    assert 'role="listbox"' in model_combobox
+    assert 'role="option"' in model_combobox
+    assert "[value, ...discoveredOptions]" in model_combobox
+    assert "已探测 {discoveredOptions.length} 个模型" in model_combobox
+    assert "!String(formData.POLISH_MODEL || '').trim()" in config_manager
     assert ".aurora-config-model-picker" in index_css
+    assert ".aurora-model-combobox-list" in index_css
     assert "aurora-config-model-probe-button" in config_manager
     assert ".aurora-config-model-probe-button" in index_css
     assert ".aurora-config-provider-stack .aurora-admin-input" in index_css
@@ -1727,6 +1768,25 @@ def test_config_manager_system_config_layout_matches_aurora_actions():
     provider_card = config_manager.split("aurora-config-provider-card", 1)[1].split("aurora-config-security-card", 1)[0]
     assert "aurora-config-quota-card" in provider_card
     assert provider_card.index("aurora-config-connection-row") < provider_card.index("aurora-config-quota-card")
+
+
+def test_byok_model_fields_keep_manual_entry_after_model_probe():
+    api_settings = (FRONTEND_SRC / "pages" / "ApiSettingsPage.jsx").read_text(encoding="utf-8")
+    model_combobox = (FRONTEND_SRC / "components" / "EditableModelCombobox.jsx").read_text(encoding="utf-8")
+
+    assert "EditableModelCombobox" in api_settings
+    assert "options={availableModels}" in api_settings
+    assert "autoOpenOnOptions={field === 'polish_model'}" in api_settings
+    assert 'role="combobox"' in model_combobox
+    assert 'className="aurora-model-combobox-toggle"' in model_combobox
+    assert 'role="listbox"' in model_combobox
+    assert 'role="option"' in model_combobox
+    assert "[value, ...discoveredOptions]" in model_combobox
+    assert "已探测 {discoveredOptions.length} 个模型" in model_combobox
+    assert "<datalist" not in api_settings
+    assert "polish_model: current.polish_model || models[0]" in api_settings
+    assert "enhance_model: current.enhance_model || models[0]" in api_settings
+    assert "models.includes(current.polish_model) ? current.polish_model : models[0]" not in api_settings
 
 
 
@@ -1836,6 +1896,7 @@ def test_config_manager_exposes_registration_enabled_switch():
 
 def test_config_manager_exposes_admin_model_connection_tests():
     config_manager = (FRONTEND_SRC / "components" / "ConfigManager.jsx").read_text(encoding="utf-8")
+    model_combobox = (FRONTEND_SRC / "components" / "EditableModelCombobox.jsx").read_text(encoding="utf-8")
 
     assert "/api/admin/operations/model-test" in config_manager
     assert "handleTestModel" in config_manager
@@ -1859,11 +1920,13 @@ def test_config_manager_exposes_admin_model_connection_tests():
     assert "api_format: formData.MODEL_API_FORMAT" in config_manager
     assert "polish: ['POLISH_MODEL', 'POLISH_BASE_URL', 'POLISH_API_KEY']" in config_manager
     assert "enhance: ['ENHANCE_MODEL', 'ENHANCE_BASE_URL', 'ENHANCE_API_KEY']" in config_manager
-    assert "availableModelOptions.map" in config_manager
-    assert "availableModels.length > 0" in config_manager
-    assert "models.includes(formData.POLISH_MODEL)" in config_manager
+    assert "mergedOptions.map" in model_combobox
+    assert "[value, ...discoveredOptions]" in model_combobox
+    assert "models.includes(formData.POLISH_MODEL)" not in config_manager
+    assert "availableModels.includes(stageConfig.model)" not in config_manager
     assert "setAvailableModels([])" in config_manager
-    assert "<select" in config_manager
+    assert "EditableModelCombobox" in config_manager
+    assert "<datalist" not in config_manager
     assert "aurora-detected-models" not in config_manager
     assert "'gpt-4o'" not in config_manager
     assert "'moonshot-v1-8k'" not in config_manager
@@ -1872,6 +1935,7 @@ def test_config_manager_exposes_admin_model_connection_tests():
 
 def test_api_settings_page_exposes_provider_api_format_selector():
     api_settings = (FRONTEND_SRC / "pages" / "ApiSettingsPage.jsx").read_text(encoding="utf-8")
+    model_combobox = (FRONTEND_SRC / "components" / "EditableModelCombobox.jsx").read_text(encoding="utf-8")
     api_index = (FRONTEND_SRC / "api" / "index.js").read_text(encoding="utf-8")
 
     assert "api_format: 'openai_chat'" in api_settings
@@ -1888,10 +1952,12 @@ def test_api_settings_page_exposes_provider_api_format_selector():
     assert "测试连接" in api_settings
     assert "仅当前账号使用，不影响平台后台模型配置" in api_settings
     assert "成功后仍需点击保存才会正式生效" in api_settings
-    assert "availableModels.length > 0" in api_settings
-    assert "models.includes(current.polish_model)" in api_settings
+    assert "EditableModelCombobox" in api_settings
+    assert "options={availableModels}" in api_settings
+    assert "[value, ...discoveredOptions]" in model_combobox
+    assert "models.includes(current.polish_model)" not in api_settings
     assert "setAvailableModels([])" in api_settings
-    assert "<select" in api_settings
+    assert "<datalist" not in api_settings
     assert "api_key: form.api_key" in api_settings
     assert "/api/admin/operations/model-list" not in api_settings
     assert "/api/admin/operations/model-test" not in api_settings

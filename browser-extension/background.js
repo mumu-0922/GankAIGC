@@ -1,6 +1,7 @@
-importScripts('zhuque-quota.js');
+importScripts('zhuque-quota.js', 'zhuque-job.js');
 
 const ZHUQUE_QUOTA = globalThis.GankAIGCZhuqueQuota;
+const ZHUQUE_JOB_CONTROL = globalThis.GankAIGCZhuqueJobControl;
 const STORAGE_KEYS = {
   serverUrl: 'gankaigc.serverUrl',
   agentToken: 'gankaigc.agentToken',
@@ -108,7 +109,7 @@ async function getZhuqueSessionStatus({ focus = false } = {}) {
   if (!response) {
     await chrome.scripting.executeScript({
       target: { tabId: tab.id },
-      files: ['zhuque-quota.js', 'content-zhuque.js']
+      files: ['zhuque-quota.js', 'zhuque-job.js', 'content-zhuque.js']
     }).catch(() => undefined);
     response = await chrome.tabs.sendMessage(tab.id, { type: 'GANKAIGC_ZHUQUE_STATUS' }).catch(() => null);
   }
@@ -150,7 +151,8 @@ async function findOrCreateZhuqueTab() {
   const tabs = await chrome.tabs.query({ url: 'https://matrix.tencent.com/*' });
   const existing = tabs.find((tab) => tab.url && tab.url.includes('/ai-detect')) || tabs[0];
   if (existing?.id) {
-    await chrome.tabs.update(existing.id, { active: true, url: MATRIX_URL });
+    const alreadyOnDetectPage = Boolean(existing.url && existing.url.includes('/ai-detect'));
+    await chrome.tabs.update(existing.id, alreadyOnDetectPage ? { active: true } : { active: true, url: MATRIX_URL });
     if (existing.windowId !== undefined) {
       await chrome.windows.update(existing.windowId, { focused: true }).catch(() => undefined);
     }
@@ -173,63 +175,78 @@ async function waitForTabReady(tabId, timeoutMs = 30000) {
 }
 
 async function executeZhuqueJob(job) {
-  await heartbeat(job.job_id);
-  await apiFetch(`/api/browser-agent/jobs/${job.job_id}/progress`, {
-    method: 'POST',
-    body: {
-      status: 'running',
-      message: '正在打开本机朱雀页面',
-      progress: 0.05,
-      metadata: { url: MATRIX_URL }
-    }
-  });
-  const tabId = await findOrCreateZhuqueTab();
-  await waitForTabReady(tabId);
-  await chrome.scripting.executeScript({
-    target: { tabId },
-    files: ['zhuque-quota.js', 'injected-zhuque.js'],
-    world: 'MAIN'
-  }).catch(() => undefined);
-  let response = null;
-  const deadline = Date.now() + Math.max(30000, Number(job.timeout_seconds || 180) * 1000);
-  while (Date.now() < deadline) {
-    response = await chrome.tabs.sendMessage(tabId, {
-      type: 'GANKAIGC_ZHUQUE_DETECT',
-      job
-    });
-    if (response?.manual_required) {
-      await apiFetch(`/api/browser-agent/jobs/${job.job_id}/progress`, {
-        method: 'POST',
-        body: {
-          status: 'manual_required',
-          message: response.message || '请在本机朱雀页面完成验证码/登录验证',
-          progress: 0.5,
-          metadata: response.metadata || {}
-        }
-      });
-      await new Promise((resolve) => setTimeout(resolve, 5000));
-      continue;
-    }
-    break;
-  }
-  if (!response?.success) {
-    await apiFetch(`/api/browser-agent/jobs/${job.job_id}/fail`, {
+  let tabId = null;
+  try {
+    await heartbeat(job.job_id);
+    await apiFetch(`/api/browser-agent/jobs/${job.job_id}/progress`, {
       method: 'POST',
       body: {
-        error_code: response?.error_code || 'zhuque_browser_agent_failed',
-        message: response?.message || '本机浏览器朱雀检测失败',
-        retryable: response?.retryable !== false
+        status: 'running',
+        message: '正在打开本机朱雀页面',
+        progress: 0.05,
+        metadata: { url: MATRIX_URL }
       }
     });
-    return;
+    tabId = await findOrCreateZhuqueTab();
+    await waitForTabReady(tabId);
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      files: ['zhuque-quota.js', 'injected-zhuque.js'],
+      world: 'MAIN'
+    }).catch(() => undefined);
+    let response = null;
+    let detectionStarted = false;
+    const deadline = Date.now() + Math.max(30000, Number(job.timeout_seconds || 180) * 1000);
+    while (Date.now() < deadline) {
+      response = await chrome.tabs.sendMessage(tabId, {
+        type: 'GANKAIGC_ZHUQUE_DETECT',
+        job: ZHUQUE_JOB_CONTROL.withResumeState(job, detectionStarted)
+      });
+      if (response?.manual_required) {
+        detectionStarted = ZHUQUE_JOB_CONTROL.mergeDetectionStarted(detectionStarted, response);
+        await apiFetch(`/api/browser-agent/jobs/${job.job_id}/progress`, {
+          method: 'POST',
+          body: {
+            status: 'manual_required',
+            message: response.message || '请在本机朱雀页面完成验证码/登录验证',
+            progress: 0.5,
+            metadata: {
+              ...(response.metadata || {}),
+              detection_started: detectionStarted
+            }
+          }
+        });
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+        continue;
+      }
+      break;
+    }
+    if (!response?.success) {
+      await apiFetch(`/api/browser-agent/jobs/${job.job_id}/fail`, {
+        method: 'POST',
+        body: {
+          error_code: response?.error_code || 'zhuque_browser_agent_failed',
+          message: response?.message || '本机浏览器朱雀检测失败',
+          retryable: response?.retryable !== false
+        }
+      });
+      return;
+    }
+    await apiFetch(`/api/browser-agent/jobs/${job.job_id}/complete`, {
+      method: 'POST',
+      body: { result: response.result }
+    });
+    await syncZhuqueStatus({
+      remainingUses: ZHUQUE_QUOTA.extractRemainingUses(response.result)
+    }).catch((error) => console.warn('[GankAIGC Browser Agent] sync Zhuque status after job failed:', error));
+  } finally {
+    if (tabId !== null) {
+      await chrome.tabs.sendMessage(tabId, {
+        type: 'GANKAIGC_ZHUQUE_JOB_CLEANUP',
+        job_id: job.job_id
+      }).catch(() => undefined);
+    }
   }
-  await apiFetch(`/api/browser-agent/jobs/${job.job_id}/complete`, {
-    method: 'POST',
-    body: { result: response.result }
-  });
-  await syncZhuqueStatus({
-    remainingUses: ZHUQUE_QUOTA.extractRemainingUses(response.result)
-  }).catch((error) => console.warn('[GankAIGC Browser Agent] sync Zhuque status after job failed:', error));
 }
 
 async function pollJobsOnce() {

@@ -2,8 +2,10 @@ const GANKAIGC_RESULT_EVENT = 'GANKAIGC_ZHUQUE_RESULT';
 const GANKAIGC_STATUS_SNAPSHOT_REQUEST = 'GANKAIGC_ZHUQUE_STATUS_SNAPSHOT_REQUEST';
 const GANKAIGC_STATUS_SNAPSHOT_RESPONSE = 'GANKAIGC_ZHUQUE_STATUS_SNAPSHOT_RESPONSE';
 const ZHUQUE_QUOTA = globalThis.GankAIGCZhuqueQuota;
+const ZHUQUE_JOB_CONTROL = globalThis.GankAIGCZhuqueJobControl;
 let lastObservedRemainingUses;
 let lastObservedUserName = '';
+const activeDetectionJobs = new Map();
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -171,6 +173,11 @@ function detectZhuqueSessionStatus(injectedStatus = null) {
   }
   const input = findInput();
   const detectButton = findDetectButton();
+  const buttonEnabled = Boolean(
+    detectButton
+    && remainingUses !== 0
+    && (!detectionControlDisabled(detectButton) || input)
+  );
   return {
     page_found: Boolean(input || detectButton || document.body),
     logged_in: false,
@@ -179,8 +186,19 @@ function detectZhuqueSessionStatus(injectedStatus = null) {
     status: input || detectButton ? 'page_ready' : 'unknown',
     user_name: '',
     remaining_uses: remainingUses,
-    message: input || detectButton ? '朱雀页面可用，暂未识别登录用户' : '暂未识别朱雀页面状态'
+    button_enabled: buttonEnabled,
+    message: input && buttonEnabled ? '朱雀游客检测可用；也可登录朱雀账号使用账号次数' : '暂未识别朱雀页面状态'
   };
+}
+
+function detectionControlDisabled(control) {
+  return Boolean(
+    control && (
+      control.disabled
+      || control.classList?.contains('is-disabled')
+      || control.getAttribute?.('aria-disabled') === 'true'
+    )
+  );
 }
 
 function detectCaptchaOrLogin() {
@@ -198,7 +216,14 @@ function detectCaptchaOrLogin() {
   const loginVisible = [...document.querySelectorAll('button, a, span, div')]
     .filter(visible)
     .some((el) => /^(登录|扫码登录|微信登录|Login|Sign in)$/i.test((el.textContent || '').trim()));
-  if (loginVisible) {
+  const input = findInput();
+  const detectButton = findDetectButton();
+  if (ZHUQUE_JOB_CONTROL.loginBlocksDetection({
+    loginVisible,
+    hasInput: Boolean(input),
+    hasDetectButton: Boolean(detectButton),
+    detectButtonDisabled: detectionControlDisabled(detectButton),
+  })) {
     return { manual_required: true, error_code: 'zhuque_not_logged_in', message: '请先在本机朱雀页面登录朱雀' };
   }
   return null;
@@ -273,6 +298,12 @@ function domResultFallback() {
     };
   }
   return null;
+}
+
+function detectionBusy() {
+  const pageText = String(document.body?.innerText || document.body?.textContent || '');
+  if (/检测中|正在检测|分析中|Detecting|Analyzing/i.test(pageText)) return true;
+  return detectionControlDisabled(findDetectButton());
 }
 
 function normalizeScore(value) {
@@ -386,7 +417,18 @@ window.addEventListener('message', (event) => {
   rememberRemainingUses(event.data.payload);
 });
 
-async function waitForResult(timeoutMs) {
+async function collectResultBaseline() {
+  const fingerprints = new Set();
+  const snapshotResult = await requestInjectedSnapshot();
+  const domResult = domResultFallback();
+  [snapshotResult, domResult].filter(Boolean).forEach((result) => {
+    const fingerprint = ZHUQUE_JOB_CONTROL.resultFingerprint(result);
+    if (fingerprint) fingerprints.add(fingerprint);
+  });
+  return [...fingerprints];
+}
+
+async function waitForResult(timeoutMs, detectionState) {
   let networkResult = null;
   const listener = (event) => {
     if (event.source !== window || event.data?.type !== GANKAIGC_RESULT_EVENT) return;
@@ -396,11 +438,30 @@ async function waitForResult(timeoutMs) {
   try {
     const start = Date.now();
     while (Date.now() - start < timeoutMs) {
-      if (networkResult) return networkResult;
+      if (networkResult && ZHUQUE_JOB_CONTROL.shouldAcceptObservedResult({
+        candidate: networkResult,
+        baselineFingerprints: detectionState.baselineFingerprints,
+        fromLiveEvent: true,
+      })) return networkResult;
+      const busyNow = detectionBusy();
+      if (detectionState.sawBusy && !busyNow) {
+        detectionState.completedBusyCycle = true;
+      }
+      if (busyNow) {
+        detectionState.sawBusy = true;
+      }
       const snapshotResult = await requestInjectedSnapshot();
-      if (snapshotResult) return snapshotResult;
+      if (ZHUQUE_JOB_CONTROL.shouldAcceptObservedResult({
+        candidate: snapshotResult,
+        baselineFingerprints: detectionState.baselineFingerprints,
+        completedBusyCycle: detectionState.completedBusyCycle,
+      })) return snapshotResult;
       const domResult = domResultFallback();
-      if (domResult) return domResult;
+      if (ZHUQUE_JOB_CONTROL.shouldAcceptObservedResult({
+        candidate: domResult,
+        baselineFingerprints: detectionState.baselineFingerprints,
+        completedBusyCycle: detectionState.completedBusyCycle,
+      })) return domResult;
       const manual = detectCaptchaOrLogin();
       if (manual) return manual;
       await sleep(1000);
@@ -413,8 +474,36 @@ async function waitForResult(timeoutMs) {
 
 async function runZhuqueDetect(job) {
   await sleep(1000);
+  const jobId = String(job.job_id || '').trim();
+  let detectionState = jobId ? activeDetectionJobs.get(jobId) : null;
+  const resuming = ZHUQUE_JOB_CONTROL.shouldResumeExistingDetection(job, detectionState);
   const manualBefore = detectCaptchaOrLogin();
-  if (manualBefore) return manualBefore;
+  if (manualBefore) return { ...manualBefore, detection_started: resuming };
+
+  const timeoutMs = Math.max(30000, Number(job.timeout_seconds || 180) * 1000);
+  if (resuming) {
+    if (!detectionState) {
+      detectionState = {
+        baselineFingerprints: await collectResultBaseline(),
+        detectionStarted: true,
+        sawBusy: false,
+        completedBusyCycle: false,
+      };
+      if (jobId) activeDetectionJobs.set(jobId, detectionState);
+    }
+    const resumedResult = await waitForResult(timeoutMs, detectionState);
+    if (!resumedResult?.manual_required && jobId) activeDetectionJobs.delete(jobId);
+    return { ...resumedResult, detection_started: true };
+  }
+
+  const baselineFingerprints = await collectResultBaseline();
+  detectionState = {
+    baselineFingerprints,
+    detectionStarted: false,
+    sawBusy: false,
+    completedBusyCycle: false,
+  };
+  if (jobId) activeDetectionJobs.set(jobId, detectionState);
 
   const clearButton = findClearButton();
   if (clearButton) {
@@ -424,6 +513,7 @@ async function runZhuqueDetect(job) {
 
   const input = findInput();
   if (!input) {
+    if (jobId) activeDetectionJobs.delete(jobId);
     return { success: false, error_code: 'zhuque_input_not_found', message: '未找到朱雀检测输入框', retryable: true };
   }
   setInputText(input, job.text || '');
@@ -431,12 +521,25 @@ async function runZhuqueDetect(job) {
 
   const detectButton = findDetectButton();
   if (!detectButton) {
+    if (jobId) activeDetectionJobs.delete(jobId);
     return { success: false, error_code: 'zhuque_detect_button_not_found', message: '未找到朱雀立即检测按钮', retryable: true };
   }
+  if (detectionControlDisabled(detectButton)) {
+    if (jobId) activeDetectionJobs.delete(jobId);
+    return {
+      success: false,
+      error_code: 'zhuque_detect_button_disabled',
+      message: '朱雀检测按钮当前不可用，请确认游客/账号剩余次数或完成页面提示',
+      retryable: true,
+      detection_started: false,
+    };
+  }
   detectButton.click();
+  detectionState.detectionStarted = true;
 
-  const timeoutMs = Math.max(30000, Number(job.timeout_seconds || 180) * 1000);
-  return await waitForResult(timeoutMs);
+  const result = await waitForResult(timeoutMs, detectionState);
+  if (!result?.manual_required && jobId) activeDetectionJobs.delete(jobId);
+  return { ...result, detection_started: true };
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -446,11 +549,24 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .catch(() => sendResponse({ success: true, status: detectZhuqueSessionStatus() }));
     return true;
   }
+  if (message?.type === 'GANKAIGC_ZHUQUE_JOB_CLEANUP') {
+    const jobId = String(message.job_id || '').trim();
+    if (jobId) activeDetectionJobs.delete(jobId);
+    sendResponse({ success: true });
+    return false;
+  }
   if (message?.type !== 'GANKAIGC_ZHUQUE_DETECT') return false;
   runZhuqueDetect(message.job || {})
     .then((result) => {
       if (result?.manual_required) {
-        sendResponse({ success: false, manual_required: true, error_code: result.error_code, message: result.message, metadata: result });
+        sendResponse({
+          success: false,
+          manual_required: true,
+          detection_started: Boolean(result.detection_started),
+          error_code: result.error_code,
+          message: result.message,
+          metadata: result,
+        });
         return;
       }
       if (!result?.success) {

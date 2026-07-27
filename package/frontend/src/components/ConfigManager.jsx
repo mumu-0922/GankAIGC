@@ -15,6 +15,7 @@ import {
   FileText,
 } from 'lucide-react';
 import ApiConfigGuide from './ApiConfigGuide';
+import EditableModelCombobox from './EditableModelCombobox';
 
 const API_FORMAT_OPTIONS = [
   { value: 'openai_chat', label: 'OpenAI Compatible' },
@@ -203,10 +204,6 @@ const ConfigManager = ({ adminToken }) => {
 
   const handleTestModel = async (stage) => {
     const stageConfig = getStageFormConfig(stage);
-    if (stage === 'polish' && availableModels.length > 0 && !availableModels.includes(stageConfig.model)) {
-      toast.error('当前模型不在刚探测到的真实模型列表中，请重新选择');
-      return;
-    }
     setTestingStage(stage);
     try {
       const response = await axios.post('/api/admin/operations/model-test', {
@@ -237,7 +234,7 @@ const ConfigManager = ({ adminToken }) => {
       });
       const models = Array.isArray(response.data?.models) ? response.data.models : [];
       setAvailableModels(models);
-      if (models[0] && !models.includes(formData.POLISH_MODEL)) {
+      if (models[0] && !String(formData.POLISH_MODEL || '').trim()) {
         applyUnifiedModel(models[0]);
       }
       toast.success(response.data?.message || `已拉取 ${models.length} 个模型`);
@@ -267,9 +264,6 @@ const ConfigManager = ({ adminToken }) => {
 
   const primaryModel = formData.POLISH_MODEL || formData.ENHANCE_MODEL || 'gpt-5.5';
   const primaryBaseUrl = formData.POLISH_BASE_URL || formData.ENHANCE_BASE_URL || '';
-  const availableModelOptions = availableModels.length > 0
-    ? availableModels
-    : [primaryModel].filter(Boolean);
   const applyUnifiedModel = (modelName) => {
     setFormData((previous) => ({
       ...previous,
@@ -397,16 +391,16 @@ const ConfigManager = ({ adminToken }) => {
             <label>
               <span>模型</span>
               <div className="aurora-config-model-picker">
-                <select
+                <EditableModelCombobox
+                  id="admin-model"
                   value={primaryModel}
-                  onChange={(e) => applyUnifiedModel(e.target.value)}
-                  className="aurora-admin-input"
-                  aria-label="模型"
-                >
-                  {availableModelOptions.map((modelName) => (
-                    <option key={modelName} value={modelName}>{modelName}</option>
-                  ))}
-                </select>
+                  options={availableModels}
+                  onChange={applyUnifiedModel}
+                  inputClassName="aurora-admin-input"
+                  label="模型"
+                  placeholder="输入模型名，或探测后选择"
+                  autoOpenOnOptions
+                />
                 <button
                   type="button"
                   onClick={handleFetchModels}

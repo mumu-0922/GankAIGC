@@ -164,6 +164,26 @@ def test_unversioned_schema_missing_document_columns_is_reconciled():
         assert get_schema_differences(conn) == []
 
 
+def test_local_prepare_reconciles_and_stamps_unversioned_legacy_schema(monkeypatch):
+    _create_unversioned_current_schema()
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "ALTER TABLE optimization_sessions "
+                "DROP COLUMN worker_attempt_count"
+            )
+        )
+
+    monkeypatch.setattr(schema_module, "is_server_deployment", lambda: False)
+    monkeypatch.setattr(schema_module, "init_db", lambda: None)
+
+    prepare_database()
+
+    with engine.connect() as conn:
+        assert get_current_schema_revisions(conn) == (get_expected_schema_revision(),)
+        assert get_schema_differences(conn) == []
+
+
 def test_production_prepare_rejects_unversioned_schema_without_running_ddl(monkeypatch):
     _create_unversioned_current_schema()
     monkeypatch.setattr(schema_module, "is_server_deployment", lambda: True)

@@ -66,7 +66,7 @@ const PROCESSING_MODE_DESCRIPTIONS = {
   paper_polish: '仅进行论文润色，提升文本的学术性和表达质量。',
   paper_enhance: '直接进行原创性增强，跳过润色阶段，适合已经润色过的文本。',
   paper_polish_enhance: '先进行论文润色，然后自动进行原创性增强，两阶段处理。',
-  ai_detect_reduce: '先调用朱雀AI检测文本浓度，AI浓度超过20%的段落会自动降重并复检。检测不消耗啤酒，实际降重改写按次数扣啤酒。',
+  ai_detect_reduce: '先执行 1 次朱雀全文初检；仅当 AI 浓度超过 20% 并发生改写时，才会在每轮改写后复检。检测不消耗啤酒，实际降重改写按次数扣啤酒。',
   emotion_polish: '专为感情文章设计，生成更自然、更具人性化的表达。',
 };
 
@@ -713,6 +713,11 @@ const WorkspacePage = () => {
     || browserAgentZhuqueStatus?.connected
     || browserAgentZhuqueStatus?.has_token
   );
+  const browserAgentZhuqueAnonymousReady = Boolean(
+    browserAgentZhuqueStatus?.page_found
+    && browserAgentZhuqueStatus?.button_enabled
+    && !browserAgentZhuqueConnected
+  );
   const browserAgentZhuqueAccountName = [
     browserAgentZhuqueStatus?.user_name,
     browserAgentZhuqueStatus?.userName,
@@ -729,10 +734,10 @@ const WorkspacePage = () => {
     ? (browserAgentZhuqueConnected ? `登录用户：${browserAgentZhuqueAccountName || '朱雀账号'}` : '朱雀未登录')
     : zhuqueAccountLabel;
   const zhuquePrimaryActionLabel = browserAgentRequired
-    ? (browserAgentOnline ? (browserAgentZhuqueConnected ? '打开朱雀页面' : '打开朱雀登录') : '生成配对码')
+    ? (browserAgentOnline ? '打开朱雀页面' : '生成配对码')
     : '打开朱雀页面';
   const zhuquePrimaryActionTitle = browserAgentRequired
-    ? (browserAgentOnline ? '打开本机 Chrome 的朱雀检测页，先完成朱雀登录或验证码；插件执行任务时会复用该页面' : '生成 Chrome 插件配对码')
+    ? (browserAgentOnline ? '打开本机 Chrome 的朱雀检测页；游客次数可直接检测，页面要求时再完成登录或验证码' : '生成 Chrome 插件配对码')
     : '打开或聚焦本机托管的朱雀页面，完成登录/验证码后回到工作台同步状态';
   const zhuqueRemainingDisplayLabel = browserAgentRequired
     ? (browserAgentZhuqueRemaining !== undefined ? formatZhuqueRemainingUses(browserAgentZhuqueRemaining) : '检测后同步')
@@ -1042,7 +1047,7 @@ const WorkspacePage = () => {
       return;
     }
     window.open(ZHUQUE_DETECT_PAGE_URL, '_blank', 'noopener,noreferrer');
-    toast('已打开本机朱雀页面；请先在该页面完成登录/验证码，插件执行检测时会复用它。');
+    toast('已打开本机朱雀页面；游客次数可直接检测，页面要求时再完成登录/验证码。');
   }, [browserAgentOnline, handleCreateBrowserAgentPairing]);
 
   const handleSyncBrowserAgentZhuqueStatus = useCallback(async () => {
@@ -1054,7 +1059,7 @@ const WorkspacePage = () => {
       const syncResult = await requestBrowserAgentZhuqueRefresh({ focus: false, timeoutMs: 5000 });
       const latestStatus = await loadBrowserAgentStatus();
       if (!syncResult) {
-        toast.error('本机插件未响应同步请求，请重新加载 0.1.7 或更高版本插件');
+        toast.error('本机插件未响应同步请求，请重新加载 0.1.8 或更高版本插件');
         return;
       }
       if (syncResult.ok === false) {
@@ -1070,6 +1075,11 @@ const WorkspacePage = () => {
         } else {
           toast('朱雀登录状态已同步，但当前页面暂未返回剩余次数');
         }
+        return;
+      }
+      if (zhuqueStatus?.page_found && zhuqueStatus?.button_enabled) {
+        const remaining = extractZhuqueRemainingUses(zhuqueStatus);
+        toast.success(remaining !== undefined ? `朱雀游客检测可用，剩余 ${remaining} 次` : '朱雀游客检测可用，剩余次数将在检测后同步');
         return;
       }
       toast('已请求同步；如果刚登录朱雀，请确认朱雀页面已打开并等待插件识别。');
@@ -1598,7 +1608,18 @@ const WorkspacePage = () => {
       loadAccountState();
       loadSessions(activeProjectId);
     } catch (error) {
-      toast.error('启动优化失败: ' + error.response?.data?.detail);
+      const responseDetail = error.response?.data?.detail;
+      const validationDetail = Array.isArray(responseDetail)
+        ? responseDetail.map((item) => item?.msg).filter(Boolean).join('；')
+        : '';
+      const failureDetail = typeof responseDetail === 'string' && responseDetail.trim()
+        ? responseDetail
+        : validationDetail
+          || (error.code === 'ECONNABORTED' ? '请求超时，请检查后台与数据库状态' : '')
+          || (error.response?.status ? `服务返回 HTTP ${error.response.status}，请检查后台日志` : '')
+          || error.message
+          || '无法连接后台服务';
+      toast.error(`启动优化失败: ${failureDetail}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -1609,7 +1630,7 @@ const WorkspacePage = () => {
       return;
     }
     if (browserAgentRequired) {
-      toast('VPS 插件模式不使用服务器扫码登录；请保持本机 Chrome 插件在线，并在插件打开的朱雀页面完成登录/验证码。');
+      toast('VPS 插件模式不使用服务器扫码登录；请保持本机 Chrome 插件在线，游客检测不可用或页面要求时再登录/验证。');
       return;
     }
 
@@ -1997,7 +2018,7 @@ const WorkspacePage = () => {
                           <span>朱雀账号</span>
                           <strong className={zhuqueDisplayConnected ? 'is-connected' : 'is-disconnected'}>
                             <i />
-                            {browserAgentRequired ? (zhuqueDisplayConnected ? (browserAgentZhuqueAccountName || '已登录') : '未登录') : (zhuqueDisplayConnected ? (zhuqueAccountName || '已登录') : '未登录')}
+                            {browserAgentRequired ? (zhuqueDisplayConnected ? (browserAgentZhuqueAccountName || '已登录') : (browserAgentZhuqueAnonymousReady ? '游客模式' : '未登录')) : (zhuqueDisplayConnected ? (zhuqueAccountName || '已登录') : '未登录')}
                           </strong>
                         </div>
                         <div className="aurora-zhuque-metric">

@@ -584,6 +584,7 @@ const riskRate = Math.max(aiRate, suspiciousRate);
 - System config model/detector separation:
   - The model configuration card represents the LLM gateway only: Sub API or any OpenAI-compatible proxy used by polish/enhance/emotion/compression.
   - Zhuque is Tencent AI-rate detection, not a model provider. It must be rendered as a separate detector credential/readiness card and must not appear as a provider option, model name, or model API base URL.
+  - Admin and BYOK model fields use the shared `EditableModelCombobox`: the input remains freely editable, while an explicit chevron opens the discovered `/v1/models` suggestions and shows the discovered count. A successful probe may fill an empty field, but it must never replace a non-empty custom/local model just because that name is absent from the probed list.
 - Operations status panel:
   - `AdminOperationsPanel.jsx` consumes `/api/admin/operations/status`.
   - System health cards must read `status.system.cpu.percent`, `status.system.memory.percent`, `status.system.disk.percent`, `status.system.network.*_rate_label`, and `status.system.load.load1/load5`.
@@ -613,6 +614,7 @@ const riskRate = Math.max(aiRate, suspiciousRate);
 - Runtime-heavy glass must stay disabled. Admin surfaces may look translucent but CSS must rely on opaque/near-opaque white, hairline borders, and low shadows rather than stacked `backdrop-filter`.
 - The system configuration API tutorial is a functional onboarding component, not decorative chrome. Do not hide `.aurora-config-guide-shell` with `display: none`; restyle the existing `ApiConfigGuide` with Aurora-compatible CSS instead.
 - In `ConfigManager.jsx`, keep “模型中转站配置” and “腾讯朱雀 AI 率检测” conceptually separate. Do not label the provider as `ZhuQue（朱雀）`, use `zhuque-70b-chat` as a default model, or show `https://api.zhuque-ai.com/v1` as the LLM API URL. Use the admin Zhuque readiness endpoint for detection status instead of fake model-health rows.
+- Do not switch `ConfigManager.jsx` or `ApiSettingsPage.jsx` to a closed model `<select>` after discovery. Provider model lists are suggestions, not an allowlist; local gateways frequently support manually named models that `/v1/models` omits.
 - Operations health values must not be invented in React. Do not hardcode CPU/memory/disk/network/load/database-latency/model/provider rows such as `18%`, `3.6 GB / 7.8 GB`, `↑ 1.2 MB/s ↓ 2.4 MB/s`, `2.42 ms`, `OpenAI (gpt-4o)`, or fake recovery events. If a metric is unavailable, render the backend's `不可用`/false status instead.
 - Session monitor values must not be invented in React. Do not hardcode fake trends, response times, request rates, queue counts, model counts, chart paths, date ranges, or pagination copy such as `较昨日 +18%`, `1.28s`, `* 37`, `queuedCount || 6`, `共 12 个模型`, `请求数 2,431`, `今日 00:00 ~ 23:59`, or `每页 10 条`. If a metric is unavailable, render `--`, `暂无对比数据`, or an empty state.
 - Preserve business behavior and source anchors: update modal, account management handlers/API calls, `ADMIN_ACCOUNT_*` constants, `data-admin-processing-modes`, `data-admin-processing-summary`, `data-admin-operations-panel="true"`, audit formatting, and existing Chinese labels used by tests/E2E.
@@ -627,6 +629,7 @@ const riskRate = Math.max(aiRate, suspiciousRate);
 - A tab component drops `aurora-admin-section-head` -> inconsistent functional page chrome.
 - `.aurora-config-guide-shell` is present but `display: none` in source or served CSS -> system config tutorial disappears even though the component remains mounted.
 - Config page treats Zhuque as a model provider or shows fake Zhuque model counts/rate-limit status -> semantic bug; Zhuque is detector-only and should read `zhuque_service.readiness()`.
+- Native `<datalist>` reports models but Chrome shows no visible dropdown affordance -> use `EditableModelCombobox`; a successful probe auto-opens the primary model list, and the chevron must reopen it later.
 - Operations panel contains hardcoded monitoring numbers/provider rows/events instead of backend `status.system`, `status.database`, `status.models`, `status.jobs`, and `status.events` fields -> user sees fake health data.
 - Operations panel borrows Sub2API-only metrics such as SLA/QPS/TTFT without backend fields -> UI fabricates monitoring data.
 - Session monitor contains hardcoded fake KPI/chart/queue strings or does not call `/api/admin/statistics` with the selected range -> user sees fake session data.
@@ -646,11 +649,14 @@ const riskRate = Math.max(aiRate, suspiciousRate);
 - Good: latency window buttons visibly switch active state without adding explanatory chips or toasts.
 - Good: `ConfigManager` renders `ApiConfigGuide`, `.aurora-config-guide-shell` is `display: block`, and the guide card is restyled with Aurora borders/radius/shadows rather than removed.
 - Good: `ConfigManager` shows Sub/OpenAI-compatible gateway fields for LLM calls and a separate Tencent Zhuque AI-rate detector card sourced from `/api/admin/zhuque/readiness`.
+- Good: model discovery auto-opens an editable combobox, visibly reports the discovered count, and preserves a manually entered local/custom model in admin and per-user BYOK settings.
 - Good: account secondary tabs use a themed segmented control, while invite/credit forms still use `ADMIN_ACCOUNT_FORM_CLASS`, `ADMIN_ACCOUNT_INPUT_CLASS`, and `ADMIN_ACCOUNT_ACTION_BUTTON_CLASS`.
 - Base: a subcomponent retains some Tailwind utility classes internally, but lives inside `aurora-admin-section` and `aurora-admin-card`, and functions/tests still pass.
 - Bad: old `gank-glass-toolbar`/`gank-glass-card` dominates the admin layout, nav active state uses teal/indigo/violet/amber gradients, or a visual refactor changes API endpoints/handlers.
 - Bad: keeping `ApiConfigGuide` in JSX but hiding `.aurora-config-guide-shell`; static source tests can pass while users lose the tutorial.
 - Bad: using `ZhuQue（朱雀）` in the provider select, `zhuque-70b-chat` as a model, `api.zhuque-ai.com` as an LLM API URL, or hardcoded “可用模型数 8 个” for Zhuque.
+- Bad: replacing a custom model with `models[0]` or rendering a closed `<select>` whenever a probe returns one or more models.
+- Bad: relying on native `<datalist>` as the only discovery UI; Chrome may omit the arrow and make a successfully fetched model list invisible.
 - Bad: operations page keeps a pretty UI by fabricating fixed health values when the backend did not provide them.
 - Bad: session monitor keeps a pretty UI by fabricating request rate, queue rows, chart spikes, model totals, date range text, or pagination copy when backend/session data is empty.
 - Bad: a notification bell opens `操作日志`, because that duplicates the sidebar item and crowds the topbar.
@@ -661,6 +667,7 @@ const riskRate = Math.max(aiRate, suspiciousRate);
 - Static frontend tests should assert admin root/topbar/sidebar/content classes, Action Blue CSS token, active nav class, no duplicate service-node card, uniform sidebar nav sizing, section head classes in all admin subcomponents, and absence of old `activeClass`/`inactiveClass` gradient nav mapping.
 - Static frontend tests should assert `ConfigManager.jsx` still renders `ApiConfigGuide`, `ApiConfigGuide.jsx` still has `data-api-guide-multi-expand="true"`, source CSS has `.aurora-config-guide-shell { display: block; }`, and served CSS does not contain `.aurora-config-guide-shell{display:none}`.
 - Static frontend tests should assert `ConfigManager.jsx` separates `模型中转站配置` from `腾讯朱雀 AI 率检测`, contains `/api/admin/zhuque/readiness`, and rejects `ZhuQue（朱雀）</option>`, `zhuque-70b-chat`, `api.zhuque-ai.com`, and fake Zhuque model-count/rate-limit labels.
+- Static frontend tests should assert admin/BYOK model controls use `EditableModelCombobox`, retain `role="combobox"`/`listbox`/`option`, expose a visible toggle and discovered count, auto-open the primary field after probing, merge the current value with discovered suggestions, preserve non-empty custom models, and reject `models.includes(currentModel) ? currentModel : models[0]` replacement logic.
 - Static frontend tests should assert operations panel reads `status.system.*`, `status.database.average_latency_ms`, `status.database.latency_samples_ms`, `status.models.items`, and `status.events`; tests should also assert fake values/provider rows/events are absent, auto-refresh has a visibility/in-flight guard, and Sub2API-only SLA/QPS/TTFT labels are absent unless backed by API fields.
 - Static frontend tests should assert `SessionMonitor.jsx` calls `/api/admin/statistics`, passes `params: { range: statsRange }`, consumes `statistics.processing.series.sessions`, renders range options for `today`/`7d`/`30d`, and rejects fake placeholders such as `较昨日`, `1.28`, `* 37`, `queuedCount || 6`, `共 12 个模型`, `请求数 2,431`, `今日 00:00 ~ 23:59`, and `每页 10 条`.
 - Static frontend tests should assert latency tabs keep `handleLatencyWindowChange`, `fetchStatus({ silent: true, force: true })`, and `aria-pressed`, while rejecting `activeLatencyWindow`, `latencySampleCount`, `当前窗口`, and latency-window switch toast copy.
@@ -734,6 +741,7 @@ const riskRate = Math.max(aiRate, suspiciousRate);
   - `requestBrowserAgentZhuqueRefresh()` posts `GANKAIGC_SYNC_ZHUQUE_STATUS` to the extension page bridge and then reloads backend browser-agent status.
 - Backend status payload consumed by the UI:
   - `{required, transport, online, agents, message, zhuque}`.
+  - `zhuque` may report guest readiness as `{page_found: true, logged_in: false, button_enabled: true, remaining_uses}`.
   - agent rows may include `{agent_id, name, status, last_seen_at, extension_version, zhuque_status}`.
 - Extension bridge:
   - `browser-extension/content-gankaigc.js` is matched only to allowed GankAIGC origins, not `<all_urls>`.
@@ -747,12 +755,15 @@ const riskRate = Math.max(aiRate, suspiciousRate);
 - Starting `AI检测 + 降重` while browser-agent is required but offline must fail fast in the workspace with actionable copy before the normal Zhuque preflight/start chain.
 - Pairing codes are short-lived secrets. Render them only after explicit user action, not in passive page load. Do not store them in localStorage.
 - In browser-agent mode, page load, manual quota refresh, and task completion should request an immediate extension-side Zhuque status sync instead of waiting for the next 15-second MV3 heartbeat. The UI must still fall back to backend status if the bridge is unavailable or the extension is stale.
+- Browser-agent login is optional when the extension reports a usable guest detector. Render `游客模式`, keep the primary action as `打开朱雀页面`, and describe login/CAPTCHA as conditional rather than a prerequisite.
+- Explain automatic detection honestly: one initial whole-text detection, then one recheck only after each real LLM rewrite round. Do not describe stale/repeated extension clicks as normal pipeline retries.
 - Keep the Apple workspace visual language: low-chrome rounded card, Action Blue for pairing action, no new heavy gradients, and static bundle sync after build.
 
 ### 4. Validation & Error Matrix
 
 - `required=true`, `online=false` -> show `插件未连接` and generation guidance; start button flow toasts `VPS 朱雀检测需要先连接本机 Chrome 插件`.
 - `required=true`, `online=true` -> show `插件在线`, device name/version when available, and allow task start to continue into Zhuque preflight. Manual refresh should spin the refresh icon, ask the extension to sync, then update `朱雀账号` / `剩余次数` from backend status.
+- `required=true`, `online=true`, `zhuque.logged_in=false`, `zhuque.button_enabled=true` -> show `游客模式`; do not show a login-required blocker.
 - `required=false`, `transport=auto/local_browser` -> show `本地浏览器模式`; do not imply plugin is mandatory.
 - Pairing creation fails -> toast backend detail or `生成浏览器插件配对码失败`.
 - Revocation fails -> toast backend detail or `撤销浏览器插件失败`.
@@ -761,13 +772,16 @@ const riskRate = Math.max(aiRate, suspiciousRate);
 
 - Good: VPS user selects `AI检测 + 降重`, sees plugin offline, generates a code, enters it in the extension, status flips online, then starts the task.
 - Good: user logs into Zhuque in the local Chrome tab, clicks the workspace refresh icon, and sees `朱雀账号` plus real remaining uses without waiting for the next heartbeat. After a detection job completes, the extension syncs status again so consumed quota is reflected.
+- Good: a logged-out user with guest quota sees `游客模式`, opens the Zhuque page, and starts detection without being forced through account login.
 - Good: Local user still sees the normal Zhuque login/quota card plus `本地浏览器模式`, with no blocker demanding extension installation.
 - Base: Browser-agent API is temporarily unreachable; the workspace falls back to non-required `auto` copy and the existing Zhuque readiness error handling remains visible.
 - Bad: Rendering a pairing code automatically on page load, hiding Zhuque quota metrics behind plugin UI, adding a second unrelated朱雀 card that duplicates state, or relying solely on the delayed heartbeat for a user-clicked refresh action.
+- Bad: Labeling guest-ready status as `未登录` plus `打开朱雀登录`, or promising repeated automatic detections when no rewritten text was produced.
 
 ### 6. Tests Required
 
 - Static tests must assert `browserAgentAPI`, `/browser-agent/pairings`, `/browser-agent/status`, `/browser-agent/revoke`, local Zhuque API functions (`openZhuqueLocalBrowser`, `syncZhuqueLocalBrowser`), `browserAgentRequired`, `browserAgentOnline`, `requestBrowserAgentZhuqueRefresh`, `GANKAIGC_SYNC_ZHUQUE_STATUS`, `检测传输`, `插件在线`, `插件未连接`, `生成配对码`, `撤销插件`, `配对码`, local-mode copy, offline start-blocking copy, and manifest absence of `<all_urls>`.
+- Static tests must also assert guest-mode copy, extension `0.1.8+`, single-click/baseline job controls, and the initial-detect/real-rewrite-only recheck explanation.
 - Existing static tests for the compact Zhuque card order and CSS tokens must continue to pass.
 - Run `cd package/frontend && npm run build`, sync `package/frontend/dist` into `package/static`, and force-stage new ignored static assets.
 

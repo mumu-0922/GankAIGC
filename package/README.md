@@ -103,7 +103,7 @@ cd package
 然后用 GitHub CLI 覆盖 Release 附件：
 
 ```powershell
-gh release upload v2.0.4 .\dist\GankAIGC-Windows-OneClick.zip
+gh release upload v2.0.5 .\dist\GankAIGC-Windows-OneClick.zip
 ```
 
 GitHub Actions 工作流会在推送 `v*` 标签时构建普通 Windows/Linux/macOS 可执行文件；当前公开 Release 仍优先使用本地构建并上传的 Windows 一键整合包。
@@ -111,8 +111,8 @@ GitHub Actions 工作流会在推送 `v*` 标签时构建普通 Windows/Linux/ma
 ### 标签发布
 
 ```bash
-git tag -a v2.0.4 -m "GankAIGC v2.0.4"
-git push origin v2.0.4
+git tag -a v2.0.5 -m "GankAIGC v2.0.5"
+git push origin v2.0.5
 ```
 
 发布新版本时同时更新：
@@ -150,7 +150,7 @@ Windows 一键整合包：
 
 ```bash
 cd /home/dev/code/GankAIGC
-docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.local.yml up -d postgres
+docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.local.yml up -d --wait postgres
 
 cd /home/dev/code/GankAIGC/package
 source venv/bin/activate
@@ -189,7 +189,7 @@ package/data/zhuque/users/user_<id>/browser_state.json
 
 后续朱雀检测会复用同一个可见检测窗口。Windows/WSL 会优先使用可控的 Windows Chrome/Edge/Brave；Linux 桌面会自动查找常见系统浏览器。
 
-VPS / Docker 不建议使用服务器无头 Chromium 做朱雀检测，因为容易触发朱雀验证码或风控。正式 VPS 部署推荐改用 Chrome 插件 browser-agent：GankAIGC 服务器创建检测任务，用户本机 Chrome 插件打开/复用朱雀页面完成检测并回传结果。当前推荐插件版本为 `0.1.7`，支持从页面文本、检测响应和 Vue 运行时状态同步朱雀账号/剩余次数。
+VPS / Docker 不建议使用服务器无头 Chromium 做朱雀检测，因为容易触发朱雀验证码或风控。正式 VPS 部署推荐改用 Chrome 插件 browser-agent：GankAIGC 服务器创建检测任务，用户本机 Chrome 插件打开/复用朱雀页面完成检测并回传结果。当前推荐插件版本为 `0.1.8`，支持游客/未登录检测、从页面文本/检测响应/Vue 状态同步剩余次数，并保证单个插件作业跨验证码恢复时只提交一次检测。
 
 VPS `.env.docker` 推荐：
 
@@ -205,7 +205,7 @@ INLINE_TASK_WORKER_ENABLED=false
 
 本机源码运行、Windows 一键包或带桌面的个人电脑部署继续使用 `ZHUQUE_DETECT_TRANSPORT=auto` 或 `local_browser`，无需安装插件。
 
-插件连接流程：在 Chrome `chrome://extensions` 加载 `browser-extension/`，进入工作台选择 `AI检测 + 降重`，点击「生成配对码」，在插件弹窗填写站点地址、配对码和设备名。工作台显示「插件在线」后，再点击「打开朱雀登录/页面」并在本机 Chrome 完成朱雀登录或验证码；`插件在线` 不等于 `朱雀已登录`，提交前应确认工作台的 `朱雀账号` 和 `剩余次数`。
+插件连接流程：在 Chrome `chrome://extensions` 加载 `browser-extension/`，进入工作台选择 `AI检测 + 降重`，点击「生成配对码」，在插件弹窗填写站点地址、配对码和设备名。工作台显示「插件在线」后，点击「打开朱雀页面」；游客次数可直接检测，只有页面要求时才需登录或完成验证码。`插件在线` 不等于 `朱雀已登录`；未登录但页面可用时，工作台会显示 `游客模式`。
 
 普通用户不需要手动设置 Chrome `--remote-debugging-port` 或 Profile。VPS browser-agent 模式也不要公开 CDP 端口；插件权限只应包含你的 GankAIGC 站点和 `https://matrix.tencent.com/*`。高级本机部署可在 `.env` 中覆盖：
 

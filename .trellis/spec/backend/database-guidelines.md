@@ -116,3 +116,97 @@ app:
     - source: app_database_url
       target: database_url
 ```
+
+---
+
+## Scenario: Local source startup adopts legacy schemas before serving traffic
+
+### 1. Scope / Trigger
+
+- Trigger: changes to `app/schema.py`, `app/database.py`, Alembic revisions,
+  `python main.py` local startup, or workspace task-start error handling.
+- This protects source/one-click users who reuse an unversioned database from
+  an older release. `create_all()` alone does not add columns to existing
+  tables and must not be treated as a completed upgrade.
+
+### 2. Signatures
+
+- Local startup: `prepare_database()` -> `init_db()` compatibility pass ->
+  revision check -> `upgrade_database_schema()` when not at head -> exact
+  metadata comparison -> Alembic head.
+- Manual recovery/verification: `python schema_migrate.py upgrade` and
+  `python schema_migrate.py verify` from `package/backend`.
+- Task-start UI: `WorkspacePage.jsx` must decode FastAPI string/list details
+  and provide explicit timeout, HTTP-status, and network fallbacks.
+
+### 3. Contracts
+
+- Local interactive startup may apply only the known additive legacy repairs
+  declared in `LEGACY_ADDITIVE_COLUMNS`, then stamp an exact physical schema.
+- Production startup remains verify-only and must never call `init_db()` or
+  perform compatibility DDL.
+- Adopting an unversioned/outdated local schema requires an exact SQLAlchemy
+  metadata comparison before stamping head. An already-current local schema
+  takes the idempotent revision-only fast path after the compatibility pass.
+- Frontend errors must never concatenate an absent `detail` into user-visible
+  `undefined`; a detail-less HTTP 500 reports its status and directs the user
+  to backend logs without exposing SQL or credentials.
+
+### 4. Validation & Error Matrix
+
+- Unversioned legacy DB with a known missing additive column -> add/backfill,
+  metadata diff becomes empty, then stamp head.
+- Unknown type/constraint/destructive drift -> `SchemaStateError`; do not
+  stamp or start.
+- Production DB is unversioned/outdated -> reject startup and require the
+  one-shot migrator.
+- FastAPI validation list -> join its `msg` entries for the task-start toast.
+- Axios timeout -> show an explicit backend/database timeout message.
+- Detail-less HTTP error -> show `HTTP <status>`; no response -> show the
+  Axios/network fallback.
+
+### 5. Good/Base/Bad Cases
+
+- Good: an older local `optimization_sessions` table lacks
+  `worker_attempt_count`; startup adds it, backfills zero, stamps head, and a
+  rollback-only start-route probe can insert a queued session.
+- Base: a current local DB is already exact; startup verifies idempotently.
+- Bad: local startup prints success after `create_all()` while an existing
+  table still lacks a model column, causing task creation to fail with SQL 500
+  and the browser to display `undefined`.
+
+### 6. Tests Required
+
+- `test_alembic_migrations.py`: drop `worker_attempt_count` from an
+  unversioned current-schema fixture, run local `prepare_database()`, then
+  assert head revision and zero physical differences.
+- `test_frontend_redeem_entry.py`: assert task-start has validation, timeout,
+  HTTP-status, and network fallbacks and that the old `undefined` concatenation
+  is absent.
+- Manual smoke: execute the start route inside a rolled-back transaction and
+  assert it returns a queued `SessionResponse` without running the worker.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```python
+def prepare_database():
+    init_db()  # create_all does not alter an existing table
+```
+
+```jsx
+toast.error('Start failed: ' + error.response?.data?.detail);
+```
+
+#### Correct
+
+```python
+init_db()
+revision = expected if current == (expected,) else upgrade_database_schema()
+```
+
+```jsx
+const detail = error.response?.data?.detail;
+toast.error(detail || `Service returned HTTP ${error.response?.status}`);
+```

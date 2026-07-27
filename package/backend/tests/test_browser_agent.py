@@ -230,6 +230,63 @@ def test_browser_agent_pairing_claim_heartbeat_status_and_revoke(client, monkeyp
     assert heartbeat_after_revoke.status_code == 401
 
 
+def test_browser_agent_status_preserves_anonymous_detection_readiness(client, monkeypatch):
+    monkeypatch.setattr(config_module.settings, "ZHUQUE_DETECT_TRANSPORT", "browser_agent", raising=False)
+    user_id, token = _create_user("anonymous-agent-user")
+    agent_token = "gba_anonymous_agent"
+    db = SessionLocal()
+    try:
+        db.add(
+            BrowserAgent(
+                user_id=user_id,
+                agent_id="agent-anonymous",
+                name="Anonymous Chrome",
+                token_hash=hash_agent_token(agent_token),
+                status=BROWSER_AGENT_STATUS_ONLINE,
+                last_seen_at=utcnow(),
+            )
+        )
+        db.commit()
+    finally:
+        db.close()
+
+    heartbeat_response = client.post(
+        "/api/browser-agent/heartbeat",
+        headers={"Authorization": f"Bearer {agent_token}"},
+        json={
+            "agent_id": "agent-anonymous",
+            "status": "online",
+            "metadata": {
+                "zhuque": {
+                    "page_found": True,
+                    "logged_in": False,
+                    "button_enabled": True,
+                    "remaining_uses": 3,
+                    "message": "朱雀游客检测可用",
+                }
+            },
+        },
+    )
+    assert heartbeat_response.status_code == 200
+
+    status_response = client.get(
+        "/api/browser-agent/status",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert status_response.status_code == 200
+    body = status_response.json()
+    assert body["zhuque"]["logged_in"] is False
+    assert body["zhuque"]["button_enabled"] is True
+    assert body["zhuque"]["remaining_uses"] == 3
+    assert "游客检测可用" in body["message"]
+
+    transport_status = BrowserAgentZhuqueTransport(user_id).status()
+    assert transport_status["ready"] is True
+    assert transport_status["has_token"] is False
+    assert transport_status["button_enabled"] is True
+    assert "游客检测可用" in transport_status["message"]
+
+
 def test_browser_agent_claim_rejects_expired_or_reused_pairing(client):
     user_id, _ = _create_user("expired-pairing-user")
     db = SessionLocal()

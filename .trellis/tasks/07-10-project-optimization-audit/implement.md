@@ -66,6 +66,58 @@ The user reviewed the plan and authorized implementation on 2026-07-10. The task
   content sections, subject-specific typography, and restrained Apple blue/white
   system styling. Responsive and accessibility fallbacks remain mandatory.
 
+## v2.0.4 Feedback Follow-up — 2026-07-27
+
+- [x] Triage confirmed the browser-agent extension treats a visible Zhuque
+  login entry as a hard blocker even when the anonymous detect input/button is
+  usable, so logged-out/free detection regressed behind mandatory login copy.
+- [x] Triage confirmed one browser-agent job can click Detect again after a
+  CAPTCHA/manual-required loop, and stale result-page snapshots are accepted
+  without proving they belong to the current click. Both paths can spend or
+  appear to spend multiple Zhuque detections for one job.
+- [x] Triage confirmed the admin model picker renders only the current model
+  before `/v1/models` succeeds, and probed lists replace manual entry with a
+  closed select. This makes local/custom model gateways look limited to one
+  model.
+- [x] Allow usable anonymous Zhuque pages, preserve login/CAPTCHA guidance only
+  when detection is actually blocked, and keep status copy honest.
+- [x] Make one browser-agent job submit at most one Detect click across manual
+  verification, and reject stale pre-click snapshot/DOM results.
+- [x] Keep model fields editable while offering probed models as suggestions;
+  never overwrite a non-empty custom model merely because `/v1/models` omits it.
+- [x] Add extension, backend/static frontend regressions; rebuild/sync frontend
+  production assets; run targeted and full quality gates.
+- [x] Local manual validation exposed an unversioned legacy database where
+  `create_all()` left `optimization_sessions.worker_attempt_count` absent.
+  Local startup now runs the compatibility pass and the exact Alembic
+  reconcile/stamp gate before serving traffic; the repaired local DB verifies
+  at `0010_task_events_worker_leases`, and a rollback-only start-route probe
+  creates a queued session successfully.
+- [x] Workspace task-start errors no longer concatenate a missing FastAPI
+  `detail` into `undefined`; validation lists, timeouts, detail-less HTTP
+  failures, and network failures have explicit fallbacks. The frontend bundle
+  was rebuilt/synced and 75 static frontend contracts pass.
+- [x] Manual BYOK validation confirmed native `<datalist>` can report seven
+  discovered models without rendering a visible dropdown affordance in Chrome.
+  Admin and BYOK fields now share an editable combobox with an explicit
+  chevron, discovered-count header, automatic opening after a successful probe,
+  keyboard/ARIA list semantics, and preservation of custom model names.
+
+Validation:
+
+- Chrome extension Node regression suites: 2/2 passed; all four changed JS
+  files pass `node --check`.
+- Backend suite: 562 tests passed against the PostgreSQL test container.
+- Frontend: Vite production build passed and `package/frontend/dist` was synced
+  into `package/static`; 75 direct static-contract tests passed.
+- Security pattern scan: zero Critical/High findings in the extension, frontend,
+  and backend services. The nine Medium `random` findings are the pre-existing
+  non-cryptographic Zhuque browser-motion/timing jitter already accepted in
+  `design.md`.
+- `git diff --check` passed. The quality scanner's single warning is the
+  documented 542-code-line Zhuque page adapter; job decision logic is isolated
+  in the tested `zhuque-job.js` helper.
+
 ## Phase 0 — Containment and Baseline (S, before public go-live)
 
 - [ ] Inventory any locally/registry-built images that may contain `package/data`; rotate Zhuque sessions/API credentials if exposure is possible.

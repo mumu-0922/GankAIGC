@@ -91,6 +91,7 @@ def sanitize_zhuque_runtime_status(payload: Any, *, updated_at: str | None = Non
     status_value = str(payload.get("status") or "unknown").strip()[:40] or "unknown"
     logged_in = bool(payload.get("logged_in") or payload.get("connected") or payload.get("has_token"))
     page_found = bool(payload.get("page_found") or payload.get("pageFound"))
+    button_enabled = bool(payload.get("button_enabled") or payload.get("buttonEnabled"))
     remaining_uses = _coerce_int(payload.get("remaining_uses", payload.get("remainingUses")), -1)
     message = str(payload.get("message") or "").strip()[:240]
     sanitized = {
@@ -101,6 +102,7 @@ def sanitize_zhuque_runtime_status(payload: Any, *, updated_at: str | None = Non
         "status": "logged_in" if logged_in else status_value,
         "user_name": user_name if logged_in else "",
         "remaining_uses": remaining_uses,
+        "button_enabled": button_enabled,
         "message": message,
     }
     if updated_at:
@@ -265,11 +267,17 @@ class BrowserAgentService:
         transport = (settings.ZHUQUE_DETECT_TRANSPORT or "auto").strip().lower()
         required = transport == "browser_agent"
         zhuque_logged_in = bool(current_zhuque_status.get("logged_in"))
+        zhuque_anonymous_ready = bool(
+            current_zhuque_status.get("page_found")
+            and current_zhuque_status.get("button_enabled")
+        )
         if online and zhuque_logged_in:
             user_name = current_zhuque_status.get("user_name") or "朱雀账号"
             message = f"本机浏览器插件在线，朱雀已登录：{user_name}"
+        elif online and zhuque_anonymous_ready:
+            message = "本机浏览器插件在线，朱雀游客检测可用；也可登录账号使用账号次数"
         elif online:
-            message = "本机浏览器插件在线；请在本机朱雀页面登录后再检测"
+            message = "本机浏览器插件在线；请打开朱雀页面，游客检测不可用时再登录账号"
         elif items:
             message = "本机浏览器插件离线，请打开 Chrome 并保持插件在线"
         else:

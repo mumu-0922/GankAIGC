@@ -74,11 +74,17 @@ class BrowserAgentZhuqueTransport:
                 }
             zhuque_status = zhuque_runtime_status_from_agent(agent)
             zhuque_logged_in = bool(zhuque_status.get("logged_in"))
+            zhuque_anonymous_ready = bool(
+                zhuque_status.get("page_found")
+                and zhuque_status.get("button_enabled")
+            )
             zhuque_user_name = str(zhuque_status.get("user_name") or "").strip()
             message = (
                 f"本机浏览器插件在线，朱雀已登录：{zhuque_user_name or '朱雀账号'}。"
                 if zhuque_logged_in
-                else "本机浏览器插件在线；请在本机朱雀页面登录/完成验证码后再检测。"
+                else "本机浏览器插件在线，朱雀游客检测可用；也可登录账号使用账号次数。"
+                if zhuque_anonymous_ready
+                else "本机浏览器插件在线；请打开朱雀页面，游客检测不可用时再登录账号。"
             )
             return {
                 "ready": True,
@@ -87,7 +93,7 @@ class BrowserAgentZhuqueTransport:
                 "login_mode": "local_browser_agent",
                 "message": message,
                 "remaining_uses": int(zhuque_status.get("remaining_uses", -1)),
-                "button_enabled": True,
+                "button_enabled": bool(zhuque_logged_in or zhuque_anonymous_ready),
                 "has_token": zhuque_logged_in,
                 "user_name": zhuque_user_name,
                 "agent_id": agent.agent_id,

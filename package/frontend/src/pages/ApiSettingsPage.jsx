@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { ArrowLeft, CheckCircle2, KeyRound, Loader2, PlugZap, RefreshCw, Save, ShieldCheck, SlidersHorizontal } from 'lucide-react';
 import { userAPI } from '../api';
 import BrandLogo from '../components/BrandLogo';
+import EditableModelCombobox from '../components/EditableModelCombobox';
 
 const API_FORMAT_OPTIONS = [
   { value: 'openai_chat', label: 'OpenAI Compatible' },
@@ -132,11 +133,8 @@ const ApiSettingsPage = () => {
       if (models[0]) {
         setForm((current) => ({
           ...current,
-          polish_model: models.includes(current.polish_model) ? current.polish_model : models[0],
-          enhance_model: models.includes(current.enhance_model) ? current.enhance_model : models[0],
-          emotion_model: current.emotion_model
-            ? (models.includes(current.emotion_model) ? current.emotion_model : models[0])
-            : current.emotion_model,
+          polish_model: current.polish_model || models[0],
+          enhance_model: current.enhance_model || models[0],
         }));
       }
       toast.success(response.data?.message || `已拉取 ${models.length} 个模型`);
@@ -148,36 +146,20 @@ const ApiSettingsPage = () => {
   };
 
   const renderModelField = ({ field, label, placeholder, required }) => {
-    const modelOptions = availableModels.length > 0
-      ? availableModels
-      : [form[field]].filter(Boolean);
     return (
       <div key={field}>
         <label className="aurora-field-label" htmlFor={`api-${field}`}>{label}</label>
-        {availableModels.length > 0 ? (
-          <select
-            id={`api-${field}`}
-            value={form[field]}
-            onChange={(event) => updateField(field, event.target.value)}
-            className="aurora-input"
-            required={required}
-          >
-            {!required && <option value="">不使用</option>}
-            {modelOptions.map((modelName) => (
-              <option key={modelName} value={modelName}>{modelName}</option>
-            ))}
-          </select>
-        ) : (
-          <input
-            id={`api-${field}`}
-            type="text"
-            value={form[field]}
-            onChange={(event) => updateField(field, event.target.value)}
-            placeholder={placeholder}
-            className="aurora-input"
-            required={required}
-          />
-        )}
+        <EditableModelCombobox
+          id={`api-${field}`}
+          value={form[field]}
+          options={availableModels}
+          onChange={(value) => updateField(field, value)}
+          placeholder={placeholder}
+          inputClassName="aurora-input"
+          required={required}
+          label={label}
+          autoOpenOnOptions={field === 'polish_model'}
+        />
       </div>
     );
   };

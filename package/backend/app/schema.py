@@ -1,7 +1,8 @@
 """Production schema lifecycle helpers.
 
 Alembic owns server-deployment DDL.  Local interactive builds retain the
-legacy ``init_db`` path for compatibility, while Docker/VPS app and worker
+legacy ``init_db`` compatibility pass, then reconcile and stamp the physical
+schema through the same Alembic metadata gate.  Docker/VPS app and worker
 processes only verify the expected revision.
 """
 
@@ -122,6 +123,11 @@ def prepare_database() -> None:
         print(f"✓ 数据库 Schema 已就绪: {revision}")
         return
     init_db()
+    expected = get_expected_schema_revision()
+    with engine.connect() as connection:
+        current = get_current_schema_revisions(connection)
+    revision = expected if current == (expected,) else upgrade_database_schema()
+    print(f"✓ 本地数据库 Schema 已就绪: {revision}")
 
 
 def _column_factory(

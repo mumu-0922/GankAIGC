@@ -714,7 +714,7 @@ python-docx>=1.1.0
   - `POST /api/optimization/zhuque/local/focus` focuses an existing local Zhuque detect page when present.
 - Browser-agent web-user API:
   - `POST /api/browser-agent/pairings` -> `{pairing_id, pairing_code, expires_at}` for the authenticated GankAIGC user.
-  - `GET /api/browser-agent/status` -> `{required, transport, online, agents, message}`.
+  - `GET /api/browser-agent/status` -> `{required, transport, online, agents, message, zhuque}`; anonymous readiness is represented by `zhuque.page_found=true`, `zhuque.logged_in=false`, and `zhuque.button_enabled=true`.
   - `POST /api/browser-agent/revoke` accepts `{agent_id}` and revokes only the current user's agent.
 - Extension API:
   - `POST /api/browser-agent/claim` accepts `{pairing_code, name?, extension_version?, capabilities?}` and returns `{agent_id, agent_token}` exactly once per pairing.
@@ -732,11 +732,14 @@ python-docx>=1.1.0
 - Pairing codes and agent tokens are secret material. Store only HMAC/hash values server-side; return the agent token only from the claim response; support revocation.
 - `BrowserAgentZhuqueTransport.detect()` creates a `zhuque_agent_jobs` row, waits for completion, and normalizes the extension result through the same Zhuque result normalizer used by local detection. Extension payloads with placeholder scores (`rate < 0` or `> 100`), benchmark-table labels, empty segment labels, or example/card text must be rejected before the reduce pipeline consumes them.
 - Extension/manual states are progress states, not immediate failures. `manual_required` should keep the job alive until the user solves Zhuque login/CAPTCHA locally or the configured timeout expires.
+- A visible login entry is not itself a blocker. Extension `0.1.8+` must allow the logged-out/guest detector when a real editor and Detect control are present, while still returning `zhuque_not_logged_in` when those controls are unavailable.
+- One claimed `job_id` may submit the Zhuque Detect control at most once. Before the click, record the current network-snapshot/DOM result fingerprints; after CAPTCHA/manual recovery, resume waiting with the same per-job baseline instead of filling text and clicking again. Accept a result only when it arrives as a post-click live network event, its fingerprint differs from the baseline, or the page completes a full busy-to-idle cycle. Merely resuming or observing the busy state start does not make an unchanged pre-click result current.
+- Clear per-job extension state on completion, failure, timeout, or background cleanup so a finished job cannot contaminate a later claim.
 - The extension may open/reuse `https://matrix.tencent.com/ai-detect/` in the user's local Chrome, but backend code must not require public CDP, remote desktop, or `--remote-debugging-port` for VPS browser-agent mode.
 - Full paper text can live in `zhuque_agent_jobs.payload_text` for MVP handoff, but application logs, traces, and progress JSON must avoid logging the full payload.
 - Browser-agent quota sync must not depend on the first fixed-size slice of
   `document.body.innerText`. The result view can move or hide the quota after a
-  detection. Extension version `0.1.7+` reads the shared quota contract from
+  detection. Extension version `0.1.8+` reads the shared quota contract from
   terminal detection payloads (`availableUses` / `remainingUses`), targeted DOM
   text, and Vue runtime fields such as `aiGenTxtRemainingCount`, then heartbeats
   the numeric `remaining_uses` to the backend. `remainingRequests` is not a
@@ -753,18 +756,23 @@ python-docx>=1.1.0
 - VPS browser-agent mode logs show server-side Playwright Zhuque detection -> deployment/config regression.
 - Plugin sync returns a logged-in status but no numeric quota -> workspace may
   confirm login only; it must not claim that remaining uses were synchronized.
+- Logged-out page exposes an editor and Detect control -> heartbeat preserves `button_enabled=true`, transport remains ready, and UI reports guest mode rather than requiring login.
+- Resume receives the same result fingerprint captured before the original click and no busy-to-idle transition -> keep waiting; do not complete the job from stale state and do not click again.
 
 ### 5. Good/Base/Bad Cases
 
 - Good: VPS worker creates one persistent browser-agent job, the user's Chrome extension claims it, reuses the Zhuque tab, returns normalized `rate/labels_ratio/segment_labels`, and the reduce pipeline continues.
 - Good: Workspace shows browser-agent `required=true`, generates a pairing code, then flips from offline to online after heartbeat.
 - Good: User sees a visible Zhuque CAPTCHA in local Chrome; extension sends `manual_required`, the task waits, and completion resumes after the user solves it.
+- Good: A logged-out Zhuque page with usable guest controls reports anonymous readiness and runs the same browser-agent job without forcing account login.
+- Good: CAPTCHA appears after Detect was submitted; the background marks `detection_started=true`, retries only the wait phase, and one backend job consumes one Zhuque submission.
 - Good: A completed detection leaves the Zhuque tab on its result view; the
   extension extracts the updated quota from the terminal payload or Vue state
   and the workspace updates without closing/reopening the tab.
 - Base: Local `python main.py` or Windows one-click with `ZHUQUE_DETECT_TRANSPORT=auto` uses the local visible-browser path, `POST /api/optimization/zhuque/local/open` can open/focus a local page without relying on `package/backend/app/tools/zhuque_capture_window.py` inside the frozen exe, and `GET /api/browser-agent/status` returns `required=false`.
 - Bad: VPS uses `server_headless` or hidden fallback by default, requires public CDP, or asks users to start Chrome with `--remote-debugging-port`.
 - Bad: Extension host permissions use `<all_urls>` or backend logs include full paper text from `payload_text`.
+- Bad: Treating any visible `登录` link as a hard blocker, clicking Detect again after `manual_required`, or accepting an unchanged result snapshot merely because the button just became disabled.
 
 ### 6. Tests Required
 
@@ -773,6 +781,7 @@ python-docx>=1.1.0
 - Frontend/static tests must assert `browserAgentAPI`, pairing/status/revoke UI strings, `required/offline/online` copy, local-mode copy, and offline preflight blocking.
 - Extension tests must cover numeric/unknown quota text, nested terminal
   payloads, Vue ref values, and rejection of unrelated `remainingRequests`.
+- Extension tests must also cover anonymous editor readiness, resume-without-reclick state, rejection of pre-click fingerprints on resume/busy start, and acceptance after a live event, changed fingerprint, or completed busy cycle. Backend tests must prove `button_enabled` survives heartbeat sanitization and guest readiness does not imply `logged_in`/`has_token`.
 - Manual VPS validation must prove no server-headless Zhuque detection starts in `browser_agent` mode and the user's local Chrome performs the Zhuque interaction.
 
 ### 7. Wrong vs Correct

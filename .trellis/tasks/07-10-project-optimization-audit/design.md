@@ -174,3 +174,47 @@ Rollback normally switches the app/worker to the previous digest. Database resto
 - Security scanning after these changes reports zero Critical/High findings.
   The nine accepted Medium findings remain non-security browser motion/timing
   jitter in `zhuque_api.py`, as documented in Section 10.
+
+## 12. v2.0.4 Feedback Compatibility Decisions
+
+### What changed
+
+- Browser-agent extension `0.1.8` treats a visible Zhuque login entry as
+  optional when the anonymous editor and Detect control are present. Heartbeat
+  status carries `button_enabled` without converting guest readiness into a
+  logged-in/token state.
+- One `job_id` owns one pre-click result baseline and one Detect submission.
+  CAPTCHA/manual recovery resumes the existing wait, and unchanged pre-click
+  snapshots are accepted only after a full busy-to-idle cycle. Background
+  cleanup removes terminal per-job state.
+- Admin and per-user BYOK model pickers use a shared editable combobox with an
+  explicit dropdown affordance and discovered-count header. `/v1/models`
+  discovery fills only empty fields and never acts as an allowlist for
+  custom/local model names.
+
+### Why
+
+- Zhuque exposes legitimate logged-out guest quota, so login visibility is not
+  proof that detection is blocked.
+- A manual-verification retry and a stale result-page snapshot are separate
+  browser states; treating either as a new job caused duplicate clicks or
+  attached the previous result to the current text.
+- OpenAI-compatible local gateways may omit aliases or custom deployments from
+  `/v1/models`; replacing or rejecting the current value made a multi-model
+  gateway appear to support only one automatic model.
+
+### Impact and accepted quality boundary
+
+- The cross-layer status contract now distinguishes `logged_in` from anonymous
+  `button_enabled` readiness. Existing logged-in and offline behavior remains
+  compatible.
+- Normal detect-reduce semantics remain one initial detection plus one recheck
+  after each real rewrite; this fix removes duplicate submission of the same
+  browser-agent job rather than disabling convergence rounds.
+- `content-zhuque.js` remains a 542-code-line page adapter and exceeds the
+  quality checker's 500-line heuristic. This is accepted for this hotfix
+  because it owns one finite DOM/network state machine and splitting Chrome
+  content-script execution order without a browser fixture would raise release
+  risk. Pure decision logic was extracted to the separately tested
+  `zhuque-job.js`; a later fixture-backed refactor may split DOM parsing from
+  job orchestration.

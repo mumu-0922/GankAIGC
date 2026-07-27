@@ -1,6 +1,6 @@
 # GankAIGC Zhuque Browser Agent
 
-Chrome extension for VPS deployments where Zhuque detects/fights server-side headless browsers. Current recommended unpacked-extension version: `0.1.7`. Local desktop/source deployments can keep `ZHUQUE_DETECT_TRANSPORT=auto` or `local_browser` and do not need this extension.
+Chrome extension for VPS deployments where Zhuque detects/fights server-side headless browsers. Current recommended unpacked-extension version: `0.1.8`. Local desktop/source deployments can keep `ZHUQUE_DETECT_TRANSPORT=auto` or `local_browser` and do not need this extension.
 
 ## Purpose
 
@@ -42,7 +42,7 @@ The VPS must be reachable by the user's Chrome browser over HTTPS or trusted HTT
 2. Enable `Developer mode`.
 3. Click `Load unpacked`.
 4. Select this `browser-extension/` directory.
-5. If the extension was already installed, click `Reload` after pulling new code and confirm the version is `0.1.7` or newer.
+5. If the extension was already installed, click `Reload` after pulling new code and confirm the version is `0.1.8` or newer.
 
 ## Host permissions
 
@@ -84,7 +84,7 @@ The popup saves the server URL, pairing-code draft, and device name while typing
 - Keep Chrome open while VPS tasks run.
 - The workspace status should show `插件在线` before starting `AI检测 + 降重`.
 - The extension heartbeats compact Zhuque page login state back to GankAIGC so the workspace can show `朱雀账号` / `剩余次数` separately from `插件在线`.
-- Version `0.1.7` reads quota from Zhuque page text, terminal detection payloads, and Vue runtime state. Page refresh, manual quota refresh, and a completed detection can update remaining uses without closing and reopening the Zhuque tab.
+- Version `0.1.8` keeps the `0.1.7` quota sync and also allows Zhuque's logged-out/guest detector when its editor is usable. One claimed job submits Detect at most once across CAPTCHA/manual verification, and stale result-page snapshots from before the click are ignored.
 - The extension opens or reuses one Zhuque tab in the user's local Chrome.
 - Log in to Zhuque in the local Chrome tab when prompted.
 - If CAPTCHA appears, complete it in the local Zhuque tab; the backend will keep waiting until the job completes or times out.
