@@ -7,7 +7,7 @@ from app.utils.secret_files import read_secret_file
 
 DEFAULT_SECRET_KEY = "your-secret-key-change-this-in-production"
 DEFAULT_ADMIN_PASSWORD = "admin123"
-DEFAULT_APP_VERSION = "2.0.5"
+DEFAULT_APP_VERSION = "2.0.6"
 
 
 def _normalize_app_version(value: str) -> str:

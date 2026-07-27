@@ -122,6 +122,10 @@ The user reviewed the plan and authorized implementation on 2026-07-10. The task
   locks both mappings, and the rebuilt executable was inspected through
   `pyi-archive-viewer` to prove `env.py`, `script.py.mako`, and revision `0010`
   exist inside the final ZIP.
+- [x] The accepted feedback fixes are prepared as the `v2.0.6` release
+  candidate. Backend/frontend fallback versions, workflow defaults, packaging
+  docs, and committed production assets are synchronized; the final local
+  Windows one-click candidate reports `v2.0.6` from inside the frozen EXE.
 
 Validation:
 
@@ -136,6 +140,9 @@ Validation:
   `design.md`.
 - Windows one-click release contracts: 8/8 passed; rebuilt ZIP integrity passed,
   and frozen Alembic runtime assets were verified inside the packaged EXE.
+- `v2.0.6` release gate: 89 targeted version/release/static contracts passed,
+  the Windows one-click build completed, and the frozen version plus Alembic
+  assets were inspected before tag publication.
 - `git diff --check` passed. The quality scanner's single warning is the
   documented 542-code-line Zhuque page adapter; job decision logic is isolated
   in the tested `zhuque-job.js` helper.

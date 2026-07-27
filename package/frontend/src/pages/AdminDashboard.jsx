@@ -65,7 +65,7 @@ const ACCOUNT_PANEL_TABS = [
   { id: 'creditTransactions', label: '啤酒流水' },
   { id: 'apiConfigs', label: 'API 配置' },
 ];
-const CURRENT_APP_VERSION = window.__GANKAIGC_RUNTIME__?.appVersion || import.meta.env.VITE_APP_VERSION || 'v2.0.5';
+const CURRENT_APP_VERSION = window.__GANKAIGC_RUNTIME__?.appVersion || import.meta.env.VITE_APP_VERSION || 'v2.0.6';
 const ANNOUNCEMENT_MARKDOWN_TOOLS = [
   { id: 'heading', label: 'H', title: '标题', syntax: 'line-prefix', prefix: '## ' },
   { id: 'bold', label: 'B', title: '加粗', syntax: 'wrap', prefix: '**', suffix: '**', sample: '加粗文字' },
