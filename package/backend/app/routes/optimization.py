@@ -24,6 +24,7 @@ from app.schemas import (
     ZhuquePreflightRequest, ZhuqueReadinessResponse,
 )
 from app.services.credit_service import CreditService, calculate_optimization_credits
+from app.services.browser_agent_service import BrowserAgentService
 from app.services.provider_config_service import ProviderConfigService
 from app.services.session_credentials import clear_transient_session_api_keys
 from app.services.stream_manager import stream_manager
@@ -924,13 +925,23 @@ def _get_zhuque_headless_status(user: Optional[User] = None) -> dict:
         "message": status.get("message") or ("朱雀无头 API 已就绪" if ready else "未找到朱雀微信扫码凭证"),
     }
 
-def _with_zhuque_cost_estimate(readiness: dict, text: str) -> dict:
+def _with_zhuque_cost_estimate(
+    readiness: dict,
+    text: str,
+    *,
+    billing_mode: str = "platform",
+) -> dict:
     segments = split_text_into_segments(text or "") if text else []
     segment_count = max(len(segments), 1) if text else 0
+    charges_platform_credits = billing_mode == "platform"
     return {
         **readiness,
-        "estimated_first_round_credits": segment_count * 10,
-        "estimated_max_round_credits": segment_count * settings.ZHUQUE_MAX_REDUCE_ROUNDS * 10,
+        "estimated_first_round_credits": segment_count * 10 if charges_platform_credits else 0,
+        "estimated_max_round_credits": (
+            segment_count * settings.ZHUQUE_MAX_REDUCE_ROUNDS * 10
+            if charges_platform_credits
+            else 0
+        ),
     }
 
 
@@ -942,10 +953,19 @@ def _zhuque_preflight_error(readiness: dict) -> str:
     return message
 
 
-async def _run_zhuque_preflight_or_raise(text: str, user: User) -> dict:
+async def _run_zhuque_preflight_or_raise(
+    text: str,
+    user: User,
+    *,
+    billing_mode: str = "platform",
+) -> dict:
     if len(text or "") < 350:
         raise HTTPException(status_code=400, detail=f"朱雀 AI 检测要求文本长度不少于 350 字，当前 {len(text or '')} 字")
-    readiness = _with_zhuque_cost_estimate(await _zhuque_service_for_user(user).readiness(text), text)
+    readiness = _with_zhuque_cost_estimate(
+        await _zhuque_service_for_user(user).readiness(text),
+        text,
+        billing_mode=billing_mode,
+    )
     if not readiness.get("ready"):
         raise HTTPException(status_code=400, detail=_zhuque_preflight_error(readiness))
     return readiness
@@ -1038,7 +1058,11 @@ async def start_optimization(
             provider_config = ProviderConfigService(db).get_runtime_config(user)
 
     if data.processing_mode == "ai_detect_reduce":
-        await _run_zhuque_preflight_or_raise(data.original_text, user)
+        await _run_zhuque_preflight_or_raise(
+            data.original_text,
+            user,
+            billing_mode=data.billing_mode,
+        )
 
     polish_model = data.polish_config.model if data.polish_config else None
     polish_api_key = data.polish_config.api_key if data.polish_config else None
@@ -1398,6 +1422,7 @@ async def preflight_zhuque_task(
     return _with_zhuque_cost_estimate(
         await _zhuque_service_for_user(user).readiness(payload.original_text),
         payload.original_text,
+        billing_mode=payload.billing_mode,
     )
 
 
@@ -1900,6 +1925,7 @@ async def stop_session(
     session.finished_at = utcnow()
     clear_transient_session_api_keys(session)
     db.commit()
+    BrowserAgentService(db).cancel_zhuque_jobs_for_session(session_id=session.id)
     with contextlib.suppress(Exception):
         await stream_manager.broadcast(
             session.session_id,

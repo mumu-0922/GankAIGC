@@ -229,6 +229,13 @@ async def _run_with_error_handling(db: Session, session: OptimizationSession, ru
     except Exception as error:
         db.rollback()
         session = db.query(OptimizationSession).filter(OptimizationSession.id == session_db_id).one()
+        if session.status == "stopped":
+            session.finished_at = session.finished_at or utcnow()
+            session.updated_at = session.finished_at
+            clear_transient_session_api_keys(session)
+            db.commit()
+            await _broadcast_status_safely(session, "stopped")
+            return
         session.status = "failed"
         session.error_message = _truncate_error_message(error)
         session.finished_at = utcnow()

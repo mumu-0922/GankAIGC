@@ -1064,7 +1064,7 @@ const WorkspacePage = () => {
       const syncResult = await requestBrowserAgentZhuqueRefresh({ focus: false, timeoutMs: 5000 });
       const latestStatus = await loadBrowserAgentStatus();
       if (!syncResult) {
-        toast.error('本机插件未响应同步请求，请重新加载 0.1.9 或更高版本插件');
+        toast.error('本机插件未响应同步请求，请重新加载 0.1.10 或更高版本插件');
         return;
       }
       if (syncResult.ok === false) {

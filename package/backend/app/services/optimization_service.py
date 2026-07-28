@@ -973,7 +973,7 @@ class OptimizationService:
                 raise Exception("会话已被用户停止")
 
             user = self.db.query(User).filter(User.id == self.session_obj.user_id).first()
-            if user:
+            if user and self.session_obj.billing_mode == "platform":
                 CreditService(self.db).hold_platform_credit(
                     user,
                     reason="zhuque_reduce",
@@ -1086,7 +1086,7 @@ class OptimizationService:
         charged_segment_ids: set[int],
     ) -> None:
         """Charge a Zhuque reduce segment once per round, even after batch fallback."""
-        if seg.id in charged_segment_ids:
+        if self.session_obj.billing_mode != "platform" or seg.id in charged_segment_ids:
             return
         user = self.db.query(User).filter(User.id == self.session_obj.user_id).first()
         if user:
@@ -1678,7 +1678,10 @@ class OptimizationService:
             prefer_reduced=prefer_reduced,
         )
         try:
-            result = await _zhuque_service_for_user_id(self.session_obj.user_id).detect(detect_text)
+            result = await _zhuque_service_for_user_id(self.session_obj.user_id).detect(
+                detect_text,
+                session_id=self.session_obj.id,
+            )
             result_success = bool(result.get("success"))
             if isinstance(result, dict):
                 result["detect_text_source"] = detect_text_source

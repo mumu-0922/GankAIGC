@@ -335,3 +335,50 @@ def test_process_next_queued_session_marks_failed_and_refunds_held_credit_once()
         assert [transaction.delta for transaction in transactions] == [-3, 3]
     finally:
         db.close()
+
+
+def test_worker_preserves_user_stopped_status_when_active_runner_unblocks():
+    user_id, _ = _create_user(credit_balance=0)
+    session_id = _create_session(
+        user_id,
+        "externally-stopped-session",
+        created_at=utcnow() - timedelta(minutes=1),
+    )
+    next_session_id = _create_session(user_id, "next-polish-session")
+
+    async def runner_unblocked_by_stop(db, session):
+        if session.id == next_session_id:
+            session.status = "completed"
+            session.progress = 100
+            session.completed_at = utcnow()
+            db.commit()
+            return
+        control_db = SessionLocal()
+        try:
+            controlled_session = control_db.get(OptimizationSession, session.id)
+            controlled_session.status = "stopped"
+            controlled_session.error_message = "用户手动停止"
+            controlled_session.finished_at = utcnow()
+            control_db.commit()
+        finally:
+            control_db.close()
+        raise RuntimeError("browser-agent wait cancelled")
+
+    assert asyncio.run(
+        process_next_queued_session("stop-aware-worker", runner=runner_unblocked_by_stop)
+    ) is True
+    assert asyncio.run(
+        process_next_queued_session("stop-aware-worker", runner=runner_unblocked_by_stop)
+    ) is True
+
+    db = SessionLocal()
+    try:
+        session = db.get(OptimizationSession, session_id)
+        next_session = db.get(OptimizationSession, next_session_id)
+        assert session.status == "stopped"
+        assert session.error_message == "用户手动停止"
+        assert session.finished_at is not None
+        assert next_session.status == "completed"
+        assert next_session.worker_id == "stop-aware-worker"
+    finally:
+        db.close()

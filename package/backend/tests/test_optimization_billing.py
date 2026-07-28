@@ -903,6 +903,39 @@ def test_ai_detect_reduce_start_does_not_hold_platform_credit(client, monkeypatc
         db.close()
 
 
+def test_ai_detect_reduce_byok_preflight_reports_zero_platform_credits(client, monkeypatch):
+    from app.routes import optimization
+
+    _, token = _create_user(credit_balance=0)
+    monkeypatch.setattr(optimization, "zhuque_service", ReadyZhuqueService())
+    monkeypatch.setattr(
+        optimization.ProviderConfigService,
+        "get_runtime_config",
+        lambda self, user: {
+            "base_url": "https://api.example/v1",
+            "api_key": "<redacted>",
+            "api_format": "openai_chat",
+            "polish_model": "gpt-5.4",
+            "enhance_model": "gpt-5.4",
+            "emotion_model": None,
+        },
+    )
+
+    response = client.post(
+        "/api/optimization/zhuque/preflight",
+        json={
+            "original_text": "汉" * 1000,
+            "processing_mode": "ai_detect_reduce",
+            "billing_mode": "byok",
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["estimated_first_round_credits"] == 0
+    assert response.json()["estimated_max_round_credits"] == 0
+
+
 def test_ai_detect_reduce_retry_does_not_hold_platform_credit(client, monkeypatch):
     from app.routes import optimization
 

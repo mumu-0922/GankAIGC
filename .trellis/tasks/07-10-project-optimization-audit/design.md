@@ -222,3 +222,40 @@ Rollback normally switches the app/worker to the previous digest. Database resto
   risk. Pure decision logic was extracted to the separately tested
   `zhuque-job.js`; a later fixture-backed refactor may split DOM parsing from
   job orchestration.
+
+## 13. Cloud Queue and BYOK Hotfix Decisions
+
+### What changed
+
+- Browser-agent extension `0.1.10` replaces invalid sub-30-second MV3 alarm
+  periods with Chrome-supported 30-second alarms and performs an immediate
+  heartbeat/job claim after install, reload, service-worker initialization,
+  and browser startup.
+- Zhuque detection queue entries now carry the owning optimization session
+  context into the persistent browser-agent job. Stopping a session cancels
+  its non-terminal plugin jobs; the waiting transport observes the durable
+  stop state and exits promptly; queue error handling preserves `stopped`.
+- Zhuque batch and legacy rewrite billing now charge platform beer only when
+  `billing_mode="platform"`. BYOK preflight estimates are zero and BYOK
+  rewrite paths create no platform credit transactions.
+
+### Why
+
+- Chrome 120+ enforces a 30-second minimum repeating MV3 alarm interval. The
+  former `0.25`/`0.1` minute values could leave a paired extension able to
+  heartbeat on demand but unable to poll jobs.
+- The Docker worker is intentionally serial. A stopped browser-agent task that
+  continued waiting for the full transport timeout monopolized that worker and
+  made polish, enhance, and emotional-polish sessions remain queued.
+- BYOK routes use the user's provider credentials; charging platform beer in
+  Zhuque-specific batch/legacy helpers violated the billing-mode boundary even
+  though ordinary BYOK stages already skipped platform billing.
+
+### Impact and rollback
+
+- Job claiming may now wait up to 30 seconds between idle polls, but install
+  and startup run an immediate claim and Chrome no longer rejects the alarm.
+- Cancellation is scoped by the internal optimization-session primary key and
+  touches only non-terminal jobs; completed results remain immutable.
+- Platform billing behavior is unchanged. Rollback may revert the application
+  and extension together, but must not reuse or move an existing release tag.

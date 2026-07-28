@@ -2,6 +2,7 @@ import asyncio
 import json
 from datetime import timedelta
 
+import pytest
 from sqlalchemy import inspect
 
 import app.config as config_module
@@ -25,7 +26,7 @@ from app.models.browser_agent_constants import (
 )
 from app.models.models import BrowserAgent, BrowserAgentPairing, OptimizationSession, User, ZhuqueAgentJob
 from app.services.browser_agent_service import BrowserAgentService, hash_agent_token, hash_pairing_code
-from app.services.zhuque_browser_agent_transport import BrowserAgentZhuqueTransport
+from app.services.zhuque_browser_agent_transport import BrowserAgentJobFailed, BrowserAgentZhuqueTransport
 from app.services.zhuque_service import ZhuqueService
 from app.utils.auth import create_user_access_token, get_password_hash
 from app.utils.time import utcnow
@@ -617,6 +618,14 @@ def test_browser_agent_transport_detect_creates_job_and_returns_result(monkeypat
     agent_token = "gba_transport_token"
     db = SessionLocal()
     try:
+        session = OptimizationSession(
+            user_id=user_id,
+            session_id="transport-detect-session",
+            original_text="本机浏览器检测正文",
+            current_stage="ai_detect_reduce",
+            status="processing",
+            processing_mode="ai_detect_reduce",
+        )
         db.add(
             BrowserAgent(
                 user_id=user_id,
@@ -626,13 +635,20 @@ def test_browser_agent_transport_detect_creates_job_and_returns_result(monkeypat
                 last_seen_at=utcnow(),
             )
         )
+        db.add(session)
         db.commit()
+        db.refresh(session)
+        session_db_id = session.id
     finally:
         db.close()
 
     async def run_detect():
         completer = asyncio.create_task(_complete_first_browser_agent_job(user_id, agent_token, "agent-transport-1"))
-        result = await BrowserAgentZhuqueTransport(user_id).detect("本机浏览器检测正文", timeout=10)
+        result = await BrowserAgentZhuqueTransport(user_id).detect(
+            "本机浏览器检测正文",
+            timeout=10,
+            session_id=session_db_id,
+        )
         await completer
         return result
 
@@ -641,6 +657,84 @@ def test_browser_agent_transport_detect_creates_job_and_returns_result(monkeypat
     assert result["success"] is True
     assert result["source"] == "browser_agent"
     assert result["rate"] == 18.5
+    db = SessionLocal()
+    try:
+        stored_job = db.query(ZhuqueAgentJob).filter(ZhuqueAgentJob.user_id == user_id).one()
+        assert stored_job.session_id == session_db_id
+    finally:
+        db.close()
+
+
+def test_stopping_session_cancels_browser_agent_job_and_releases_transport(client, monkeypatch):
+    monkeypatch.setattr(config_module.settings, "ZHUQUE_DETECT_TRANSPORT", "browser_agent", raising=False)
+    monkeypatch.setattr(config_module.settings, "ZHUQUE_BROWSER_AGENT_JOB_TIMEOUT", 30, raising=False)
+    user_id, user_token = _create_user("transport-stop-user")
+    db = SessionLocal()
+    try:
+        session = OptimizationSession(
+            user_id=user_id,
+            session_id="transport-stop-session",
+            original_text="等待插件的检测正文",
+            current_stage="ai_detect_reduce",
+            status="processing",
+            processing_mode="ai_detect_reduce",
+        )
+        db.add_all(
+            [
+                BrowserAgent(
+                    user_id=user_id,
+                    agent_id="agent-transport-stop",
+                    token_hash=hash_agent_token("gba_transport_stop"),
+                    status=BROWSER_AGENT_STATUS_ONLINE,
+                    last_seen_at=utcnow(),
+                ),
+                session,
+            ]
+        )
+        db.commit()
+        db.refresh(session)
+        session_db_id = session.id
+    finally:
+        db.close()
+
+    async def run_and_stop():
+        detect_task = asyncio.create_task(
+            BrowserAgentZhuqueTransport(user_id).detect(
+                "等待插件的检测正文",
+                timeout=30,
+                session_id=session_db_id,
+            )
+        )
+        for _ in range(30):
+            db = SessionLocal()
+            try:
+                job = db.query(ZhuqueAgentJob).filter(ZhuqueAgentJob.session_id == session_db_id).first()
+            finally:
+                db.close()
+            if job:
+                break
+            await asyncio.sleep(0.05)
+        else:
+            raise AssertionError("browser-agent job was not created")
+
+        stop_response = await asyncio.to_thread(
+            client.post,
+            "/api/optimization/sessions/transport-stop-session/stop",
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert stop_response.status_code == 200
+        with pytest.raises(BrowserAgentJobFailed, match="任务已取消"):
+            await asyncio.wait_for(detect_task, timeout=3)
+
+    asyncio.run(run_and_stop())
+    db = SessionLocal()
+    try:
+        stopped_session = db.query(OptimizationSession).filter(OptimizationSession.id == session_db_id).one()
+        job = db.query(ZhuqueAgentJob).filter(ZhuqueAgentJob.session_id == session_db_id).one()
+        assert stopped_session.status == "stopped"
+        assert job.status == ZHUQUE_AGENT_JOB_STATUS_CANCELLED
+    finally:
+        db.close()
 
 
 def test_zhuque_service_browser_agent_readiness_and_start(monkeypatch):

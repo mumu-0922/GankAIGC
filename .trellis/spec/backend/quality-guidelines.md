@@ -266,7 +266,7 @@ meta: `↑ ${status?.system?.network?.tx_rate_label || '不可用'} ↓ ${status
   - `zhuque_prompt_memories` stores Prompt Evolution metadata: failure signature, prompt patch, source, before/after rates, success/failure counters, and enabled state.
 - Service:
   - `OptimizationService._process_ai_detect_reduce()` owns the full-text detect → selective reduce → full-text recheck loop.
-  - `ZhuqueService.detect(text)` is serialized per user through `zhuque_service.for_user(user.id)`. The manager keeps independent service instances and queues so one user's Zhuque credential/quota cannot overwrite another user's session.
+  - `ZhuqueService.detect(text, session_id=None, segment_id=None)` is serialized per user through `zhuque_service.for_user(user.id)`. The manager keeps independent service instances and queues so one user's Zhuque credential/quota cannot overwrite another user's session. Browser-agent calls must preserve the optimization session context so cancellation can release the waiting transport.
 
 ### 3. Contracts
 
@@ -287,12 +287,13 @@ meta: `↑ ${status?.system?.network?.tx_rate_label || '不可用'} ↓ ${status
 - If WSL cannot reach the Windows Chrome CDP port directly but Windows itself can access `http://127.0.0.1:<ZHUQUE_CDP_PORT>`, `zhuque_capture_window.py --sync-session` must switch to the Windows PowerShell CDP bridge instead of falling back to Playwright's Chromium. The bridge reads the real Windows Chrome page state, cookies, and localStorage from the Windows side and writes scoped `creds_latest.json` plus non-secret `session_status.json`.
 - Windows Chrome may ignore a new `--remote-debugging-port` launch when the dedicated GankAIGC profile is already open without CDP. The capture script may stop only Chrome processes whose command line references the dedicated `ZHUQUE_WINDOWS_CHROME_USER_DATA_DIR`/`GankAIGC\ZhuqueChromeProfile` profile or the configured debug port, then relaunch with CDP. It must never kill the user's normal Chrome profile.
 - Start/retry in `platform` mode for `ai_detect_reduce` must leave `charge_status="not_charged"` and `charged_credits=0`; only actual LLM reduce calls create `reason="zhuque_reduce"` transactions.
+- BYOK means all LLM rewrite stages use the user's provider credentials and must never spend platform beer. Both the batch and legacy per-segment Zhuque reduce paths must skip `hold_platform_credit()` when `billing_mode="byok"`, and Zhuque preflight must report `estimated_first_round_credits=0` / `estimated_max_round_credits=0`. Platform-mode estimates and actual per-segment charges remain unchanged.
 - Session project assignment is a metadata move only: it must verify the session belongs to the current user, verify the target `PaperProject` belongs to the same user and is not archived, update only `OptimizationSession.project_id/updated_at`, and never mutate segment text, billing fields, or task status. `project_id=null` means move the session back to unfiled.
 - `ai_detect_reduce` start must run a preflight before creating a session:
   - text shorter than 350 chars -> HTTP 400, no session, no transaction
   - Zhuque unready -> HTTP 400 with actionable message, no session, no transaction
   - `byok` without saved/request provider config -> HTTP 400 before touching Zhuque readiness
-- Each reduce operation charges 10 beers per segment before calling polish/enhance. If the user lacks enough beers, the LLM call must not run.
+- In `platform` mode, each reduce operation charges 10 beers per segment before calling polish/enhance. If the user lacks enough beers, the LLM call must not run. In `byok` mode the same batch/legacy rewrite flow runs without any `CreditTransaction`.
 - The pipeline detects the joined full text once first. Risk rate is `max(labels_ratio["0"], labels_ratio["2"]) * 100` when `labels_ratio` is present; fallback to `rate`. Zhuque payload normalization maps `0=AI`, `1=human`, `2=suspicious/mixed`; do not reuse the old `0=human,1=AI` mapping.
 - Zhuque `segment_labels[].position` is relative to the joined text using `"\n\n"` separators and live Zhuque payloads use `[start, length]`, not `[start, end]`. Only labels `0` (AI) and `2` (suspicious) select segments for rewrite. If usable positions are absent, run the fallback segment classifier instead of trusting stale/guessed positions.
 - When Zhuque positions are absent, the safe fallback must first run the Zhuque fallback segment classifier instead of blindly rewriting every segment. The classifier may skip heading rows, references, formulas/metric-only lines, metadata, and very short fragments, but it must not skip section bodies: `ABSTRACT_HEADING` / `ACK_HEADING` / `SECTION_HEADING` are skipped while `ABSTRACT_BODY`, `ACK_BODY`, conclusion/discussion content, `BODY`, and conservative `UNKNOWN` candidates remain reducible. `REFERENCE_HEADING` enters reference-zone handling and reference items remain skipped. Classification trace must be compact metadata only: type codes, actions, reasons, lengths, selected indices, and counts; never full text.
@@ -735,9 +736,11 @@ python-docx>=1.1.0
 - A visible login entry is not itself a blocker. Extension `0.1.8+` must allow the logged-out/guest detector when a real editor and Detect control are present, while still returning `zhuque_not_logged_in` when those controls are unavailable.
 - One claimed `job_id` may submit the Zhuque Detect control at most once. Before the click, record the current network-snapshot/DOM result fingerprints; after CAPTCHA/manual recovery, resume waiting with the same per-job baseline instead of filling text and clicking again. Accept a result only when it arrives as a post-click live network event, its fingerprint differs from the baseline, the old visible DOM result was cleared before submission and then reappeared, or the page completes a full busy-to-idle cycle. Merely resuming or observing the busy state start does not make an unchanged pre-click result current. Clear-page evidence applies only to the visible DOM candidate; do not use it to accept a Vue/network snapshot that may still contain cached old state.
 - Extension `0.1.9+` must accept both Zhuque summary layouts: three percentages in `human, suspicious, AI` order, or two percentages in `human, AI` order when Zhuque omits the zero-valued suspicious class. The two-value form maps suspicious to zero; a single unlabeled percentage remains ambiguous and must not be fabricated into a complete result.
+- Extension `0.1.10+` must use Chrome MV3-supported repeating alarms of at least 30 seconds (`periodInMinutes >= 0.5`) for heartbeat and job claim. Install/reload, service-worker initialization, and browser startup must also run one immediate heartbeat and claim so a paired extension does not appear online while waiting for or missing its first alarm.
 - Clear per-job extension state on completion, failure, timeout, or background cleanup so a finished job cannot contaminate a later claim.
 - The extension may open/reuse `https://matrix.tencent.com/ai-detect/` in the user's local Chrome, but backend code must not require public CDP, remote desktop, or `--remote-debugging-port` for VPS browser-agent mode.
 - Full paper text can live in `zhuque_agent_jobs.payload_text` for MVP handoff, but application logs, traces, and progress JSON must avoid logging the full payload.
+- `POST /api/optimization/sessions/{session_id}/stop` must cancel every non-terminal `zhuque_agent_jobs` row linked to that optimization session. While waiting, `BrowserAgentZhuqueTransport` must also observe the durable session status and exit promptly when it becomes `stopped`; the task queue must preserve that user terminal state instead of overwriting it with `failed` when the unblocked transport raises. This is required to release the serial Docker worker for queued polish/enhance/emotional-polish tasks.
 - Browser-agent quota sync must not depend on the first fixed-size slice of
   `document.body.innerText`. The result view can move or hide the quota after a
   detection. Extension version `0.1.8+` reads the shared quota contract from
@@ -760,6 +763,7 @@ python-docx>=1.1.0
 - Logged-out page exposes an editor and Detect control -> heartbeat preserves `button_enabled=true`, transport remains ready, and UI reports guest mode rather than requiring login.
 - Resume receives the same result fingerprint captured before the original click and no busy-to-idle transition -> keep waiting; do not complete the job from stale state and do not click again.
 - Result DOM reports `0%` human and `100%` AI with no suspicious percentage -> complete with AI rate `100`, human ratio `0`, suspicious ratio `0`, and return the result to the waiting backend job.
+- User stops a processing session whose plugin job is pending/claimed/running/manual-required -> the job becomes `cancelled`, transport exits within one polling interval, the session remains `stopped`, and the worker can claim the next queued task.
 
 ### 5. Good/Base/Bad Cases
 
@@ -772,6 +776,8 @@ python-docx>=1.1.0
   extension extracts the updated quota from the terminal payload or Vue state
   and the workspace updates without closing/reopening the tab.
 - Good: A binary Zhuque result card omits its zero suspicious slice; the extension parses the remaining human/AI pair and completes the claimed job instead of waiting until timeout.
+- Good: Chrome starts with an already-paired `0.1.10` extension; the service worker creates valid 30-second alarms and immediately claims an existing pending job without waiting for the first alarm.
+- Good: A user stops a Zhuque task waiting on the plugin; the linked handoff row is cancelled and the single Docker worker proceeds to the next queued polish task instead of remaining blocked for the full browser-agent timeout.
 - Base: Local `python main.py` or Windows one-click with `ZHUQUE_DETECT_TRANSPORT=auto` uses the local visible-browser path, `POST /api/optimization/zhuque/local/open` can open/focus a local page without relying on `package/backend/app/tools/zhuque_capture_window.py` inside the frozen exe, and `GET /api/browser-agent/status` returns `required=false`.
 - Bad: VPS uses `server_headless` or hidden fallback by default, requires public CDP, or asks users to start Chrome with `--remote-debugging-port`.
 - Bad: Extension host permissions use `<all_urls>` or backend logs include full paper text from `payload_text`.
@@ -786,6 +792,8 @@ python-docx>=1.1.0
   payloads, Vue ref values, and rejection of unrelated `remainingRequests`.
 - Extension tests must also cover anonymous editor readiness, resume-without-reclick state, rejection of pre-click fingerprints on resume/busy start, and acceptance after a live event, changed fingerprint, or completed busy cycle. Backend tests must prove `button_enabled` survives heartbeat sanitization and guest readiness does not imply `logged_in`/`has_token`.
 - Extension tests must cover both three-class and two-class result text, including the `0% human / 100% AI` boundary, and reject an ambiguous single-percentage card.
+- Extension tests must assert every repeating alarm uses at least `0.5` minutes and startup calls both heartbeat and job claim immediately. Backend regressions must prove stop cancels linked jobs, releases the transport promptly, and preserves the durable `stopped` session state.
+- Billing regressions must cover both batch-enabled and legacy Zhuque reduce paths under BYOK and assert no balance change or `CreditTransaction`; preflight tests must assert BYOK platform-credit estimates are zero.
 - Manual VPS validation must prove no server-headless Zhuque detection starts in `browser_agent` mode and the user's local Chrome performs the Zhuque interaction.
 
 ### 7. Wrong vs Correct

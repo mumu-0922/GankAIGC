@@ -15,7 +15,7 @@ from app.models.browser_agent_constants import (
     ZHUQUE_AGENT_JOB_STATUS_CANCELLED,
     ZHUQUE_AGENT_JOB_STATUS_MANUAL_REQUIRED,
 )
-from app.models.models import BrowserAgent, ZhuqueAgentJob
+from app.models.models import BrowserAgent, OptimizationSession, ZhuqueAgentJob
 from app.services.browser_agent_service import BrowserAgentService, zhuque_runtime_status_from_agent
 from app.services.zhuque_api import normalize_zhuque_result
 from app.utils.time import utcnow
@@ -124,6 +124,17 @@ class BrowserAgentZhuqueTransport:
         while asyncio.get_running_loop().time() < deadline:
             db = SessionLocal()
             try:
+                if session_id is not None:
+                    session_status = (
+                        db.query(OptimizationSession.status)
+                        .filter(OptimizationSession.id == session_id)
+                        .scalar()
+                    )
+                    if session_status == "stopped":
+                        BrowserAgentService(db).cancel_zhuque_jobs_for_session(
+                            session_id=session_id
+                        )
+                        raise BrowserAgentJobFailed("任务已取消")
                 job = db.query(ZhuqueAgentJob).filter(ZhuqueAgentJob.job_id == job_id).first()
                 if not job:
                     raise BrowserAgentJobFailed("本机浏览器检测任务丢失")

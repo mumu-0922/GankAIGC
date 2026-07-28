@@ -15,6 +15,7 @@ class FakeZhuqueService:
     def __init__(self, rates):
         self.rates = list(rates)
         self.detected_texts = []
+        self.detect_contexts = []
         self.start_calls = 0
         self.readiness_calls = []
 
@@ -38,8 +39,9 @@ class FakeZhuqueService:
             "actions": [],
         }
 
-    async def detect(self, text):
+    async def detect(self, text, **context):
         self.detected_texts.append(text)
+        self.detect_contexts.append(context)
         next_result = self.rates.pop(0)
         if isinstance(next_result, dict):
             result = dict(next_result)
@@ -67,7 +69,7 @@ class FailingZhuqueService:
     async def start(self):
         self.start_calls += 1
 
-    async def detect(self, text):
+    async def detect(self, text, **_context):
         self.detected_texts.append(text)
         return {
             "success": False,
@@ -108,7 +110,7 @@ class UnavailableZhuqueService:
             "actions": ["微信扫码登录朱雀"],
         }
 
-    async def detect(self, text):
+    async def detect(self, text, **_context):
         self.detect_calls += 1
         raise AssertionError("detect should not run when Zhuque preflight fails")
 
@@ -4765,8 +4767,75 @@ def test_ai_detect_reduce_rewrites_segments_above_threshold_and_records_results(
         assert [(txn.reason, txn.delta) for txn in transactions] == [("zhuque_reduce", -10)]
         assert fake_zhuque.detected_texts[0] == segment.original_text
         assert fake_zhuque.detected_texts[1] == segment.zhuque_reduced_text
+        assert fake_zhuque.detect_contexts == [
+            {"session_id": session.id},
+            {"session_id": session.id},
+        ]
         assert [call["text"] for call in fake_ai.polish_calls] == [segment.original_text]
         assert [call["text"] for call in fake_ai.enhance_calls] == [segment.polished_text]
+    finally:
+        db.close()
+
+
+@pytest.mark.parametrize("batch_enabled", [True, False])
+def test_ai_detect_reduce_byok_never_charges_platform_credits(monkeypatch, batch_enabled):
+    import app.services.optimization_service as optimization_service_module
+
+    user_id = _create_user(credit_balance=20, zhuque_free_uses_remaining=20)
+    fake_zhuque = FakeZhuqueService([80, 12])
+    fake_ai = FakeAIService()
+    monkeypatch.setattr(optimization_service_module, "zhuque_service", fake_zhuque)
+    monkeypatch.setattr(
+        OptimizationService,
+        "_init_ai_services",
+        lambda self: _install_fake_ai_services(self, fake_ai),
+    )
+    monkeypatch.setattr(optimization_service_module.settings, "ZHUQUE_DETECT_THRESHOLD", 20.0, raising=False)
+    monkeypatch.setattr(optimization_service_module.settings, "ZHUQUE_MAX_REDUCE_ROUNDS", 1, raising=False)
+    monkeypatch.setattr(optimization_service_module.settings, "ZHUQUE_DETECT_INTERVAL", 0, raising=False)
+    monkeypatch.setattr(
+        optimization_service_module.settings,
+        "ZHUQUE_REDUCE_BATCH_ENABLED",
+        batch_enabled,
+        raising=False,
+    )
+
+    original_text = "自带 API 降重文本" * 80
+    db = SessionLocal()
+    try:
+        session = OptimizationSession(
+            user_id=user_id,
+            session_id=f"zhuque-byok-no-credit-{int(batch_enabled)}",
+            original_text=original_text,
+            current_stage="ai_detect_reduce",
+            status="queued",
+            processing_mode="ai_detect_reduce",
+            billing_mode="byok",
+            credential_source="user_saved",
+            charge_status="not_charged",
+            charged_credits=0,
+        )
+        db.add(session)
+        db.flush()
+        db.add(
+            OptimizationSegment(
+                session_id=session.id,
+                segment_index=0,
+                stage="ai_detect_reduce",
+                original_text=original_text,
+                status="pending",
+            )
+        )
+        db.commit()
+
+        asyncio.run(OptimizationService(db, session).start_optimization())
+
+        user = db.query(User).filter(User.id == user_id).one()
+        transactions = db.query(CreditTransaction).filter(CreditTransaction.user_id == user_id).all()
+        assert session.status == "completed"
+        assert session.billing_mode == "byok"
+        assert user.credit_balance == 20
+        assert transactions == []
     finally:
         db.close()
 

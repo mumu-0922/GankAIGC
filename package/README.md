@@ -189,7 +189,7 @@ package/data/zhuque/users/user_<id>/browser_state.json
 
 后续朱雀检测会复用同一个可见检测窗口。Windows/WSL 会优先使用可控的 Windows Chrome/Edge/Brave；Linux 桌面会自动查找常见系统浏览器。
 
-VPS / Docker 不建议使用服务器无头 Chromium 做朱雀检测，因为容易触发朱雀验证码或风控。正式 VPS 部署推荐改用 Chrome 插件 browser-agent：GankAIGC 服务器创建检测任务，用户本机 Chrome 插件打开/复用朱雀页面完成检测并回传结果。当前推荐插件版本为 `0.1.9`，支持游客/未登录检测、从页面文本/检测响应/Vue 状态同步剩余次数、解析朱雀省略零值疑似分类的双百分比结果页，并保证单个插件作业跨验证码恢复时只提交一次检测。
+VPS / Docker 不建议使用服务器无头 Chromium 做朱雀检测，因为容易触发朱雀验证码或风控。正式 VPS 部署推荐改用 Chrome 插件 browser-agent：GankAIGC 服务器创建检测任务，用户本机 Chrome 插件打开/复用朱雀页面完成检测并回传结果。当前推荐插件版本为 `0.1.10`，支持游客/未登录检测、从页面文本/检测响应/Vue 状态同步剩余次数、解析朱雀省略零值疑似分类的双百分比结果页，并保证单个插件作业跨验证码恢复时只提交一次检测；同时使用 Chrome 支持的 30 秒 MV3 alarm 并在启动后立即领取任务，避免“在线但不领取”。
 
 VPS `.env.docker` 推荐：
 

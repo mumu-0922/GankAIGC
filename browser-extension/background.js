@@ -14,6 +14,10 @@ const DEFAULT_SERVER_URL = 'https://ga.mumubuku.top';
 const DEFAULT_AGENT_NAME = 'Chrome on Windows';
 const MATRIX_URL = 'https://matrix.tencent.com/ai-detect/';
 const EXTENSION_VERSION = chrome.runtime.getManifest().version;
+// Chrome 120+ clamps repeating MV3 alarms to a minimum of 30 seconds. Values
+// below 0.5 minutes can reject alarm creation entirely, leaving a paired
+// extension able to heartbeat on demand but unable to claim detection jobs.
+const CHROME_MIN_ALARM_PERIOD_MINUTES = 0.5;
 let polling = false;
 
 function normalizeServerUrl(url) {
@@ -273,8 +277,20 @@ async function pollJobsOnce() {
 }
 
 async function ensureAlarms() {
-  await chrome.alarms.create('gankaigc-heartbeat', { periodInMinutes: 0.25 });
-  await chrome.alarms.create('gankaigc-poll-jobs', { periodInMinutes: 0.1 });
+  await chrome.alarms.create('gankaigc-heartbeat', {
+    periodInMinutes: CHROME_MIN_ALARM_PERIOD_MINUTES
+  });
+  await chrome.alarms.create('gankaigc-poll-jobs', {
+    periodInMinutes: CHROME_MIN_ALARM_PERIOD_MINUTES
+  });
+}
+
+async function startBackgroundLoops() {
+  await ensureAlarms();
+  // Do not wait up to 30 seconds for the first alarm after install, reload, or
+  // Chrome startup. A direct first claim also makes alarm failures visible in
+  // the service-worker console instead of silently presenting as "online".
+  await Promise.allSettled([heartbeat(), pollJobsOnce()]);
 }
 
 chrome.alarms.onAlarm.addListener((alarm) => {
@@ -330,7 +346,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 chrome.runtime.onInstalled.addListener(() => {
-  ensureAlarms();
+  startBackgroundLoops().catch((error) => {
+    console.warn('[GankAIGC Browser Agent] background startup failed:', error);
+  });
 });
 
-ensureAlarms();
+chrome.runtime.onStartup.addListener(() => {
+  startBackgroundLoops().catch((error) => {
+    console.warn('[GankAIGC Browser Agent] background startup failed:', error);
+  });
+});
+
+startBackgroundLoops().catch((error) => {
+  console.warn('[GankAIGC Browser Agent] background startup failed:', error);
+});

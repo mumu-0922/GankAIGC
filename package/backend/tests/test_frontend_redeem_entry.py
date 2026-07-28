@@ -1356,7 +1356,7 @@ def test_workspace_guides_browser_agent_pairing_for_vps_mode():
     assert "files: ['zhuque-quota.js', 'zhuque-job.js', 'content-zhuque.js']" in extension_background
     assert "remainingUses: ZHUQUE_QUOTA.extractRemainingUses(response.result)" in extension_background
     assert "content-gankaigc.js" in extension_manifest
-    assert '"version": "0.1.9"' in extension_manifest
+    assert '"version": "0.1.10"' in extension_manifest
     assert '"zhuque-quota.js", "zhuque-job.js", "content-zhuque.js"' in extension_manifest
     assert "<all_urls>" not in extension_manifest
     assert "GANKAIGC_SYNC_ZHUQUE_STATUS" in extension_page_bridge

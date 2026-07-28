@@ -1,5 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const {
   loginBlocksDetection,
@@ -89,4 +91,20 @@ test('rejects stale pre-click snapshots until a live event, change, or full busy
     baselineFingerprints,
     resultClearedAfterBaseline: true,
   }), true);
+});
+
+test('uses Chrome-supported alarm periods and claims immediately after startup', () => {
+  const backgroundSource = fs.readFileSync(path.join(__dirname, '..', 'background.js'), 'utf8');
+  const minimumPeriodMatch = backgroundSource.match(
+    /CHROME_MIN_ALARM_PERIOD_MINUTES\s*=\s*([\d.]+)/,
+  );
+  const alarmPeriodReferences = backgroundSource.match(
+    /periodInMinutes:\s*CHROME_MIN_ALARM_PERIOD_MINUTES/g,
+  ) || [];
+
+  assert.ok(minimumPeriodMatch);
+  assert.ok(Number(minimumPeriodMatch[1]) >= 0.5);
+  assert.ok(alarmPeriodReferences.length >= 2);
+  assert.match(backgroundSource, /Promise\.allSettled\(\[heartbeat\(\), pollJobsOnce\(\)\]\)/);
+  assert.match(backgroundSource, /chrome\.runtime\.onStartup\.addListener/);
 });

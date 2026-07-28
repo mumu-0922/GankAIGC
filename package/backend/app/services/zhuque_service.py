@@ -465,7 +465,7 @@ class ZhuqueService:
     async def _consumer(self) -> None:
         """后台消费: 串行处理检测队列，避免朱雀侧限流。"""
         while True:
-            task_id, text, future = await self._queue.get()
+            task_id, text, future, session_id, segment_id = await self._queue.get()
             try:
                 if future.done():
                     continue
@@ -534,6 +534,8 @@ class ZhuqueService:
                     result = await BrowserAgentZhuqueTransport(self.user_id).detect(
                         text,
                         timeout=settings.ZHUQUE_BROWSER_AGENT_JOB_TIMEOUT,
+                        session_id=session_id,
+                        segment_id=segment_id,
                     )
                 else:
                     result = await self.api.detect(text, timeout=settings.ZHUQUE_DETECT_TIMEOUT)
@@ -598,7 +600,13 @@ class ZhuqueService:
             finally:
                 self._queue.task_done()
 
-    async def detect(self, text: str) -> dict:
+    async def detect(
+        self,
+        text: str,
+        *,
+        session_id: int | None = None,
+        segment_id: int | None = None,
+    ) -> dict:
         """入队检测, 返回结果。"""
         if not self._ready:
             await self.start()
@@ -606,7 +614,7 @@ class ZhuqueService:
             self._ensure_consumer_task()
         future: asyncio.Future = asyncio.Future()
         task_id = str(uuid4())
-        await self._queue.put((task_id, text, future))
+        await self._queue.put((task_id, text, future, session_id, segment_id))
         return await future
 
     async def focus_detection_window(self) -> dict:
@@ -948,8 +956,18 @@ class ZhuqueServiceManager:
     async def start(self) -> None:
         await self._legacy_service.start()
 
-    async def detect(self, text: str) -> dict:
-        return await self._legacy_service.detect(text)
+    async def detect(
+        self,
+        text: str,
+        *,
+        session_id: int | None = None,
+        segment_id: int | None = None,
+    ) -> dict:
+        return await self._legacy_service.detect(
+            text,
+            session_id=session_id,
+            segment_id=segment_id,
+        )
 
     async def readiness(self, text: Optional[str] = None) -> dict:
         return await self._legacy_service.readiness(text)

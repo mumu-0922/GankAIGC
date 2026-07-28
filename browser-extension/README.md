@@ -1,6 +1,6 @@
 # GankAIGC Zhuque Browser Agent
 
-Chrome extension for VPS deployments where Zhuque detects/fights server-side headless browsers. Current recommended unpacked-extension version: `0.1.9`. Local desktop/source deployments can keep `ZHUQUE_DETECT_TRANSPORT=auto` or `local_browser` and do not need this extension.
+Chrome extension for VPS deployments where Zhuque detects/fights server-side headless browsers. Current recommended unpacked-extension version: `0.1.10`. Local desktop/source deployments can keep `ZHUQUE_DETECT_TRANSPORT=auto` or `local_browser` and do not need this extension.
 
 ## Purpose
 
@@ -42,7 +42,7 @@ The VPS must be reachable by the user's Chrome browser over HTTPS or trusted HTT
 2. Enable `Developer mode`.
 3. Click `Load unpacked`.
 4. Select this `browser-extension/` directory.
-5. If the extension was already installed, click `Reload` after pulling new code and confirm the version is `0.1.9` or newer.
+5. If the extension was already installed, click `Reload` after pulling new code and confirm the version is `0.1.10` or newer.
 
 ## Host permissions
 
@@ -85,6 +85,7 @@ The popup saves the server URL, pairing-code draft, and device name while typing
 - The workspace status should show `插件在线` before starting `AI检测 + 降重`.
 - The extension heartbeats compact Zhuque page login state back to GankAIGC so the workspace can show `朱雀账号` / `剩余次数` separately from `插件在线`.
 - Version `0.1.9` keeps the `0.1.8` guest/single-click safeguards and also parses result pages where Zhuque omits the zero-valued suspicious class and renders only human + AI percentages.
+- Version `0.1.10` uses Chrome-supported 30-second MV3 alarms and performs an immediate job claim after install, reload, and browser startup. Earlier sub-30-second alarm values could fail creation, leaving the extension visibly paired but never polling detection jobs.
 - The extension opens or reuses one Zhuque tab in the user's local Chrome.
 - Log in to Zhuque in the local Chrome tab when prompted.
 - If CAPTCHA appears, complete it in the local Zhuque tab; the backend will keep waiting until the job completes or times out.

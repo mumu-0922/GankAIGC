@@ -126,12 +126,22 @@ The user reviewed the plan and authorized implementation on 2026-07-10. The task
   candidate. Backend/frontend fallback versions, workflow defaults, packaging
   docs, and committed production assets are synchronized; the final local
   Windows one-click candidate reports `v2.0.6` from inside the frozen EXE.
+- [x] Cloud follow-up traced an online-but-idle plugin to invalid sub-30-second
+  Chrome MV3 alarms. Extension `0.1.10` uses 30-second alarms and performs an
+  immediate heartbeat/job claim after install, reload, worker initialization,
+  and browser startup.
+- [x] Session stop now cancels linked persistent browser-agent jobs, the
+  waiting transport observes the durable stop state, and task-queue exception
+  handling preserves `stopped`, releasing the serial Docker worker for queued
+  polish/enhance/emotional-polish work.
+- [x] BYOK Zhuque batch and legacy reduce paths no longer charge platform beer;
+  BYOK preflight estimates return zero while platform billing remains intact.
 
 Validation:
 
 - Chrome extension Node regression suites: 2/2 passed; all four changed JS
   files pass `node --check`.
-- Backend suite: 562 tests passed against the PostgreSQL test container.
+- Backend suite: 568 tests passed against the PostgreSQL test container.
 - Frontend: Vite production build passed and `package/frontend/dist` was synced
   into `package/static`; 75 direct static-contract tests passed.
 - Security pattern scan: zero Critical/High findings in the extension, frontend,
@@ -146,6 +156,11 @@ Validation:
 - `git diff --check` passed. The quality scanner's single warning is the
   documented 542-code-line Zhuque page adapter; job decision logic is isolated
   in the tested `zhuque-job.js` helper.
+- Cloud hotfix regressions: 75 frontend/static contracts passed; extension
+  syntax and both Node suites passed; stop/cancellation and BYOK batch/legacy
+  coverage passed inside the full 568-test backend suite. Security scanning
+  found zero Critical/High issues; the nine accepted Medium findings remain
+  non-cryptographic Zhuque browser-motion/timing jitter.
 
 ## Phase 0 — Containment and Baseline (S, before public go-live)
 
