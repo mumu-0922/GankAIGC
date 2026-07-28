@@ -126,6 +126,7 @@ services:
       DATABASE_URL: ""
       DATABASE_URL_FILE: /run/secrets/database_url
       SECRET_KEY_FILE: /run/secrets/secret_key
+      ADMIN_PASSWORD_FILE: /run/secrets/admin_password
       ENCRYPTION_KEY_FILE: /run/secrets/encryption_key
       OPENAI_API_KEY_FILE: /run/secrets/openai_api_key
       POLISH_API_KEY_FILE: /run/secrets/polish_api_key
@@ -143,6 +144,8 @@ services:
         target: database_url
       - source: app_secret_key
         target: secret_key
+      - source: app_admin_password
+        target: admin_password
       - source: app_encryption_key
         target: encryption_key
       - source: openai_api_key

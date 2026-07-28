@@ -54,6 +54,10 @@
   `os.environ` where child browser/tool processes could inherit them.
 - File-backed keys are immutable from the admin UI. Rotation means updating the
   host file and recreating only affected services.
+- The worker must mount `SECRET_KEY_FILE` and `ADMIN_PASSWORD_FILE` even though
+  it does not serve admin login. Its polling loop calls `reload_settings()`,
+  which validates server deployment secrets globally; omitting the admin secret
+  causes noisy reload failures while keeping stale settings.
 
 ### 4. Validation & Error Matrix
 

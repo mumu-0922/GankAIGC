@@ -83,7 +83,7 @@ the app and one-shot tools fail closed on group/world-readable files.
 | `provision-roles` | bootstrap URL plus migrator/app/backup role passwords |
 | `migrate` | migrator database URL only |
 | `app` | app database URL, JWT/admin/encryption keys, platform provider keys |
-| `worker` | app database URL, JWT/encryption keys, platform provider keys; no admin password |
+| `worker` | app database URL, JWT/admin/encryption keys, platform provider keys |
 | `backup` | backup-role password only |
 | `backup-offsite` | independent restic password only |
 
@@ -94,6 +94,10 @@ The role contract is:
 - `gankaigc_migrator`: can assume owner for Alembic DDL;
 - `gankaigc_app`: table CRUD and sequence use, but no persistent DDL;
 - `gankaigc_backup`: table/sequence read only for `pg_dump`.
+
+The worker mounts the admin password even though it does not serve admin login.
+Its polling loop reloads and validates the complete server secret set; omitting
+that file causes reload failures and leaves stale settings active.
 
 Start only PostgreSQL, then provision roles. Existing objects are not silently
 re-owned; the first command fails with an object sample until the operator opts in:

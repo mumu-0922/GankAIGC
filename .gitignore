@@ -22,9 +22,11 @@ backups/
 .env
 .env.local
 .env.docker
+.env.docker.bak.*
 .env.runtime
 secrets/
 .ci-secrets/
+docker-compose.local-image.yml
 
 # IDE
 .vscode/

@@ -52,6 +52,139 @@ Questions to answer:
 
 ---
 
+## Scenario: Backend Pytest Must Not Touch Production Compose Databases
+
+### 1. Scope / Trigger
+
+- Trigger: any backend pytest run started from a production Docker Compose
+  service, a VPS shell with `.env.docker`, or an environment that contains
+  `DATABASE_URL_FILE` / `SECRET_KEY_FILE` / `ADMIN_PASSWORD_FILE`.
+
+### 2. Signatures
+
+- Test database selector: `GANKAIGC_TEST_DATABASE_URL`.
+- Production file-backed settings: `DATABASE_URL_FILE`, `SECRET_KEY_FILE`, and
+  `ADMIN_PASSWORD_FILE`.
+- Autouse fixture: `package/backend/tests/conftest.py::reset_db`.
+
+### 3. Contracts
+
+- `GANKAIGC_TEST_DATABASE_URL` must point to a dedicated PostgreSQL database
+  whose database name contains `test`.
+- Never run pytest with production `DATABASE_URL_FILE` or production secret-file
+  environment inherited from `docker compose run app`.
+- Compose-only text tests may be verified by directly invoking their test
+  functions without loading pytest `conftest.py` when no isolated PostgreSQL
+  test database is available.
+
+### 4. Validation & Error Matrix
+
+- Test database name lacks `test` -> `conftest.py` raises before app import.
+- Pytest inherits production app role -> `reset_db` attempts `drop_all()` and
+  PostgreSQL rejects DDL with `InsufficientPrivilege`; stop and rerun with an
+  isolated test database.
+- Pytest inherits production superuser or owner credentials -> abort before
+  running tests; that path can delete production tables.
+
+### 5. Good/Base/Bad Cases
+
+- Good: run backend pytest with `GANKAIGC_TEST_DATABASE_URL` set to a disposable
+  PostgreSQL test database.
+- Base: for pure file-content tests such as `test_docker_compose.py`, manually
+  invoke the test functions to avoid `conftest.py` database setup.
+- Bad: run `docker compose --env-file .env.docker ... run app python -m pytest`
+  without overriding production database and secret-file environment.
+
+### 6. Tests Required
+
+- Keep `conftest.py` refusing non-test database names.
+- For production Compose contract changes, verify `docker compose ... config
+  --quiet` and the compose text assertions without touching production data.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```bash
+docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.prod.yml \
+  run --rm app python -m pytest package/backend/tests/test_docker_compose.py -q
+```
+
+#### Correct
+
+```bash
+GANKAIGC_TEST_DATABASE_URL=postgresql://.../gankaigc_test \
+  python -m pytest package/backend/tests/test_docker_compose.py -q
+```
+
+---
+
+## Scenario: Local Hotfix Images Must Preserve the Production Compose Overlay
+
+### 1. Scope / Trigger
+
+- Trigger: an operator must deploy an unreleased commit to an existing hardened
+  VPS before a signed GHCR release image exists.
+
+### 2. Signatures
+
+- Build: `docker build --label org.opencontainers.image.revision=<commit> -t gankaigc:<short-commit> .`.
+- Rollout: merge `docker-compose.yml`, `docker-compose.prod.yml`, and a local
+  override that changes only `image`, `build`, and `pull_policy` for
+  `app`, `worker`, and `migrate`.
+
+### 3. Contracts
+
+- The final Compose model must retain the production overlay's file-backed
+  Secrets, split database roles, non-root users, and loopback-only app port.
+- The local override uses `pull_policy: never`; each application container's
+  image ID and OCI revision label must match the requested commit.
+- Stop the worker only after active queue counts are zero, and create a verified
+  custom-format PostgreSQL backup before migration or service replacement.
+
+### 4. Validation & Error Matrix
+
+- Dirty checkout blocks fast-forward -> stash all tracked/untracked state,
+  fast-forward, then restore and resolve without discarding local hardening.
+- Backup checksum or `pg_restore --list` fails -> do not migrate or recreate.
+- Merged config loses a Secret, non-root user, or loopback bind -> reject the
+  override and keep the previous production image running.
+- Container image ID/revision differs from the requested commit -> fail rollout.
+
+### 5. Good/Base/Bad Cases
+
+- Good: a three-service override deploys one labeled local image while the
+  signed PostgreSQL image and all production hardening remain unchanged.
+- Base: a signed release exists; update `GANKAIGC_IMAGE` to its verified digest
+  and use the normal two-file production Compose command.
+- Bad: run base Compose alone with `up -d --build` on the Internet-facing VPS;
+  this drops service-scoped Secret and split-role contracts.
+
+### 6. Tests Required
+
+- `docker compose ... config --quiet` passes with all three files.
+- Assert merged config contains `DATABASE_URL_FILE`, `ADMIN_PASSWORD_FILE`,
+  `user: 1000:1000`, and `127.0.0.1:9800`.
+- Smoke `/live`, `/ready`, HTTPS, runtime error logs, and blocked public `:9800`.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```bash
+docker compose --env-file .env.docker up -d --build
+```
+
+#### Correct
+
+```bash
+docker build --label org.opencontainers.image.revision=<commit> -t gankaigc:<commit> .
+docker compose --env-file .env.docker -f docker-compose.yml \
+  -f docker-compose.prod.yml -f docker-compose.local-image.yml up -d --wait
+```
+
+---
+
 ## Scenario: Signed OCI Release Vulnerability Gate
 
 ### 1. Scope / Trigger

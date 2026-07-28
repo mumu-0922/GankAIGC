@@ -150,8 +150,9 @@ def test_production_compose_replaces_shared_env_file_with_service_secrets():
     assert "target: /app/config/runtime.env" in app_section
     assert "DATABASE_URL_FILE: /run/secrets/database_url" in app_section
     assert "ADMIN_PASSWORD_FILE: /run/secrets/admin_password" in app_section
-    assert "ADMIN_PASSWORD_FILE" not in worker_section
     assert "SECRET_KEY_FILE: /run/secrets/secret_key" in worker_section
+    assert "ADMIN_PASSWORD_FILE: /run/secrets/admin_password" in worker_section
+    assert "source: app_admin_password" in worker_section
     assert "DATABASE_SESSION_ROLE:" in migrate_section
     assert "POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password" in postgres_section
     assert "library/postgres:16-alpine@sha256:" in postgres_section
