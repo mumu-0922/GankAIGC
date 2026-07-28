@@ -6,7 +6,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 def test_release_workflow_builds_and_uploads_windows_oneclick_package():
     workflow = (PROJECT_ROOT / ".github" / "workflows" / "build-exe.yml").read_text(encoding="utf-8")
-    release_notes = PROJECT_ROOT / ".github" / "release-notes" / "v2.0.6.md"
+    release_notes = PROJECT_ROOT / ".github" / "release-notes" / "v2.0.7.md"
 
     assert "tags:" in workflow
     assert "- 'v*'" in workflow
@@ -20,7 +20,7 @@ def test_release_workflow_builds_and_uploads_windows_oneclick_package():
     assert 'notes_file=".github/release-notes/${TAG_NAME}.md"' in workflow
     assert '--notes-file "$notes_file"' in workflow
     assert release_notes.exists()
-    assert "Windows 一键包可正常启动" in release_notes.read_text(encoding="utf-8")
+    assert "插件在线但不领取任务" in release_notes.read_text(encoding="utf-8")
     assert "Verify tag and commit identity" in workflow
     assert "ref: ${{ github.event.inputs.version || github.ref }}" in workflow
 

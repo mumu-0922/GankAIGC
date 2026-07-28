@@ -136,6 +136,11 @@ The user reviewed the plan and authorized implementation on 2026-07-10. The task
   polish/enhance/emotional-polish work.
 - [x] BYOK Zhuque batch and legacy reduce paths no longer charge platform beer;
   BYOK preflight estimates return zero while platform billing remains intact.
+- [x] Cloud acceptance confirmed the browser-agent handoff, queue release, and
+  BYOK billing fixes in production. The accepted code is prepared as the
+  immutable `v2.0.7` release candidate with synchronized backend/frontend
+  fallback versions, package metadata, workflow defaults, release notes, and
+  committed production assets.
 
 Validation:
 
@@ -161,6 +166,11 @@ Validation:
   coverage passed inside the full 568-test backend suite. Security scanning
   found zero Critical/High issues; the nine accepted Medium findings remain
   non-cryptographic Zhuque browser-motion/timing jitter.
+- `v2.0.7` pre-tag gate: 568 backend tests passed; 106 targeted
+  release/Docker/static contracts passed; eight extension Node cases and all
+  extension syntax checks passed; the versioned Vite build was synchronized
+  into `package/static`; a pulled-base Docker image built successfully and
+  reported `VERSION=v2.0.7`; Trivy found zero fixed HIGH/CRITICAL issues.
 
 ## Phase 0 — Containment and Baseline (S, before public go-live)
 

@@ -9,7 +9,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
 def test_packaged_app_version_matches_release_tag():
-    assert APP_VERSION == "2.0.6"
+    assert APP_VERSION == "2.0.7"
 
 
 def test_app_version_prefers_version_file_when_present():

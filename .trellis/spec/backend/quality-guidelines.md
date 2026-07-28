@@ -216,6 +216,12 @@ docker compose --env-file .env.docker -f docker-compose.yml \
   Production consumes a verified `name@sha256:<digest>`, never a mutable tag.
 - Keep the root and backend dependency manifests synchronized because Docker,
   CI, and Windows packaging do not all install from the same path.
+- A release version bump is one atomic identity update: `package/VERSION`,
+  `DEFAULT_APP_VERSION`, the frontend fallback/build version, workflow-dispatch
+  defaults, package publishing examples, the current release-contract test,
+  and `.github/release-notes/<tag>.md` must all name the same new tag. Rebuild
+  the frontend with `VITE_APP_VERSION=<tag>` and synchronize the committed
+  `package/static` tree before tagging.
 
 ### 4. Validation & Error Matrix
 
@@ -227,6 +233,9 @@ docker compose --env-file .env.docker -f docker-compose.yml \
 - Cosign signing or verification fails -> do not update the production digest.
 - One dependency manifest loses a security pin ->
   `test_release_dependency_manifests_pin_trivy_clean_python_packages` fails.
+- Version files, fallback constants, release notes, generated static assets, or
+  the annotated tag disagree -> do not publish; fix and create the tag only
+  after the complete release identity commit is pushed.
 
 ### 5. Good/Base/Bad Cases
 
@@ -244,6 +253,9 @@ docker compose --env-file .env.docker -f docker-compose.yml \
   production digest-only Compose contract.
 - `test_release_dependency_manifests_pin_trivy_clean_python_packages` must
   assert the security floor in both dependency manifests.
+- `test_app_version.py` and `test_release_workflow.py` must assert the current
+  application version and matching release-notes file/content. Static-contract
+  tests must run after the versioned frontend build and asset synchronization.
 - Before tagging, run the full backend suite, frontend build, Docker build and
   a Trivy image scan with `--exit-code 1 --severity HIGH,CRITICAL
   --ignore-unfixed`.
