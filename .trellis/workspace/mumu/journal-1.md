@@ -280,3 +280,36 @@ Implemented Docling-first PDF and python-docx DOCX structure parsing, semantic r
 ### Next Steps
 
 - None - task complete
+
+
+## Session 9: Ship v2.1.0 fair multi-user concurrency
+
+**Date**: 2026-07-29
+**Task**: Ship v2.1.0 fair multi-user concurrency
+**Branch**: `main`
+
+### Summary
+
+Implemented and verified PostgreSQL fair scheduling, per-key AI request limiting, worker hot-switching, browser-agent queue recovery, restic uploads backup, plugin v0.1.10 release packaging, v2.1.0 docs and frontend assets.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `3d9d9ce` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

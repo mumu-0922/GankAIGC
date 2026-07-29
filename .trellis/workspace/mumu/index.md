@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 8
-- **Last Active**: 2026-06-29
+- **Total Sessions**: 9
+- **Last Active**: 2026-07-29
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~282 | Active |
+| `journal-1.md` | ~315 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 9 | 2026-07-29 | Ship v2.1.0 fair multi-user concurrency | `3d9d9ce` | `main` |
 | 8 | 2026-06-29 | Structure-aware Zhuque filtering | `4dc67b7` | `main` |
 | 7 | 2026-06-28 | Zhuque batch reduce trace | `ad41a63` | `main` |
 | 6 | 2026-06-26 | Add Anthropic Messages adapter | `542e6b1` | `main` |
