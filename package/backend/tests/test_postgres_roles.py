@@ -174,7 +174,7 @@ def test_migrator_role_upgrades_fresh_database_and_grants_new_table_access():
             check=False,
         )
         assert completed.returncode == 0, completed.stderr
-        assert "0010_task_events_worker_leases" in completed.stdout
+        assert "0011_fair_concurrency_guard" in completed.stdout
 
         app_url = _connection_url(
             bootstrap_url,
@@ -184,7 +184,7 @@ def test_migrator_role_upgrades_fresh_database_and_grants_new_table_access():
         )
         with psycopg.connect(app_url) as connection:
             revision = connection.execute("SELECT version_num FROM alembic_version").fetchone()[0]
-            assert revision == "0010_task_events_worker_leases"
+            assert revision == "0011_fair_concurrency_guard"
             assert connection.execute("SELECT count(*) FROM users").fetchone()[0] == 0
     finally:
         _cleanup_database_and_roles(database_name, roles)

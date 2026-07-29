@@ -89,7 +89,11 @@ git add -f package/static
 
 ```text
 GankAIGC-Windows-OneClick.zip
+GankAIGC-Browser-Extension-v0.1.10.zip
+GankAIGC-Browser-Extension-v0.1.10.zip.sha256
 ```
+
+Chrome 插件 ZIP 仅用于 VPS/browser-agent 模式，解压后根目录直接包含 `manifest.json`。本机源码和 Windows 一键包默认走本机可见浏览器，不需要安装插件。
 
 上传前建议本地重新构建：
 
@@ -103,7 +107,7 @@ cd package
 然后用 GitHub CLI 覆盖 Release 附件：
 
 ```powershell
-gh release upload v2.0.7 .\dist\GankAIGC-Windows-OneClick.zip
+gh release upload v2.1.0 .\dist\GankAIGC-Windows-OneClick.zip
 ```
 
 GitHub Actions 工作流会在推送 `v*` 标签时构建普通 Windows/Linux/macOS 可执行文件；当前公开 Release 仍优先使用本地构建并上传的 Windows 一键整合包。
@@ -111,8 +115,8 @@ GitHub Actions 工作流会在推送 `v*` 标签时构建普通 Windows/Linux/ma
 ### 标签发布
 
 ```bash
-git tag -a v2.0.7 -m "GankAIGC v2.0.7"
-git push origin v2.0.7
+git tag -a v2.1.0 -m "GankAIGC v2.1.0"
+git push origin v2.1.0
 ```
 
 发布新版本时同时更新：
@@ -127,6 +131,8 @@ git push origin v2.0.7
 - `GankAIGC-Windows-OneClick.zip` - Windows 一键整合包，内置便携 PostgreSQL
 - `GankAIGC-Linux.tar.gz` - GitHub Actions 自动构建的 Linux 可执行文件
 - `GankAIGC-macOS.tar.gz` - GitHub Actions 自动构建的 macOS 可执行文件
+- `GankAIGC-Browser-Extension-v0.1.10.zip` - VPS/browser-agent Chrome 插件，解压后加载包含 `manifest.json` 的目录
+- `GankAIGC-Browser-Extension-v0.1.10.zip.sha256` - 插件 ZIP 的 SHA-256 完整性校验文件
 
 ## 运行说明
 
@@ -172,7 +178,16 @@ http://127.0.0.1:9800
 
 源码运行时降 AI 任务会先进入 PostgreSQL 队列。exe / `python main.py` 默认启用 inline worker；Docker 部署则由独立 worker 服务消费队列。worker 会定期刷新心跳，长时间无心跳的处理中任务会自动恢复为排队状态。
 
-Docker 部署会先运行一次性 `migrate` 服务，迁移成功后才启动 `app` / `worker`；生产进程本身不再执行启动 DDL。任务进度通过 PostgreSQL outbox + `LISTEN/NOTIFY` 跨进程传递，断线可按 event ID 重放；worker 空闲时也会刷新独立 lease。默认还会启动 `backup` 服务，每天自动备份 PostgreSQL 到宿主机 `backups/`。头像等上传文件持久化在宿主机 `package/uploads/`，升级重建容器前不要删除。后台「运维状态」可以查看数据库、worker、备份、版本更新和初始化检查。
+v2.1.0 支持全站 `5 / 8 / 10` 并发热切换，3 核 4G 默认从 5 开始；降档不会强杀运行任务。同一用户最多 1 个运行或等待朱雀插件的任务，并可再排队 2 个任务。相同 API Key 并发可选 `1 / 2 / 4`、默认 2，不同 BYOK Key 独立限流；等待插件回传时不占 worker slot。推荐配置为：
+
+```properties
+MAX_CONCURRENT_USERS=5
+API_KEY_CONCURRENCY=2
+MAX_PENDING_SESSIONS_PER_USER=3
+TASK_WORKER_MAX_CONCURRENCY=10
+```
+
+Docker 部署会先运行一次性 `migrate` 服务，迁移成功后才启动 `app` / `worker`；生产进程本身不再执行启动 DDL。任务进度通过 PostgreSQL outbox + `LISTEN/NOTIFY` 跨进程传递，断线可按 event ID 重放；worker 空闲时也会刷新独立 lease。默认还会启动 `backup` 服务，每天自动备份 PostgreSQL 到宿主机 `backups/`。头像等上传文件持久化在宿主机 `package/uploads/`，升级重建容器前不要删除；启用 offsite restic profile 后会同时备份已校验 dump 与 uploads，并可做隔离恢复/SHA-256 比对。后台「运维状态」可以查看数据库、worker、备份、版本更新和初始化检查。
 
 模型 Base URL 默认要求公网 HTTPS 地址。Windows 一键包本机使用 `cliproxy`、`new-api` 等本地代理时，后台把 `SERVER_HOST` 设为 `127.0.0.1`，打开“允许本地 HTTP 模型代理”，Base URL 填 `http://127.0.0.1:端口/v1`。不要写成 `https://127.0.0.1:端口/v1`。公网或 VPS 部署不要开启本地代理模式，必须使用公网 HTTPS Base URL。
 
@@ -205,7 +220,7 @@ INLINE_TASK_WORKER_ENABLED=false
 
 本机源码运行、Windows 一键包或带桌面的个人电脑部署继续使用 `ZHUQUE_DETECT_TRANSPORT=auto` 或 `local_browser`，无需安装插件。
 
-插件连接流程：在 Chrome `chrome://extensions` 加载 `browser-extension/`，进入工作台选择 `AI检测 + 降重`，点击「生成配对码」，在插件弹窗填写站点地址、配对码和设备名。工作台显示「插件在线」后，点击「打开朱雀页面」；游客次数可直接检测，只有页面要求时才需登录或完成验证码。`插件在线` 不等于 `朱雀已登录`；未登录但页面可用时，工作台会显示 `游客模式`。
+插件安装优先从 GitHub Release 下载 `GankAIGC-Browser-Extension-v0.1.10.zip` 与对应 `.sha256`，校验后解压，在 Chrome `chrome://extensions` 开启开发者模式并加载根层含 `manifest.json` 的目录。开发者也可直接加载源码中的 `browser-extension/`。进入工作台选择 `AI检测 + 降重`，点击「生成配对码」，在插件弹窗填写站点地址、配对码和设备名。工作台显示「插件在线」后，点击「打开朱雀页面」；游客次数可直接检测，只有页面要求时才需登录或完成验证码。`插件在线` 不等于 `朱雀已登录`；未登录但页面可用时，工作台会显示 `游客模式`。
 
 普通用户不需要手动设置 Chrome `--remote-debugging-port` 或 Profile。VPS browser-agent 模式也不要公开 CDP 端口；插件权限只应包含你的 GankAIGC 站点和 `https://matrix.tencent.com/*`。高级本机部署可在 `.env` 中覆盖：
 

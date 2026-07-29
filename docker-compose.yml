@@ -67,7 +67,6 @@ services:
       GANKAIGC_HOST_PROJECT_DIR: ${GANKAIGC_HOST_PROJECT_DIR:-${PWD:-.}}
       DATABASE_URL: postgresql://ai_polish:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.docker}@postgres:5432/ai_polish
       INLINE_TASK_WORKER_ENABLED: "false"
-      TASK_WORKER_ID: docker-worker-1
     command: python backend/worker.py
     volumes:
       - type: bind
@@ -180,10 +179,15 @@ services:
       RESTIC_KEEP_DAILY: ${RESTIC_KEEP_DAILY:-14}
       RESTIC_KEEP_WEEKLY: ${RESTIC_KEEP_WEEKLY:-8}
       RESTIC_KEEP_MONTHLY: ${RESTIC_KEEP_MONTHLY:-12}
+      VERIFY_UPLOADS_RESTORE: ${VERIFY_UPLOADS_RESTORE:-false}
     volumes:
       - type: bind
         source: ${GANKAIGC_HOST_PROJECT_DIR:-${PWD:-.}}/backups
         target: /backups
+        read_only: true
+      - type: bind
+        source: ${GANKAIGC_HOST_PROJECT_DIR:-${PWD:-.}}/package/uploads
+        target: /uploads
         read_only: true
       - type: bind
         source: ${GANKAIGC_HOST_PROJECT_DIR:-${PWD:-.}}/scripts/docker-restic-offsite.sh

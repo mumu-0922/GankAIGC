@@ -91,7 +91,8 @@ def test_user_cannot_update_another_users_project(client):
 
 
 async def _skip_optimization(self):
-    return None
+    self.session_obj.status = "completed"
+    self.db.commit()
 
 
 def test_start_optimization_stores_project_and_task_title(client, monkeypatch):

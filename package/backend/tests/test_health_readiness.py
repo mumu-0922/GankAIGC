@@ -17,7 +17,7 @@ def test_live_is_process_only_and_ready_checks_schema_and_upload_mount(client, m
     assert live.json() == {"status": "live"}
     assert ready.status_code == 200
     assert ready.json()["status"] == "ready"
-    assert ready.json()["schema_revision"].startswith("0010")
+    assert ready.json()["schema_revision"].startswith("0011")
 
 
 def test_ready_fails_closed_for_unversioned_database(client, monkeypatch, tmp_path):

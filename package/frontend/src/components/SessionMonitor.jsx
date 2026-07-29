@@ -294,6 +294,7 @@ const SessionMonitor = ({ adminToken }) => {
       case 'completed': return '已完成';
       case 'failed': return '失败';
       case 'queued': return '排队中';
+      case 'waiting_browser_agent': return '等待本机朱雀插件';
       case 'stopped': return '已停止';
       default: return status;
     }
@@ -397,6 +398,7 @@ const SessionMonitor = ({ adminToken }) => {
           <option value="all">全部状态</option>
           <option value="processing">处理中</option>
           <option value="queued">排队中</option>
+          <option value="waiting_browser_agent">等待本机朱雀插件</option>
           <option value="completed">已完成</option>
           <option value="failed">失败</option>
           <option value="stopped">已停止</option>
@@ -496,7 +498,7 @@ const SessionMonitor = ({ adminToken }) => {
                   {sessionsToRender.map((session) => (
                     <tr key={session.id || session.session_id}>
                       <td className="px-5 py-3 whitespace-nowrap text-sm font-semibold text-blue-700">
-                        <span className={`mr-2 inline-block h-2 w-2 rounded-full ${session.status === 'failed' ? 'bg-red-500' : session.status === 'queued' ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+                        <span className={`mr-2 inline-block h-2 w-2 rounded-full ${session.status === 'failed' ? 'bg-red-500' : ['queued', 'waiting_browser_agent'].includes(session.status) ? 'bg-amber-500' : 'bg-emerald-500'}`} />
                         {(session.session_id || session.id || '').toString().slice(0, 12)}
                       </td>
                       <td className="px-5 py-3 whitespace-nowrap">
@@ -506,7 +508,7 @@ const SessionMonitor = ({ adminToken }) => {
                       </td>
                       <td className="px-5 py-3 whitespace-nowrap text-sm text-slate-600">{getProcessingModeLabel(session.processing_mode)}</td>
                       <td className="px-5 py-3 whitespace-nowrap">
-                        <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${session.status === 'processing' ? 'bg-green-100 text-green-800' : session.status === 'queued' ? 'bg-blue-100 text-blue-800' : session.status === 'completed' ? 'bg-green-100 text-green-800' : session.status === 'failed' ? 'bg-red-100 text-red-800' : session.status === 'stopped' ? 'bg-orange-100 text-orange-800' : 'bg-gray-100 text-gray-800'}`}>
+                        <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${session.status === 'processing' ? 'bg-green-100 text-green-800' : session.status === 'queued' ? 'bg-blue-100 text-blue-800' : session.status === 'waiting_browser_agent' ? 'bg-amber-100 text-amber-800' : session.status === 'completed' ? 'bg-green-100 text-green-800' : session.status === 'failed' ? 'bg-red-100 text-red-800' : session.status === 'stopped' ? 'bg-orange-100 text-orange-800' : 'bg-gray-100 text-gray-800'}`}>
                           {getStatusText(session.status)}
                         </span>
                       </td>
@@ -516,7 +518,7 @@ const SessionMonitor = ({ adminToken }) => {
                         {session.original_char_count != null ? session.original_char_count.toLocaleString() : '0'} / {session.polished_char_count != null ? session.polished_char_count.toLocaleString() : '0'}
                       </td>
                       <td className="px-5 py-3 text-right">
-                        {(session.status === 'processing' || session.status === 'queued') ? (
+                        {(['processing', 'queued', 'waiting_browser_agent'].includes(session.status)) ? (
                           <button onClick={() => handleStopSession(session.session_id || session.id)} className="rounded-lg p-2 text-red-600 hover:bg-red-50" title="强制停止"><Square className="w-4 h-4 fill-current" /></button>
                         ) : (
                           <button
@@ -636,7 +638,7 @@ const SessionMonitor = ({ adminToken }) => {
             ) : (
               timelineSessions.map((session, index) => (
                 <div key={session.id || session.session_id || index}>
-                  <span className={session.status === 'failed' ? 'is-error' : session.status === 'processing' || session.status === 'queued' ? 'is-info' : 'is-ok'}>
+                  <span className={session.status === 'failed' ? 'is-error' : ['processing', 'queued', 'waiting_browser_agent'].includes(session.status) ? 'is-info' : 'is-ok'}>
                     {session.status === 'failed' ? <AlertCircle className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
                   </span>
                   <p>会话 <strong>{(session.session_id || session.id || '').toString().slice(0, 12)}</strong> {getStatusText(session.status)}</p>

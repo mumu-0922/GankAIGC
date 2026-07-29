@@ -1,10 +1,18 @@
 ﻿from typing import Any, AsyncIterator, List, Dict, Optional
+import asyncio
 import json
 import re
 
 import httpx
 from openai import AsyncOpenAI, PermissionDeniedError, AuthenticationError, RateLimitError
 from app.config import settings
+from app.services.ai_request_limiter import (
+    MAX_RATE_LIMIT_ATTEMPTS,
+    is_rate_limit_error,
+    provider_request_limiter,
+    rate_limit_delay_seconds,
+    run_with_provider_limit,
+)
 from app.utils.url_security import validate_model_base_url
 
 
@@ -338,7 +346,9 @@ class AIService:
                     api_key=self.api_key,
                     base_url=self.base_url,
                     timeout=60.0,
-                    max_retries=2,
+                    # 429 retry is owned by ``ai_request_limiter`` so the
+                    # provider slot is released during exponential backoff.
+                    max_retries=0,
                     default_headers={
                         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
                     }
@@ -561,31 +571,31 @@ class AIService:
             in_thinking_tag = False  # 跟踪是否在思考标签内
             thinking_buffer = ""  # 暂存可能的思考内容
 
-            if self.api_format == API_FORMAT_ANTHROPIC:
-                content_stream = self._anthropic_stream(
-                    messages,
-                    temperature=temperature,
-                    max_tokens=max_tokens,
-                    reasoning_effort=reasoning_effort,
-                )
-            else:
-                # 尝试调用 API，如果失败则根据错误类型决定是否降级重试
+            async def open_content_stream() -> AsyncIterator[str]:
+                if self.api_format == API_FORMAT_ANTHROPIC:
+                    async for item in self._anthropic_stream(
+                        messages,
+                        temperature=temperature,
+                        max_tokens=max_tokens,
+                        reasoning_effort=reasoning_effort,
+                    ):
+                        yield item
+                    return
+
+                request_params = dict(api_params)
                 try:
-                    stream = await self.client.chat.completions.create(**api_params)
+                    stream = await self.client.chat.completions.create(**request_params)
                 except Exception as api_error:
                     can_retry = is_retryable_error(api_error)
-
                     self._log_api_error("STREAM REQUEST", api_error, can_retry)
-
-                    # 只有在使用了 reasoning_effort 且错误可重试时才降级
+                    if is_rate_limit_error(api_error):
+                        raise
                     if use_reasoning and can_retry:
                         self._log_retry("STREAM REQUEST")
-                        # 移除 extra_body（包含 reasoning_effort），添加 temperature
-                        api_params.pop("extra_body", None)
-                        api_params["temperature"] = temperature
-                        stream = await self.client.chat.completions.create(**api_params)
+                        request_params.pop("extra_body", None)
+                        request_params["temperature"] = temperature
+                        stream = await self.client.chat.completions.create(**request_params)
                     else:
-                        # 不可重试的错误，直接抛出带有更详细信息的异常
                         if isinstance(api_error, PermissionDeniedError):
                             raise Exception(
                                 f"AI 请求被拒绝: {str(api_error)}。"
@@ -595,12 +605,31 @@ class AIService:
                             )
                         raise
 
-                async def openai_content_stream():
-                    async for chunk in stream:
-                        if chunk.choices and chunk.choices[0].delta.content:
-                            yield chunk.choices[0].delta.content
+                async for chunk in stream:
+                    if chunk.choices and chunk.choices[0].delta.content:
+                        yield chunk.choices[0].delta.content
 
-                content_stream = openai_content_stream()
+            async def limited_content_stream() -> AsyncIterator[str]:
+                for attempt_index in range(MAX_RATE_LIMIT_ATTEMPTS):
+                    emitted_content = False
+                    try:
+                        async with provider_request_limiter.slot(self.api_key):
+                            async for item in open_content_stream():
+                                emitted_content = True
+                                yield item
+                        return
+                    except Exception as api_error:
+                        if (
+                            emitted_content
+                            or not is_rate_limit_error(api_error)
+                            or attempt_index + 1 >= MAX_RATE_LIMIT_ATTEMPTS
+                        ):
+                            raise
+                        # The context manager has released the provider slot
+                        # before this cooldown, so other keys/tasks can run.
+                        await asyncio.sleep(rate_limit_delay_seconds(api_error, attempt_index))
+
+            content_stream = limited_content_stream()
 
             async for content in content_stream:
                 if content:
@@ -697,39 +726,38 @@ class AIService:
                 use_reasoning,
             )
 
-            if self.api_format == API_FORMAT_ANTHROPIC:
-                response = await self._anthropic_complete(
-                    messages,
-                    temperature=temperature,
-                    max_tokens=max_tokens,
-                    reasoning_effort=reasoning_effort,
-                )
-            else:
-                # 尝试调用 API，如果失败则根据错误类型决定是否降级重试
+            async def request_once():
+                if self.api_format == API_FORMAT_ANTHROPIC:
+                    return await self._anthropic_complete(
+                        messages,
+                        temperature=temperature,
+                        max_tokens=max_tokens,
+                        reasoning_effort=reasoning_effort,
+                    )
+
+                request_params = dict(api_params)
                 try:
-                    response = await self.client.chat.completions.create(**api_params)
+                    return await self.client.chat.completions.create(**request_params)
                 except Exception as api_error:
                     can_retry = is_retryable_error(api_error)
-
                     self._log_api_error("AI REQUEST", api_error, can_retry)
-
-                    # 只有在使用了 reasoning_effort 且错误可重试时才降级
+                    if is_rate_limit_error(api_error):
+                        raise
                     if use_reasoning and can_retry:
                         self._log_retry("AI REQUEST")
-                        # 移除 extra_body（包含 reasoning_effort），添加 temperature
-                        api_params.pop("extra_body", None)
-                        api_params["temperature"] = temperature
-                        response = await self.client.chat.completions.create(**api_params)
-                    else:
-                        # 不可重试的错误，直接抛出带有更详细信息的异常
-                        if isinstance(api_error, PermissionDeniedError):
-                            raise Exception(
-                                f"AI 请求被拒绝: {str(api_error)}。"
-                                f"这可能是因为: 1) 内容触发了 AI 服务商的安全过滤; "
-                                f"2) API Key 权限不足; 3) 代理服务配置问题。"
-                                f"建议检查输入内容或联系 API 服务商。"
-                            )
-                        raise
+                        request_params.pop("extra_body", None)
+                        request_params["temperature"] = temperature
+                        return await self.client.chat.completions.create(**request_params)
+                    if isinstance(api_error, PermissionDeniedError):
+                        raise Exception(
+                            f"AI 请求被拒绝: {str(api_error)}。"
+                            f"这可能是因为: 1) 内容触发了 AI 服务商的安全过滤; "
+                            f"2) API Key 权限不足; 3) 代理服务配置问题。"
+                            f"建议检查输入内容或联系 API 服务商。"
+                        )
+                    raise
+
+            response = await run_with_provider_limit(self.api_key, request_once)
 
             # 获取原始响应内容
             raw_content = extract_completion_content(response)

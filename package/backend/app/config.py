@@ -7,7 +7,7 @@ from app.utils.secret_files import read_secret_file
 
 DEFAULT_SECRET_KEY = "your-secret-key-change-this-in-production"
 DEFAULT_ADMIN_PASSWORD = "admin123"
-DEFAULT_APP_VERSION = "2.0.7"
+DEFAULT_APP_VERSION = "2.1.0"
 
 
 def _normalize_app_version(value: str) -> str:
@@ -155,6 +155,9 @@ class Settings(BaseSettings):
     
     # 并发配置
     MAX_CONCURRENT_USERS: int = 5
+    API_KEY_CONCURRENCY: int = 2
+    MAX_PENDING_SESSIONS_PER_USER: int = 3
+    TASK_WORKER_MAX_CONCURRENCY: int = 10
     DEFAULT_USAGE_LIMIT: int = 1
     SEGMENT_SKIP_THRESHOLD: int = 15
 

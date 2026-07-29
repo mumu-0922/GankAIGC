@@ -171,6 +171,22 @@ Validation:
   extension syntax checks passed; the versioned Vite build was synchronized
   into `package/static`; a pulled-base Docker image built successfully and
   reported `VERSION=v2.0.7`; Trivy found zero fixed HIGH/CRITICAL issues.
+- `v2.1.0` full backend gate: 581 tests passed against the isolated PostgreSQL
+  test database. This includes five-slot overlap, same-user inline
+  serialization, revision-0010 duplicate-active migration, durable browser
+  suspension/resume/retry, admin tier validation, and per-Key limiter tests.
+- Release/Docker/static gate: 169 targeted contracts passed; base and
+  production Compose models validated; `sh -n` passed for the restic script;
+  the Vite `v2.1.0` build was synchronized into `package/static`.
+- Browser extension gate: every JavaScript file passed `node --check`, all
+  eight Node cases passed, and a local `v0.1.10` ZIP/checksum proof confirmed
+  exactly one root `manifest.json`; the CI-generated sidecar remains the
+  authoritative Release checksum.
+- Security pattern scans reported zero Critical/High findings in backend app,
+  frontend source, and extension. The nine accepted Medium browser jitter
+  findings remain unchanged and documented in `design.md`.
+- `git diff --check`, Python compile, frontend production build, extension
+  packaging, and README/deployment/release-note synchronization passed.
 
 ## Phase 0 — Containment and Baseline (S, before public go-live)
 
@@ -190,7 +206,7 @@ Validation:
 - [x] Replace `COPY package/ ./` with an explicit runtime allowlist.
 - [x] Add dedicated uploads persistence; do not add server Zhuque state for the recommended `browser_agent` deployment.
 - [ ] Copy existing data into the new volumes before switching paths.
-- [ ] Add uploads to encrypted backup scope.
+- [x] Add uploads to encrypted backup scope.
 
 **Validation**
 
@@ -282,6 +298,18 @@ pg_restore --list <validated.dump>
 **Rollback:** retain two or three verified digests; run old/new backup chains in parallel for one retention cycle.
 
 ## Phase 6 — Performance and Maintainability (P1/P2 after production gates)
+
+### v2.1.0 fair-concurrency delivery
+
+- [x] Add migration/runtime status support for one active session per user and durable `waiting_browser_agent` suspension.
+- [x] Enforce one active plus two queued sessions per user and oldest-eligible-user claims under concurrent worker slots.
+- [x] Replace the serial Docker worker loop with ten logical slots governed by hot-reloaded `5 / 8 / 10` capacity and per-slot leases.
+- [x] Add HMAC-keyed provider request gates with admin-selectable `1 / 2 / 4` concurrency and bounded 429 cooldown/retry.
+- [x] Requeue suspended sessions on browser-agent completion/failure/expiry and prove restart-safe resume without duplicate clicks or billing.
+- [x] Expose capacity controls/status in the admin UI and update queue labels for external waits.
+- [x] Package the tagged browser extension plus SHA-256 as immutable Release assets and cover the workflow contract.
+- [x] Add uploads to encrypted offsite restic scope, add an isolated restore/hash proof, and update README/deployment docs.
+- [x] Prepare synchronized v2.1.0 version identity, frontend static assets and release notes; run full backend/frontend/extension/release/security gates.
 
 - [ ] Stop committing `User.last_used` on every authenticated request; throttle/batch presence writes.
 - [ ] Move blocking synchronous ORM work away from async request paths or adopt a consistent sync/async execution model.

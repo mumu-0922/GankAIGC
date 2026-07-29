@@ -1,6 +1,6 @@
 import asyncio
 
-from fastapi import APIRouter, Depends, Header
+from fastapi import APIRouter, BackgroundTasks, Depends, Header
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -23,6 +23,7 @@ from app.schemas import (
     BrowserAgentStatusResponse,
 )
 from app.services.browser_agent_service import BrowserAgentService, bearer_token_from_authorization
+from app.services.task_queue import process_session_by_id
 from app.config import settings
 from app.utils.time import utcnow
 
@@ -151,12 +152,15 @@ async def update_browser_agent_job_progress(
 async def complete_browser_agent_job(
     job_id: str,
     payload: BrowserAgentJobCompleteRequest,
+    background_tasks: BackgroundTasks,
     authorization: str | None = Header(None),
     db: Session = Depends(get_db),
 ):
     service = BrowserAgentService(db)
     agent = service.authenticate_agent(bearer_token_from_authorization(authorization))
-    service.complete_zhuque_job(agent=agent, job_id=job_id, result=payload.result)
+    job = service.complete_zhuque_job(agent=agent, job_id=job_id, result=payload.result)
+    if settings.INLINE_TASK_WORKER_ENABLED and job.session_id is not None:
+        background_tasks.add_task(process_session_by_id, job.session_id)
     return BrowserAgentOkResponse(ok=True)
 
 
@@ -164,16 +168,19 @@ async def complete_browser_agent_job(
 async def fail_browser_agent_job(
     job_id: str,
     payload: BrowserAgentJobFailRequest,
+    background_tasks: BackgroundTasks,
     authorization: str | None = Header(None),
     db: Session = Depends(get_db),
 ):
     service = BrowserAgentService(db)
     agent = service.authenticate_agent(bearer_token_from_authorization(authorization))
-    service.fail_zhuque_job(
+    job = service.fail_zhuque_job(
         agent=agent,
         job_id=job_id,
         error_code=payload.error_code,
         message=payload.message,
         retryable=payload.retryable,
     )
+    if settings.INLINE_TASK_WORKER_ENABLED and job.session_id is not None:
+        background_tasks.add_task(process_session_by_id, job.session_id)
     return BrowserAgentOkResponse(ok=True)

@@ -3,11 +3,12 @@ import inspect
 import contextlib
 import logging
 import math
+import statistics
 from datetime import timedelta
 from typing import Awaitable, Callable
 
-from sqlalchemy import and_, func, or_
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import and_, exists, func, or_, select
+from sqlalchemy.orm import Session, aliased
 
 from app.config import settings
 from app.database import SessionLocal
@@ -18,11 +19,18 @@ from app.services.optimization_service import MAX_ERROR_MESSAGE_LENGTH, Optimiza
 from app.services.provider_config_service import ProviderConfigService
 from app.services.session_credentials import clear_transient_session_api_keys
 from app.services.stream_manager import stream_manager
+from app.services.task_control import TaskSuspended
+from app.services.browser_agent_service import BrowserAgentService
 from app.utils.time import utcnow
 
 TaskRunner = Callable[[Session, OptimizationSession], Awaitable[None] | None]
 ClaimCallback = Callable[[OptimizationSession], None]
 logger = logging.getLogger(__name__)
+
+ACTIVE_SESSION_STATUSES = ("processing", "waiting_browser_agent")
+UNFINISHED_SESSION_STATUSES = ("queued", *ACTIVE_SESSION_STATUSES)
+USER_SUBMISSION_LOCK_NAMESPACE = 0x47414E4B  # "GANK"
+USER_CLAIM_LOCK_NAMESPACE = 0x51455545  # "QUEUE"
 
 
 def _truncate_error_message(error: Exception) -> str:
@@ -50,6 +58,50 @@ def touch_session_heartbeat(session_id: int, worker_id: str) -> bool:
         return True
     finally:
         db.close()
+
+
+def _postgres_advisory_lock(
+    db: Session,
+    namespace: int,
+    user_id: int,
+    *,
+    wait: bool,
+) -> bool:
+    """Acquire a transaction-scoped per-user lock without adding Redis.
+
+    PostgreSQL is the only supported database, but returning True on another
+    dialect keeps isolated unit doubles usable. The partial unique index still
+    remains the final invariant in production.
+    """
+    if db.bind is None or db.bind.dialect.name != "postgresql":
+        return True
+    function = func.pg_advisory_xact_lock if wait else func.pg_try_advisory_xact_lock
+    result = db.execute(select(function(namespace, int(user_id)))).scalar()
+    return True if wait else bool(result)
+
+
+def lock_user_submission(db: Session, user_id: int) -> None:
+    _postgres_advisory_lock(
+        db,
+        USER_SUBMISSION_LOCK_NAMESPACE,
+        user_id,
+        wait=True,
+    )
+
+
+def count_unfinished_sessions_for_user(
+    db: Session,
+    user_id: int,
+    *,
+    exclude_session_id: int | None = None,
+) -> int:
+    query = db.query(func.count(OptimizationSession.id)).filter(
+        OptimizationSession.user_id == user_id,
+        OptimizationSession.status.in_(UNFINISHED_SESSION_STATUSES),
+    )
+    if exclude_session_id is not None:
+        query = query.filter(OptimizationSession.id != exclude_session_id)
+    return int(query.scalar() or 0)
 
 
 async def _heartbeat_loop(session_id: int, worker_id: str, interval: float) -> None:
@@ -127,14 +179,51 @@ def recover_stale_processing_sessions(
 
 
 def claim_next_queued_session(db: Session, worker_id: str) -> OptimizationSession | None:
-    session = (
+    active_session = aliased(OptimizationSession)
+    candidates = (
         db.query(OptimizationSession)
-        .filter(OptimizationSession.status == "queued")
-        .order_by(OptimizationSession.queued_at.asc().nullsfirst(), OptimizationSession.created_at.asc())
+        .filter(
+            OptimizationSession.status == "queued",
+            ~exists().where(
+                and_(
+                    active_session.user_id == OptimizationSession.user_id,
+                    active_session.status.in_(ACTIVE_SESSION_STATUSES),
+                )
+            ),
+        )
+        .order_by(
+            OptimizationSession.queued_at.asc().nullsfirst(),
+            OptimizationSession.created_at.asc(),
+            OptimizationSession.id.asc(),
+        )
         .with_for_update(skip_locked=True)
-        .first()
+        .limit(100)
+        .all()
     )
-    if not session:
+
+    session = None
+    for candidate in candidates:
+        if not _postgres_advisory_lock(
+            db,
+            USER_CLAIM_LOCK_NAMESPACE,
+            candidate.user_id,
+            wait=False,
+        ):
+            continue
+        already_active = (
+            db.query(OptimizationSession.id)
+            .filter(
+                OptimizationSession.user_id == candidate.user_id,
+                OptimizationSession.status.in_(ACTIVE_SESSION_STATUSES),
+            )
+            .first()
+        )
+        if already_active:
+            continue
+        session = candidate
+        break
+
+    if session is None:
         return None
 
     now = utcnow()
@@ -147,6 +236,26 @@ def claim_next_queued_session(db: Session, worker_id: str) -> OptimizationSessio
     db.commit()
     db.refresh(session)
     return session
+
+
+def _recent_median_task_seconds(db: Session) -> int:
+    samples = (
+        db.query(OptimizationSession.started_at, OptimizationSession.completed_at)
+        .filter(
+            OptimizationSession.status == "completed",
+            OptimizationSession.started_at.isnot(None),
+            OptimizationSession.completed_at.isnot(None),
+        )
+        .order_by(OptimizationSession.completed_at.desc())
+        .limit(50)
+        .all()
+    )
+    durations = [
+        max(1, int((completed_at - started_at).total_seconds()))
+        for started_at, completed_at in samples
+        if completed_at >= started_at
+    ]
+    return max(30, min(3600, int(statistics.median(durations)))) if durations else 300
 
 
 def _runtime_provider_config(db: Session, session: OptimizationSession) -> dict:
@@ -164,22 +273,58 @@ async def run_session(db: Session, session: OptimizationSession) -> None:
 async def process_session_by_id(session_id: int, runner: TaskRunner | None = None) -> bool:
     db = SessionLocal()
     try:
-        session = (
-            db.query(OptimizationSession)
-            .options(joinedload(OptimizationSession.user))
-            .filter(OptimizationSession.id == session_id)
-            .first()
-        )
-        if not session or session.status not in {"queued", "processing"}:
-            return False
+        while True:
+            session = (
+                db.query(OptimizationSession)
+                .filter(OptimizationSession.id == session_id)
+                .first()
+            )
+            if not session or session.status != "queued":
+                return False
 
-        if not session.started_at:
-            session.started_at = utcnow()
-        session.status = "processing"
-        session.worker_id = session.worker_id or "inline-worker"
-        session.worker_attempt_count = int(session.worker_attempt_count or 0) + 1
-        session.updated_at = utcnow()
-        db.commit()
+            # Inline source/one-click requests can overlap just like Docker
+            # slots. Keep a later task queued until this user's active task is
+            # terminal instead of violating the partial unique index and
+            # losing its one-shot BackgroundTask.
+            _postgres_advisory_lock(
+                db,
+                USER_CLAIM_LOCK_NAMESPACE,
+                session.user_id,
+                wait=True,
+            )
+            session = (
+                db.query(OptimizationSession)
+                .filter(OptimizationSession.id == session_id)
+                .with_for_update()
+                .populate_existing()
+                .first()
+            )
+            if not session or session.status != "queued":
+                db.rollback()
+                return False
+            already_active = (
+                db.query(OptimizationSession.id)
+                .filter(
+                    OptimizationSession.user_id == session.user_id,
+                    OptimizationSession.id != session.id,
+                    OptimizationSession.status.in_(ACTIVE_SESSION_STATUSES),
+                )
+                .first()
+            )
+            if already_active:
+                db.rollback()
+                await asyncio.sleep(max(0.05, float(settings.TASK_WORKER_POLL_INTERVAL or 0.05)))
+                continue
+
+            now = utcnow()
+            session.started_at = now
+            session.status = "processing"
+            session.worker_id = "inline-worker"
+            session.worker_attempt_count = int(session.worker_attempt_count or 0) + 1
+            session.updated_at = now
+            db.commit()
+            break
+
         await _run_with_error_handling(db, session, runner or run_session)
         return True
     finally:
@@ -193,6 +338,7 @@ async def process_next_queued_session(
 ) -> bool:
     db = SessionLocal()
     try:
+        BrowserAgentService(db).expire_stale_jobs()
         recover_stale_processing_sessions(db)
         session = claim_next_queued_session(db, worker_id)
         if not session:
@@ -224,6 +370,23 @@ async def _run_with_error_handling(db: Session, session: OptimizationSession, ru
         session.finished_at = session.finished_at or session.completed_at or utcnow()
         if session.status in {"completed", "failed", "stopped"}:
             clear_transient_session_api_keys(session)
+        db.commit()
+        await _broadcast_status_safely(session, session.status)
+    except TaskSuspended as suspended:
+        db.rollback()
+        session = db.query(OptimizationSession).filter(OptimizationSession.id == session_db_id).one()
+        if session.status == "stopped":
+            session.finished_at = session.finished_at or utcnow()
+            session.updated_at = session.finished_at
+            clear_transient_session_api_keys(session)
+            db.commit()
+            await _broadcast_status_safely(session, "stopped")
+            return
+        if session.status == "processing":
+            session.status = "waiting_browser_agent"
+            session.worker_id = None
+            session.updated_at = utcnow()
+            session.error_message = str(suspended)
         db.commit()
         await _broadcast_status_safely(session, session.status)
     except Exception as error:
@@ -328,7 +491,7 @@ def get_persistent_queue_status(
 
     estimated_wait_time = None
     if your_position:
-        estimated_wait_time = math.ceil(your_position / capacity) * 300
+        estimated_wait_time = math.ceil(your_position / capacity) * _recent_median_task_seconds(db)
 
     return {
         "current_users": int(current_users),

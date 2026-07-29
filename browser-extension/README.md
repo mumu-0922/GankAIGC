@@ -38,11 +38,12 @@ The VPS must be reachable by the user's Chrome browser over HTTPS or trusted HTT
 
 ## Load unpacked extension
 
-1. Open Chrome: `chrome://extensions`.
-2. Enable `Developer mode`.
-3. Click `Load unpacked`.
-4. Select this `browser-extension/` directory.
-5. If the extension was already installed, click `Reload` after pulling new code and confirm the version is `0.1.10` or newer.
+1. Prefer the matching GitHub Release asset: `GankAIGC-Browser-Extension-v0.1.10.zip` plus `GankAIGC-Browser-Extension-v0.1.10.zip.sha256`. Source users may instead use this `browser-extension/` directory.
+2. Verify the ZIP (`sha256sum -c GankAIGC-Browser-Extension-v0.1.10.zip.sha256`, or compare Windows `Get-FileHash` output), then extract it. The selected directory must contain `manifest.json` at its root.
+3. Open Chrome: `chrome://extensions`.
+4. Enable `Developer mode`.
+5. Click `Load unpacked` and select the extracted directory.
+6. If the extension was already installed, replace the files in its existing directory, click `Reload`, refresh the open Zhuque page, and confirm the version is `0.1.10` or newer. Do not load a duplicate copy.
 
 ## Host permissions
 

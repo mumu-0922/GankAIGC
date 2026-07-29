@@ -50,7 +50,9 @@ from app.schemas import (
     UserUsageUpdate,
 )
 from app.services.concurrency import concurrency_manager
+from app.services.browser_agent_service import BrowserAgentService
 from app.services.credit_service import CreditService, serialize_credit_transaction
+from app.services.session_credentials import clear_transient_session_api_keys
 from app.services import operations_service, update_service
 from app.services.ai_service import normalize_api_format
 from app.services.zhuque_api import ZhuqueAPI
@@ -217,6 +219,8 @@ MODEL_API_KEY_FIELDS = {
 
 SECRET_CONFIG_FIELDS = MODEL_API_KEY_FIELDS | {"MINERU_API_TOKEN"}
 PDF_STRUCTURE_ENGINE_OPTIONS = {"mineru", "markitdown"}
+TASK_CONCURRENCY_OPTIONS = {5, 8, 10}
+API_KEY_CONCURRENCY_OPTIONS = {1, 2, 4}
 
 MODEL_BASE_URL_FIELDS = {
     "OPENAI_BASE_URL",
@@ -358,6 +362,26 @@ def _validate_document_parse_updates(updates: Dict[str, str]) -> Dict[str, str]:
                 detail="PDF 解析引擎仅支持 mineru 或 markitdown",
             )
         sanitized["PDF_STRUCTURE_ENGINE"] = engine
+    return sanitized
+
+
+def _validate_concurrency_updates(updates: Dict[str, str]) -> Dict[str, str]:
+    sanitized = dict(updates)
+    option_sets = {
+        "MAX_CONCURRENT_USERS": TASK_CONCURRENCY_OPTIONS,
+        "API_KEY_CONCURRENCY": API_KEY_CONCURRENCY_OPTIONS,
+    }
+    for key, allowed in option_sets.items():
+        if key not in sanitized:
+            continue
+        try:
+            value = int(str(sanitized[key]).strip())
+        except (TypeError, ValueError) as exc:
+            raise HTTPException(status_code=400, detail=f"{key} 必须是整数") from exc
+        if value not in allowed:
+            choices = " / ".join(str(item) for item in sorted(allowed))
+            raise HTTPException(status_code=400, detail=f"{key} 仅支持 {choices}")
+        sanitized[key] = str(value)
     return sanitized
 
 
@@ -1356,12 +1380,15 @@ async def admin_stop_session(
     if not session:
         raise HTTPException(status_code=404, detail="会话不存在")
         
-    if session.status not in ["queued", "processing"]:
-        raise HTTPException(status_code=400, detail="只能停止排队中或处理中的会话")
+    if session.status not in ["queued", "processing", "waiting_browser_agent"]:
+        raise HTTPException(status_code=400, detail="只能停止排队中、处理中的或等待浏览器插件的会话")
         
     session.status = "stopped"
     session.error_message = "管理员手动停止"
+    session.finished_at = utcnow()
+    clear_transient_session_api_keys(session)
     db.commit()
+    BrowserAgentService(db).cancel_zhuque_jobs_for_session(session_id=session.id)
     
     return {"message": "会话已停止"}
 
@@ -1626,6 +1653,9 @@ async def get_statistics(
     completed_sessions = db.query(OptimizationSession).filter(OptimizationSession.status == "completed").count() or 0
     processing_sessions = db.query(OptimizationSession).filter(OptimizationSession.status == "processing").count() or 0
     queued_sessions = db.query(OptimizationSession).filter(OptimizationSession.status == "queued").count() or 0
+    browser_waiting_sessions = db.query(OptimizationSession).filter(
+        OptimizationSession.status == "waiting_browser_agent"
+    ).count() or 0
     failed_sessions = db.query(OptimizationSession).filter(OptimizationSession.status == "failed").count() or 0
 
     total_segments = db.query(OptimizationSegment).count() or 0
@@ -1658,6 +1688,9 @@ async def get_statistics(
     previous_completed_sessions = sum(1 for session in previous_sessions if session.status == "completed")
     current_processing_sessions = sum(1 for session in current_sessions if session.status == "processing")
     current_queued_sessions = sum(1 for session in current_sessions if session.status == "queued")
+    current_browser_waiting_sessions = sum(
+        1 for session in current_sessions if session.status == "waiting_browser_agent"
+    )
     current_failed_sessions = sum(1 for session in current_sessions if session.status == "failed")
     previous_failed_sessions = sum(1 for session in previous_sessions if session.status == "failed")
 
@@ -1788,6 +1821,7 @@ async def get_statistics(
             "completed": completed_sessions,
             "processing": processing_sessions,
             "queued": queued_sessions,
+            "waiting_browser_agent": browser_waiting_sessions,
             "failed": failed_sessions,
             "today": today_sessions,
             "in_range": current_session_count,
@@ -1796,6 +1830,7 @@ async def get_statistics(
             "previous_completed_in_range": previous_completed_sessions,
             "processing_in_range": current_processing_sessions,
             "queued_in_range": current_queued_sessions,
+            "waiting_browser_agent_in_range": current_browser_waiting_sessions,
             "failed_in_range": current_failed_sessions,
             "previous_failed_in_range": previous_failed_sessions,
             "success_rate": success_rate_in_range,
@@ -1996,7 +2031,7 @@ async def get_all_sessions(
         processing_time = None
         if session.completed_at and session.created_at:
             processing_time = (session.completed_at - session.created_at).total_seconds()
-        elif session.status == 'processing' and session.created_at:
+        elif session.status in {'processing', 'waiting_browser_agent'} and session.created_at:
             processing_time = (utcnow() - session.created_at).total_seconds()
         
         # 获取统计信息
@@ -2030,13 +2065,13 @@ async def get_active_sessions(
     _: str = Depends(get_admin_from_token),
     db: Session = Depends(get_db)
 ) -> List[Dict[str, Any]]:
-    """获取所有活跃会话（处理中和排队中）- 优化版本，使用批量查询避免N+1问题"""
+    """获取所有活跃会话（处理、排队或等待插件）- 使用批量查询避免N+1问题。"""
     # 使用 joinedload 预加载用户信息，避免N+1查询
     active_sessions = db.query(OptimizationSession).options(
         joinedload(OptimizationSession.user),
         defer(OptimizationSession.original_text)  # 延迟加载大文本字段
     ).filter(
-        OptimizationSession.status.in_(["processing", "queued"])
+        OptimizationSession.status.in_(["processing", "queued", "waiting_browser_agent"])
     ).order_by(OptimizationSession.created_at.desc()).all()
 
     if not active_sessions:
@@ -2073,7 +2108,7 @@ async def get_active_sessions(
     for session in active_sessions:
         # 计算处理时间
         processing_time = None
-        if session.status == "processing" and session.created_at:
+        if session.status in {"processing", "waiting_browser_agent"} and session.created_at:
             processing_time = (now - session.created_at).total_seconds()
 
         text_data = text_info_map.get(session.id, {'length': 0, 'preview': ""})
@@ -2163,7 +2198,7 @@ async def get_user_sessions(
         processing_time = None
         if session.completed_at and session.created_at:
             processing_time = (session.completed_at - session.created_at).total_seconds()
-        elif session.status == "processing" and session.created_at:
+        elif session.status in {"processing", "waiting_browser_agent"} and session.created_at:
             processing_time = (utcnow() - session.created_at).total_seconds()
         
         stats = stats_map.get(session.id, {
@@ -2243,6 +2278,8 @@ async def get_config(_: str = Depends(get_admin_from_token)) -> Dict[str, Any]:
             "model_provider_name": settings.MODEL_PROVIDER_NAME,
             "model_api_format": normalize_api_format(getattr(settings, "MODEL_API_FORMAT", "openai_chat")),
             "max_concurrent_users": settings.MAX_CONCURRENT_USERS,
+            "api_key_concurrency": settings.API_KEY_CONCURRENCY,
+            "max_pending_sessions_per_user": settings.MAX_PENDING_SESSIONS_PER_USER,
             "history_compression_threshold": settings.HISTORY_COMPRESSION_THRESHOLD,
             "default_usage_limit": settings.DEFAULT_USAGE_LIMIT,
             "segment_skip_threshold": settings.SEGMENT_SKIP_THRESHOLD,
@@ -2269,6 +2306,7 @@ async def update_config(
         if not (key in SECRET_CONFIG_FIELDS and not str(value or "").strip())
     }
     updates = _validate_document_parse_updates(updates)
+    updates = _validate_concurrency_updates(updates)
     updates = _validate_model_base_url_updates(updates)
     if "MODEL_API_FORMAT" in updates:
         try:

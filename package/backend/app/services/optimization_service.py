@@ -20,6 +20,7 @@ from app.services.credit_service import CreditService
 from app.services.error_messages import build_task_error_message
 from app.services.stream_manager import stream_manager
 from app.services.session_credentials import clear_transient_session_api_keys
+from app.services.task_control import TaskSuspended
 from app.services.zhuque_service import zhuque_service
 from app.services.zhuque_prompt_evolution_service import ZhuquePromptEvolutionService
 from app.services.document_structure_service import (
@@ -487,6 +488,15 @@ class OptimizationService:
             clear_transient_session_api_keys(self.session_obj)
             self.db.commit()
             
+        except TaskSuspended as suspended:
+            self.db.refresh(self.session_obj)
+            if self.session_obj.status == "processing":
+                self.session_obj.status = "waiting_browser_agent"
+                self.session_obj.worker_id = None
+                self.session_obj.updated_at = utcnow()
+                self.session_obj.error_message = str(suspended)
+            self.db.commit()
+            raise
         except Exception as e:
             self.session_obj.status = "failed"
             CreditService(self.db).refund_held_platform_credit(self.session_obj)
@@ -1733,6 +1743,8 @@ class OptimizationService:
                 **label_meta,
             })
             return result
+        except TaskSuspended:
+            raise
         except Exception as e:
             logger.warning("Full text detect failed: %s", e)
             for seg in segments:

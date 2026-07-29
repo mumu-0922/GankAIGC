@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Existing release tag to upload assets to (e.g., v2.0.7)'
+        description: 'Existing release tag to upload assets to (e.g., v2.1.0)'
         required: true
-        default: 'v2.0.7'
+        default: 'v2.1.0'
       postgres_zip_url:
         description: 'PostgreSQL Windows binaries ZIP URL for the one-click package'
         required: true
@@ -142,6 +142,46 @@ jobs:
         with:
           name: GankAIGC-Windows-OneClick
           path: package/dist/GankAIGC-Windows-OneClick.zip
+          retention-days: 30
+
+  build-extension:
+    needs: validate-release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout tagged extension
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.version || github.ref }}
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Validate extension source
+        run: |
+          set -euo pipefail
+          for file in browser-extension/*.js; do node --check "$file"; done
+          node --test browser-extension/tests/*.test.cjs
+
+      - name: Package installable extension and checksum
+        run: |
+          set -euo pipefail
+          extension_version="$(node -p "require('./browser-extension/manifest.json').version")"
+          asset="GankAIGC-Browser-Extension-v${extension_version}.zip"
+          (cd browser-extension && zip -r "../${asset}" . \
+            -x 'tests/*' 'README.md')
+          unzip -l "$asset" | grep -Eq '[[:space:]]manifest\.json$'
+          sha256sum "$asset" > "${asset}.sha256"
+
+      - name: Upload extension artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: GankAIGC-Browser-Extension
+          path: |
+            GankAIGC-Browser-Extension-v0.1.10.zip
+            GankAIGC-Browser-Extension-v0.1.10.zip.sha256
           retention-days: 30
 
   build-linux:
@@ -317,7 +357,7 @@ jobs:
           retention-days: 30
 
   release:
-    needs: [build-windows, build-linux, build-macos]
+    needs: [build-windows, build-linux, build-macos, build-extension]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     permissions:
@@ -342,7 +382,7 @@ jobs:
         run: |
           set -euo pipefail
           notes_file=".github/release-notes/${TAG_NAME}.md"
-          mapfile -d '' files < <(find artifacts -type f \( -name '*.zip' -o -name '*.tar.gz' \) -print0)
+          mapfile -d '' files < <(find artifacts -type f \( -name '*.zip' -o -name '*.tar.gz' -o -name '*.sha256' \) -print0)
           printf 'Release tag: %s\n' "$TAG_NAME"
           printf 'Assets:\n'
           printf ' - %s\n' "${files[@]}"

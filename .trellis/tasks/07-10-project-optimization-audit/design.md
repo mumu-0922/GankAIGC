@@ -259,3 +259,58 @@ Rollback normally switches the app/worker to the previous digest. Database resto
   touches only non-terminal jobs; completed results remain immutable.
 - Platform billing behavior is unchanged. Rollback may revert the application
   and extension together, but must not reuse or move an existing release tag.
+
+## 14. v2.1.0 Fair Concurrency and Delivery Decisions
+
+### Capacity and fairness
+
+- The single-VPS target supports roughly 100 registered users with a peak of
+  ten concurrently active users. PostgreSQL remains the durable queue; Redis
+  is not introduced without measured multi-host or queue-pressure evidence.
+- The administrator selects total capacity from `5`, `8`, or `10`. Workers
+  observe changes without restart: raising the limit admits new work; lowering
+  it lets existing work drain and blocks new claims until the active count is
+  below the selected limit.
+- A user may own one active session (`processing` or durable external wait) and
+  two additional queued sessions. Claiming is oldest-eligible-user first and
+  does not prioritize platform billing over BYOK.
+- Browser-agent waits are durable suspension points. Creating a plugin job
+  moves the session to `waiting_browser_agent` and releases its worker slot.
+  Plugin terminal state requeues the session; the resumed transport consumes
+  the matching job by session, segment, and payload hash. Waiting still blocks
+  another active session for the same user.
+- Completed browser jobs remain reusable resume checkpoints. A terminal
+  failed/expired/cancelled job fails the current attempt once; an explicit
+  later retry is identified by `session.queued_at > job.completed_at` and may
+  create a new job instead of being permanently poisoned by the old failure.
+- The same per-user active invariant applies to inline source/one-click
+  BackgroundTasks. A later same-user task stays queued until the first is
+  terminal; row locking must not combine `FOR UPDATE` with a nullable
+  `joinedload()` outer join.
+- Legacy `.env.docker` values such as `MAX_CONCURRENT_USERS=7` map safely to
+  capacity 5 until the administrator explicitly saves 5, 8, or 10.
+
+### Provider pressure boundary
+
+- One in-process provider limiter groups requests by an HMAC fingerprint of
+  the API Key; raw Keys never enter logs or persistence. The administrator may
+  select `1`, `2`, or `4` concurrent requests per Key, defaulting to `2`.
+- Different BYOK Keys receive independent gates. A rate-limit response applies
+  bounded exponential cooldown outside the request slot and retries the same
+  request without creating another billing transaction. Completed segment and
+  stage records remain the resume checkpoints.
+- Local document parsing remains bounded separately from network request
+  concurrency; the first release changes optimization worker slots, not the
+  experimental Word Formatter job manager.
+
+### Release and backup contract
+
+- v2.1.0 Release assets include a tag-bound browser-extension ZIP whose root is
+  `manifest.json`, plus its SHA-256 checksum. Extension syntax and Node tests
+  gate upload, and the backend/frontend surface the minimum compatible version.
+- Offsite restic snapshots include validated PostgreSQL dump/checksum files and
+  the read-only uploads tree under distinct tags. A restore proof writes only
+  to an isolated directory/database and compares a known upload SHA-256.
+- Production rollout uses a short maintenance window: drain active work,
+  verify a backup, migrate, replace app/worker, then open at capacity 5 before
+  advancing to 8 and 10 using observed CPU, memory, 429, and failure rates.

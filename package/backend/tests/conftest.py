@@ -5,6 +5,7 @@ import sys
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import text
 from sqlalchemy.engine import make_url
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
@@ -67,6 +68,11 @@ from app.database import Base, engine
 @pytest.fixture(autouse=True)
 def reset_db():
     Base.metadata.drop_all(bind=engine)
+    # Alembic's version table is not part of SQLAlchemy metadata. Leaving an
+    # old head behind while recreating model-owned tables can make the next
+    # local startup replay a migration against already-current indexes.
+    with engine.begin() as connection:
+        connection.execute(text("DROP TABLE IF EXISTS alembic_version"))
     Base.metadata.create_all(bind=engine)
     auth_rate_limiter.reset()
     redeem_rate_limiter.reset()

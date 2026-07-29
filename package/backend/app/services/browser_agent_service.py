@@ -29,7 +29,7 @@ from app.models.browser_agent_constants import (
     ZHUQUE_AGENT_JOB_STATUS_RUNNING,
     ZHUQUE_AGENT_JOB_TERMINAL_STATUSES,
 )
-from app.models.models import BrowserAgent, BrowserAgentPairing, User, ZhuqueAgentJob
+from app.models.models import BrowserAgent, BrowserAgentPairing, OptimizationSession, User, ZhuqueAgentJob
 from app.utils.time import utcnow
 
 
@@ -315,9 +315,29 @@ class BrowserAgentService:
             attempt_count=0,
         )
         self.db.add(job)
+        if session_id is not None:
+            session = self.db.get(OptimizationSession, session_id)
+            if session and session.status == "processing":
+                session.status = "waiting_browser_agent"
+                session.worker_id = None
+                session.updated_at = now
+                session.error_message = "等待本机朱雀插件返回检测结果"
         self.db.commit()
         self.db.refresh(job)
         return job
+
+    @staticmethod
+    def _resume_waiting_session(job: ZhuqueAgentJob, now) -> bool:
+        session = job.session
+        if not session or session.status != "waiting_browser_agent":
+            return False
+        session.status = "queued"
+        session.queued_at = now
+        session.started_at = None
+        session.finished_at = None
+        session.worker_id = None
+        session.updated_at = now
+        return True
 
     def expire_stale_jobs(self) -> int:
         now = utcnow()
@@ -327,6 +347,7 @@ class BrowserAgentService:
                 ZhuqueAgentJob.status.notin_(ZHUQUE_AGENT_JOB_TERMINAL_STATUSES),
                 ZhuqueAgentJob.expires_at <= now,
             )
+            .with_for_update(skip_locked=True)
             .all()
         )
         for job in jobs:
@@ -334,6 +355,7 @@ class BrowserAgentService:
             job.error_code = job.error_code or "zhuque_browser_agent_job_expired"
             job.error_message = job.error_message or "等待本机浏览器插件检测超时"
             job.completed_at = now
+            self._resume_waiting_session(job, now)
         if jobs:
             self.db.commit()
         return len(jobs)
@@ -423,6 +445,7 @@ class BrowserAgentService:
         job.heartbeat_at = now
         agent.last_seen_at = now
         agent.updated_at = now
+        self._resume_waiting_session(job, now)
         self.db.commit()
         self.db.refresh(job)
         return job
@@ -448,6 +471,7 @@ class BrowserAgentService:
         job.heartbeat_at = now
         agent.last_seen_at = now
         agent.updated_at = now
+        self._resume_waiting_session(job, now)
         self.db.commit()
         self.db.refresh(job)
         return job

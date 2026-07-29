@@ -7,19 +7,21 @@ from app.database import SessionLocal
 from app.models.models import CreditTransaction, OptimizationSession, User, WorkerLease
 from app.services.credit_service import CreditService
 from app.services import task_queue
-from app.services.task_queue import process_next_queued_session
+from app.services.task_queue import process_next_queued_session, process_session_by_id
+from app.services.task_control import TaskSuspended
 from app.services.worker_lease import register_worker_lease, update_worker_lease
 from app.utils.auth import create_user_access_token, get_password_hash
 from app.utils.time import utcnow
+import worker as worker_module
 
 
-def _create_user(credit_balance=0):
+def _create_user(credit_balance=0, username="alice"):
     db = SessionLocal()
     try:
         user = User(
-            username="alice",
+            username=username,
             password_hash=get_password_hash("Password123!"),
-            access_link="http://testserver/access/alice",
+            access_link=f"http://testserver/access/{username}",
             is_active=True,
             credit_balance=credit_balance,
         )
@@ -99,6 +101,30 @@ def test_start_optimization_can_enqueue_without_inline_background_processing(cli
     assert calls == []
 
 
+def test_user_can_keep_only_one_active_plus_two_queued_sessions(client, monkeypatch):
+    _, token = _create_user(credit_balance=20)
+    monkeypatch.setattr(config_module.settings, "INLINE_TASK_WORKER_ENABLED", False, raising=False)
+    monkeypatch.setattr(config_module.settings, "MAX_PENDING_SESSIONS_PER_USER", 3, raising=False)
+    payload = {
+        "original_text": "汉" * 1000,
+        "processing_mode": "paper_polish",
+        "billing_mode": "platform",
+    }
+
+    responses = [
+        client.post(
+            "/api/optimization/start",
+            json=payload,
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        for _ in range(4)
+    ]
+
+    assert [response.status_code for response in responses[:3]] == [200, 200, 200]
+    assert responses[3].status_code == 409
+    assert "1 个运行、2 个排队" in responses[3].json()["detail"]
+
+
 def test_queue_status_includes_recent_online_user_count(client):
     _, token = _create_user(credit_balance=0)
     db = SessionLocal()
@@ -167,6 +193,161 @@ def test_process_next_queued_session_runs_oldest_queued_session():
         db.close()
 
 
+def test_claim_skips_user_with_active_external_wait_and_runs_other_user():
+    first_user_id, _ = _create_user(username="alice")
+    second_user_id, _ = _create_user(username="bob")
+    _create_session(
+        first_user_id,
+        "alice-waiting-plugin",
+        status="waiting_browser_agent",
+        created_at=utcnow() - timedelta(minutes=10),
+    )
+    alice_queued_id = _create_session(
+        first_user_id,
+        "alice-queued",
+        created_at=utcnow() - timedelta(minutes=9),
+    )
+    bob_queued_id = _create_session(
+        second_user_id,
+        "bob-queued",
+        created_at=utcnow() - timedelta(minutes=1),
+    )
+    processed = []
+
+    async def fake_runner(db, session):
+        processed.append(session.session_id)
+        session.status = "completed"
+        session.completed_at = utcnow()
+        db.commit()
+
+    assert asyncio.run(process_next_queued_session("fair-worker", runner=fake_runner)) is True
+    assert processed == ["bob-queued"]
+
+    db = SessionLocal()
+    try:
+        assert db.get(OptimizationSession, alice_queued_id).status == "queued"
+        assert db.get(OptimizationSession, bob_queued_id).status == "completed"
+    finally:
+        db.close()
+
+
+def test_task_suspension_releases_worker_without_failure_or_refund():
+    user_id, _ = _create_user(credit_balance=0)
+    session_id = _create_session(
+        user_id,
+        "suspended-session",
+        charged_credits=2,
+    )
+
+    async def suspended_runner(db, session):
+        raise TaskSuspended(
+            "等待本机朱雀插件返回检测结果",
+            reason="browser_agent",
+            external_job_id="zaj_test",
+        )
+
+    assert asyncio.run(
+        process_next_queued_session("suspension-worker", runner=suspended_runner)
+    ) is True
+
+    db = SessionLocal()
+    try:
+        session = db.get(OptimizationSession, session_id)
+        assert session.status == "waiting_browser_agent"
+        assert session.worker_id is None
+        assert session.finished_at is None
+        assert session.charge_status == "held"
+        assert session.charged_credits == 2
+    finally:
+        db.close()
+
+
+def test_worker_capacity_hot_setting_is_bounded_to_ten(monkeypatch):
+    monkeypatch.setattr(config_module.settings, "TASK_WORKER_MAX_CONCURRENCY", 10, raising=False)
+    for configured, expected in ((5, 5), (8, 8), (10, 10), (7, 5), (20, 5)):
+        monkeypatch.setattr(config_module.settings, "MAX_CONCURRENT_USERS", configured, raising=False)
+        assert worker_module.configured_worker_capacity() == expected
+
+
+def test_multiple_worker_slots_process_different_users_concurrently():
+    for index in range(5):
+        user_id, _ = _create_user(username=f"parallel-user-{index}")
+        _create_session(user_id, f"parallel-session-{index}")
+
+    active = 0
+    maximum_active = 0
+    all_entered = asyncio.Event()
+    release = asyncio.Event()
+
+    async def blocking_runner(db, session):
+        nonlocal active, maximum_active
+        active += 1
+        maximum_active = max(maximum_active, active)
+        if active == 5:
+            all_entered.set()
+        await all_entered.wait()
+        await release.wait()
+        session.status = "completed"
+        session.completed_at = utcnow()
+        db.commit()
+        active -= 1
+
+    async def run_slots():
+        tasks = [
+            asyncio.create_task(
+                process_next_queued_session(f"parallel-worker-{index}", runner=blocking_runner)
+            )
+            for index in range(5)
+        ]
+        await asyncio.wait_for(all_entered.wait(), timeout=5)
+        release.set()
+        return await asyncio.wait_for(asyncio.gather(*tasks), timeout=5)
+
+    assert asyncio.run(run_slots()) == [True] * 5
+    assert maximum_active == 5
+
+
+def test_inline_tasks_for_same_user_wait_in_queue_instead_of_violating_active_guard(monkeypatch):
+    monkeypatch.setattr(config_module.settings, "TASK_WORKER_POLL_INTERVAL", 0.01, raising=False)
+    user_id, _ = _create_user(username="inline-serial-user")
+    first_id = _create_session(user_id, "inline-first")
+    second_id = _create_session(user_id, "inline-second")
+    first_entered = asyncio.Event()
+    release_first = asyncio.Event()
+    order = []
+
+    async def runner(db, session):
+        order.append(f"start:{session.session_id}")
+        if session.id == first_id:
+            first_entered.set()
+            await release_first.wait()
+        session.status = "completed"
+        session.completed_at = utcnow()
+        db.commit()
+        order.append(f"end:{session.session_id}")
+
+    async def run_inline_tasks():
+        first = asyncio.create_task(process_session_by_id(first_id, runner=runner))
+        await asyncio.wait_for(first_entered.wait(), timeout=3)
+        second = asyncio.create_task(process_session_by_id(second_id, runner=runner))
+        await asyncio.sleep(0.1)
+        db = SessionLocal()
+        try:
+            assert db.get(OptimizationSession, second_id).status == "queued"
+        finally:
+            db.close()
+        release_first.set()
+        return await asyncio.wait_for(asyncio.gather(first, second), timeout=3)
+
+    assert asyncio.run(run_inline_tasks()) == [True, True]
+    assert order == [
+        "start:inline-first",
+        "end:inline-first",
+        "start:inline-second",
+        "end:inline-second",
+    ]
+
+
 def test_process_next_queued_session_refreshes_heartbeat_while_running(monkeypatch):
     monkeypatch.setattr(config_module.settings, "TASK_WORKER_HEARTBEAT_INTERVAL", 0.01, raising=False)
 
@@ -197,10 +378,11 @@ def test_process_next_queued_session_refreshes_heartbeat_while_running(monkeypat
 
 def test_recover_stale_processing_sessions_requeues_dead_worker_session():
     user_id, _ = _create_user()
+    fresh_user_id, _ = _create_user(username="fresh-worker-user")
     stale_time = utcnow() - timedelta(minutes=30)
     fresh_time = utcnow()
     stale_id = _create_session(
-        user_id,
+        fresh_user_id,
         "stale-processing-session",
         status="processing",
         created_at=stale_time,

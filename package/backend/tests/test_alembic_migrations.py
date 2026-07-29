@@ -5,7 +5,8 @@ from alembic.config import Config
 import pytest
 from sqlalchemy import inspect, text
 
-from app.database import Base, engine
+from app.database import Base, SessionLocal, engine
+from app.models.models import OptimizationSession, User
 from app import schema as schema_module
 from app.schema import (
     SchemaStateError,
@@ -115,11 +116,66 @@ def test_alembic_upgrade_creates_current_schema():
         "idx_opt_session_created_at",
         "ix_optimization_sessions_queued_at",
         "ix_optimization_sessions_worker_id",
+        "uq_optimization_sessions_one_active_per_user",
     }.issubset(session_indexes)
 
     with engine.connect() as conn:
         assert get_current_schema_revisions(conn) == (get_expected_schema_revision(),)
         assert get_schema_differences(conn) == []
+
+
+def test_fair_concurrency_migration_requeues_duplicate_active_sessions():
+    _reset_schema_for_migration_test()
+    command.upgrade(_alembic_config(), "0010_task_events_worker_leases")
+
+    db = SessionLocal()
+    try:
+        user = User(username="migration-active-user", access_link="migration-active-user")
+        db.add(user)
+        db.flush()
+        db.add_all(
+            [
+                OptimizationSession(
+                    user_id=user.id,
+                    session_id="migration-active-1",
+                    original_text="测试正文一",
+                    processing_mode="paper_polish",
+                    current_stage="polish",
+                    status="processing",
+                    progress=20,
+                ),
+                OptimizationSession(
+                    user_id=user.id,
+                    session_id="migration-active-2",
+                    original_text="测试正文二",
+                    processing_mode="paper_polish",
+                    current_stage="polish",
+                    status="waiting_browser_agent",
+                    progress=40,
+                ),
+            ]
+        )
+        db.commit()
+        user_id = user.id
+    finally:
+        db.close()
+
+    command.upgrade(_alembic_config(), "head")
+
+    db = SessionLocal()
+    try:
+        sessions = (
+            db.query(OptimizationSession)
+            .filter(OptimizationSession.user_id == user_id)
+            .order_by(OptimizationSession.id.asc())
+            .all()
+        )
+        assert [session.status for session in sessions] == ["processing", "queued"]
+        assert sessions[1].worker_id is None
+        assert sessions[1].started_at is None
+        assert "duplicate active task requeued" in sessions[1].error_message
+    finally:
+        db.close()
 
 
 def test_unversioned_current_schema_is_verified_before_stamp():

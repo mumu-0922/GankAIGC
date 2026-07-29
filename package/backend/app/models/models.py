@@ -1,4 +1,4 @@
-from sqlalchemy import BigInteger, Boolean, Column, DateTime, Float, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import BigInteger, Boolean, Column, DateTime, Float, ForeignKey, Index, Integer, String, Text, text
 from sqlalchemy.orm import relationship
 from app.database import Base
 from app.config import settings
@@ -154,6 +154,14 @@ class PaperProject(Base):
 class OptimizationSession(Base):
     """优化会话表"""
     __tablename__ = "optimization_sessions"
+    __table_args__ = (
+        Index(
+            "uq_optimization_sessions_one_active_per_user",
+            "user_id",
+            unique=True,
+            postgresql_where=text("status IN ('processing', 'waiting_browser_agent')"),
+        ),
+    )
     
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), index=True)

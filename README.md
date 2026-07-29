@@ -519,15 +519,18 @@ BACKUP_INTERVAL_SECONDS=86400
 docker compose --env-file .env.docker run --rm -e RUN_ONCE=true backup
 ```
 
-本机 dump 现在先写 `.partial`，经 `pg_restore --list` 校验后原子改名，并生成 SHA-256。它仍和 VPS 同属一个故障域；正式上线应配置独立的加密 restic 仓库，先执行一次性验证，再启用定时 profile：
+本机 dump 现在先写 `.partial`，经 `pg_restore --list` 校验后原子改名，并生成 SHA-256。它仍和 VPS 同属一个故障域；正式上线应配置独立的加密 restic 仓库。异地快照会同时保存已校验的 PostgreSQL dump 与 `package/uploads/`，先执行一次 uploads 隔离恢复和逐文件 SHA-256 验证，再启用定时 profile：
 
 ```bash
 docker compose --env-file .env.docker --profile offsite \
-  run --rm -e RUN_ONCE=true backup-offsite
+  run --rm \
+  -e RUN_ONCE=true \
+  -e VERIFY_UPLOADS_RESTORE=true \
+  backup-offsite
 docker compose --env-file .env.docker --profile offsite up -d backup-offsite
 ```
 
-`RESTIC_REPOSITORY`、`RESTIC_PASSWORD` 及对象存储凭证只传给 `backup-offsite`，不会整份注入 app/worker。至少每周把快照恢复到隔离数据库并记录 RPO/RTO。
+`RESTIC_REPOSITORY`、`RESTIC_PASSWORD` 及对象存储凭证只传给 `backup-offsite`，不会整份注入 app/worker。至少每周恢复一次 PostgreSQL 到隔离数据库，并重新执行 uploads 恢复校验，记录 RPO/RTO。
 
 停止服务但保留数据库数据：
 
@@ -578,7 +581,11 @@ curl -fsS http://127.0.0.1:9800/ready
 
 回滚时只把 `GANKAIGC_IMAGE` 改回保留的上一条已验证 digest，再执行同一组 `pull/up`；数据库仅在迁移不兼容且已有恢复演练时才回滚。
 
-如果这次更新包含 Chrome 插件变更，还需要在用户本机刷新插件：复制最新 `browser-extension/`，到 `chrome://extensions` 点击「重新加载」，确认插件版本号。例如当前 VPS browser-agent 推荐插件版本为 `0.1.10`。
+> **v2.1.0 升级要求短暂维护。** 先等旧任务完成并停止旧 `app` / `worker`，再备份、拉取镜像、执行 migration，最后同时启动新服务。不要让 v2.0.x 的串行 worker 与 v2.1.0 的并发 worker 同时领取任务。完整命令见 [`docs/docker-deployment.md`](docs/docker-deployment.md#v210-short-maintenance-upgrade)。
+
+> 旧 `.env.docker` 如果仍是 `MAX_CONCURRENT_USERS=7`，升级前请改成 `5`；v2.1.0 worker 会把不受支持的旧档位安全降为 5，之后可在后台切到 8/10。
+
+如果这次更新包含 Chrome 插件变更，还需要在用户本机刷新插件：优先从 Release 下载最新版插件 ZIP，解压覆盖原目录，到 `chrome://extensions` 点击「重新加载」并确认版本号。例如当前 VPS browser-agent 推荐插件版本为 `0.1.10`。
 
 进入管理后台，点击左上角版本号，可以检查 GitHub 最新 Release 并复制 SSH 升级命令。后台不会直接控制 Docker；需要 SSH 到 VPS 的项目目录手动执行上面的命令。
 
@@ -611,6 +618,29 @@ curl -fsS http://127.0.0.1:9800/ready
 邀请码进群获得，QQ群：`1071743320`
 
 </details>
+
+---
+
+## 👥 v2.1.0 多用户并发说明
+
+`100` 个注册用户不等于让 `100` 个任务同时调用模型。GankAIGC 会接收请求并写入 PostgreSQL durable queue，再按可用处理槽公平领取；这样能承载更多在线用户，同时避免 3 核 4G VPS、模型 API 或同一 API Key 被瞬时打爆。
+
+- **3 核 4G 推荐从 5 并发起步**：后台「系统配置」可热切换全站任务并发 `5 / 8 / 10`。先跑 5，观察 CPU、内存、API `429` 和平均任务耗时，再逐级放到 8、10。
+- **降档不强杀任务**：从 10 调回 5 时，已经运行的任务会继续完成，只暂停领取超出新上限的任务。
+- **每用户公平排队**：同一用户最多 1 个任务处于运行或等待本机朱雀插件状态，并可再排队 2 个任务，避免单个用户占满全站。
+- **相同 API Key 单独限流**：后台可选 `1 / 2 / 4`，默认 2；不同 BYOK Key 独立计算。收到 `429` 时会先释放请求槽，再做有界退避。
+- **朱雀等待不占处理槽**：任务显示「等待本机朱雀插件」时已经释放 worker slot；插件回传、失败或超时后由 PostgreSQL 恢复调度。
+
+推荐起始配置：
+
+```properties
+MAX_CONCURRENT_USERS=5
+API_KEY_CONCURRENCY=2
+MAX_PENDING_SESSIONS_PER_USER=3
+TASK_WORKER_MAX_CONCURRENCY=10
+```
+
+其中 `TASK_WORKER_MAX_CONCURRENCY=10` 是 worker 的容量上限，日常实际并发由后台的 `MAX_CONCURRENT_USERS` 控制，不应直接把上限理解成默认同时运行 10 个任务。
 
 ---
 
@@ -649,6 +679,9 @@ COMPRESSION_API_KEY=KEY
 COMPRESSION_BASE_URL=https://api.openai.com/v1
 
 MAX_CONCURRENT_USERS=5
+API_KEY_CONCURRENCY=2
+MAX_PENDING_SESSIONS_PER_USER=3
+TASK_WORKER_MAX_CONCURRENCY=10
 API_REQUEST_INTERVAL=6
 REGISTRATION_ENABLED=true
 WORD_FORMATTER_ENABLED=false
@@ -770,11 +803,18 @@ INLINE_TASK_WORKER_ENABLED=false
 
 #### 1. 安装或升级插件
 
-1. 下载/更新本项目源码，确认本机存在完整的 `browser-extension/` 目录。
-2. 在 Chrome 地址栏打开 `chrome://extensions`，开启右上角「开发者模式」。
-3. 首次安装点击「加载已解压的扩展程序」，选择项目里的 `browser-extension/` 目录。
-4. 已安装旧版本时点击插件卡片上的「重新加载」，不要重复加载第二份插件。
-5. 在插件卡片的「详细信息」中确认版本为 `0.1.10` 或更高；升级后同时刷新已打开的朱雀页面，让新版 content script 重新注入。
+1. 优先到 [GitHub Releases](https://github.com/mumu-0922/GankAIGC/releases/latest) 下载 `GankAIGC-Browser-Extension-v0.1.10.zip`；旁边的 `.zip.sha256` 可用于核对下载完整性。开发者也可直接使用源码里的 `browser-extension/`。
+2. 解压 ZIP，确认所选目录的根层直接存在 `manifest.json`，不要选 ZIP 文件或它的上级目录。
+3. 在 Chrome 地址栏打开 `chrome://extensions`，开启右上角「开发者模式」。
+4. 首次安装点击「加载已解压的扩展程序」，选择刚解压的目录。
+5. 已安装旧版本时先用新版文件覆盖原目录，再点击插件卡片上的「重新加载」，不要重复加载第二份插件。
+6. 在插件卡片的「详细信息」中确认版本为 `0.1.10` 或更高；升级后同时刷新已打开的朱雀页面，让新版 content script 重新注入。
+
+Linux / macOS 可这样校验插件 ZIP；Windows PowerShell 可使用 `Get-FileHash <zip> -Algorithm SHA256`，并与 `.sha256` 文件中的值比较：
+
+```bash
+sha256sum -c GankAIGC-Browser-Extension-v0.1.10.zip.sha256
+```
 
 如果 GankAIGC 使用自定义域名，先把站点 Origin 加入 `browser-extension/manifest.json` 的 `host_permissions`，然后重新加载插件。例如：
 

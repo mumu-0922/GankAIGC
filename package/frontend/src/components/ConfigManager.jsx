@@ -49,6 +49,7 @@ const ConfigManager = ({ adminToken }) => {
     EMOTION_API_KEY: '',
     EMOTION_BASE_URL: '',
     MAX_CONCURRENT_USERS: '',
+    API_KEY_CONCURRENCY: '',
     HISTORY_COMPRESSION_THRESHOLD: '',
     COMPRESSION_MODEL: '',
     COMPRESSION_API_KEY: '',
@@ -122,7 +123,10 @@ const ConfigManager = ({ adminToken }) => {
         EMOTION_MODEL: response.data.emotion?.model || '',
         EMOTION_API_KEY: '',
         EMOTION_BASE_URL: response.data.emotion?.base_url || '',
-        MAX_CONCURRENT_USERS: response.data.system.max_concurrent_users?.toString() || '',
+        MAX_CONCURRENT_USERS: [5, 8, 10].includes(Number(response.data.system.max_concurrent_users))
+          ? response.data.system.max_concurrent_users.toString()
+          : '5',
+        API_KEY_CONCURRENCY: response.data.system.api_key_concurrency?.toString() || '2',
         HISTORY_COMPRESSION_THRESHOLD: response.data.system.history_compression_threshold?.toString() || '',
         COMPRESSION_MODEL: response.data.compression?.model || '',
         COMPRESSION_API_KEY: '',
@@ -443,8 +447,20 @@ const ConfigManager = ({ adminToken }) => {
               </div>
               <div className="aurora-config-quota-grid">
                 <label>
-                  <span>单用户并发会话数</span>
-                  <input type="number" className="aurora-admin-input" value={formData.MAX_CONCURRENT_USERS} onChange={(e) => setFormData({ ...formData, MAX_CONCURRENT_USERS: e.target.value })} />
+                  <span>全站任务并发</span>
+                  <select className="aurora-admin-input" value={formData.MAX_CONCURRENT_USERS} onChange={(e) => setFormData({ ...formData, MAX_CONCURRENT_USERS: e.target.value })}>
+                    <option value="5">5（稳妥起步）</option>
+                    <option value="8">8（观察后放量）</option>
+                    <option value="10">10（峰值档）</option>
+                  </select>
+                </label>
+                <label>
+                  <span>相同 API Key 并发</span>
+                  <select className="aurora-admin-input" value={formData.API_KEY_CONCURRENCY} onChange={(e) => setFormData({ ...formData, API_KEY_CONCURRENCY: e.target.value })}>
+                    <option value="1">1（最保守）</option>
+                    <option value="2">2（推荐）</option>
+                    <option value="4">4（高额度 Key）</option>
+                  </select>
                 </label>
                 <label>
                   <span>单会话最大消息数</span>

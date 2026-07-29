@@ -244,3 +244,171 @@ datas=[
 const detail = error.response?.data?.detail;
 toast.error(detail || `Service returned HTTP ${error.response?.status}`);
 ```
+
+---
+
+## Scenario: Single-VPS fair concurrency and durable browser-agent suspension
+
+### 1. Scope / Trigger
+
+- Trigger: changes to optimization-session statuses, queue claims, Docker
+  worker slots, provider request concurrency, browser-agent completion, task
+  submission limits, offsite uploads backup, or extension Release packaging.
+- This is the v2.1.0 single-VPS contract for roughly 100 registered users and
+  a measured peak of about 10 processing users. PostgreSQL remains the queue;
+  Redis is not required until multiple VPS workers or measured database load
+  justify a distributed primitive.
+
+### 2. Signatures
+
+- Runtime settings:
+  - `MAX_CONCURRENT_USERS`: one of `5`, `8`, `10`; unsupported legacy values
+    fail safely to 5 in the Docker worker;
+  - `TASK_WORKER_MAX_CONCURRENCY=10`: supervisor slot ceiling;
+  - `MAX_PENDING_SESSIONS_PER_USER=3`: one active/external wait plus two queued;
+  - `API_KEY_CONCURRENCY`: one of `1`, `2`, `4` (default 2).
+- Session statuses: `queued -> processing -> waiting_browser_agent -> queued`
+  for an external Zhuque round, followed by a terminal status.
+- Database invariant:
+  `uq_optimization_sessions_one_active_per_user` is a partial unique index on
+  `user_id` where status is `processing` or `waiting_browser_agent`.
+- Admin config endpoint: `POST /api/admin/config`; unsupported concurrency
+  tiers return HTTP 400.
+- Browser-agent completion/failure endpoints resume the linked session; in
+  inline mode they also enqueue `process_session_by_id(session.id)`.
+- Offsite proof command:
+  `docker compose --profile offsite run --rm -e RUN_ONCE=true
+  -e VERIFY_UPLOADS_RESTORE=true backup-offsite`.
+- Release assets:
+  `GankAIGC-Browser-Extension-v0.1.10.zip` and its `.zip.sha256` sidecar; the
+  ZIP root contains `manifest.json`.
+
+### 3. Contracts
+
+- One worker process owns at most ten logical slots. Each enabled slot has an
+  independent lease and database session. Hot downshift stops new claims but
+  never cancels an already running slot.
+- Queue claims use `FOR UPDATE SKIP LOCKED`, a transaction-scoped per-user
+  advisory lock, and a second active-session check. Oldest eligible queued
+  work wins regardless of platform/BYOK mode.
+- Concurrent submissions use a separate per-user advisory-lock namespace and
+  recount unfinished rows inside the transaction. The fourth unfinished task
+  is rejected with HTTP 409.
+- `waiting_browser_agent` occupies the user's active allowance but not a
+  worker slot. Job creation persists that status and raises `TaskSuspended`;
+  the queue handler must not fail/refund/clear BYOK credentials on suspension.
+- A resumed detector identifies jobs by `session_id + segment_id + SHA-256
+  payload_hash`. Completed jobs are reusable. A failed/expired/cancelled job
+  from the current queue attempt becomes the task's real error; after an
+  explicit retry (`session.queued_at > job.completed_at`) the transport creates
+  a new job instead of poisoning every future retry.
+- Source/one-click inline tasks still honor the same one-active-per-user index.
+  A second background task waits while queued and claims only after the first
+  becomes terminal. Do not apply `FOR UPDATE` to a `joinedload()` outer join;
+  lock only the `optimization_sessions` row and lazy-load the user as needed.
+- Provider concurrency stores only
+  `HMAC-SHA256(SECRET_KEY, raw_api_key)` identities in process memory. A 429
+  releases the key slot before bounded backoff. Streaming requests are never
+  replayed after any content has been emitted.
+- The single-process provider gate is valid for the documented one-worker
+  Compose topology. A multi-process/multi-VPS worker fleet requires a
+  distributed limiter before claiming the same guarantee.
+- Restic takes separately tagged snapshots for validated PostgreSQL dumps and
+  `/uploads`, applies retention per tag, restores uploads into an isolated
+  directory, and compares sorted per-file SHA-256 manifests. Run the proof in
+  a maintenance/read-only window so concurrent uploads cannot create a false
+  mismatch.
+- v2.1.0 migration and worker changes deploy in one short maintenance window;
+  v2.0.x and v2.1.0 workers must never claim concurrently.
+
+### 4. Validation & Error Matrix
+
+- Fourth unfinished task for one user -> HTTP 409; no session row or charge is
+  created by that request.
+- Two slots race for the same user -> advisory lock plus partial unique index
+  permits one active row; the other remains queued.
+- Browser job pending/running/manual -> `TaskSuspended`; session remains
+  `waiting_browser_agent`, credit remains held, worker slot is released.
+- Browser job completed -> normalize and consume the exact stored result even
+  after worker restart or immediate browser disconnect.
+- Browser job failed/expired/cancelled in the current attempt -> fail/refund
+  through the normal queue error path; explicit later retry creates a new job.
+- Same API Key exceeds configured capacity -> wait; a different BYOK Key may
+  enter immediately.
+- Provider 429 -> at most three attempts with at most eight seconds per delay;
+  no slot is held while sleeping.
+- Legacy `MAX_CONCURRENT_USERS=7` -> worker capacity 5 until an administrator
+  saves 5, 8, or 10.
+- Duplicate active rows before migration -> keep the oldest active row,
+  requeue later rows, then create the partial unique index.
+- Restored uploads manifest differs -> backup proof exits non-zero and the
+  snapshot is not treated as a proven restore.
+
+### 5. Good/Base/Bad Cases
+
+- Good: five users run, a sixth queues, and a Zhuque-waiting session releases
+  its slot while blocking only that same user's next queued task.
+- Base: 100 accounts may be online while only 5/8/10 tasks call providers;
+  account count is not processing concurrency.
+- Good retry: an expired Zhuque job fails the resumed task once; the user's
+  later retry creates one new browser job for the same payload.
+- Bad: keep a worker coroutine polling the browser for 900 seconds, use the raw
+  API Key as a limiter-map key, spawn multiple serial worker containers, or run
+  old/new worker generations together.
+- Bad inline: set a second same-user session to `processing` immediately and
+  let the partial index raise `IntegrityError`; the one-shot background task is
+  then lost and the session remains stuck.
+
+### 6. Tests Required
+
+- `test_task_queue.py`: five different users overlap, the same user's inline
+  tasks serialize, active browser waits block only that user, suspension keeps
+  held credit, hot capacity accepts 5/8/10 and safely maps legacy values to 5.
+- `test_alembic_migrations.py`: upgrading from revision 0010 requeues duplicate
+  active rows and installs the partial unique index with zero schema drift.
+- `test_browser_agent.py`: create/suspend, completion requeue, exact-result
+  resume, direct no-session compatibility, stop/cancel, and explicit retry
+  after a terminal failed job.
+- `test_ai_request_limiter.py`: same-key cap, different-key independence,
+  HMAC-only state, and slot release before 429 backoff.
+- `test_admin_audit_logs.py`: reject unsupported task/API-key tiers without
+  mutating the runtime env.
+- `test_docker_compose.py` and `test_release_workflow.py`: environment wiring,
+  `/uploads` read-only mount, restore/hash proof, extension tests, ZIP root,
+  checksum asset, and immutable Release upload behavior.
+- Final gate: versioned Vite build synced to `package/static`, extension syntax
+  and Node tests, full backend pytest, both Compose models, security scan, and
+  `git diff --check`.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```python
+# Occupies one global worker for the entire browser wait and stores a secret.
+limiter[raw_api_key] += 1
+result = await poll_browser_job(timeout=900)
+```
+
+```python
+# Can violate the partial unique index in inline mode.
+session.status = "processing"
+db.commit()
+```
+
+#### Correct
+
+```python
+identity = hmac.new(secret_key, raw_api_key, hashlib.sha256).hexdigest()
+job = create_durable_browser_job(session_id=session.id, payload_hash=payload_hash)
+raise TaskSuspended("waiting for browser agent", reason="browser_agent")
+```
+
+```python
+lock_user_claim(db, session.user_id)
+if another_active_session(db, session.user_id):
+    keep_queued_and_retry_later()
+else:
+    session.status = "processing"
+    db.commit()
+```

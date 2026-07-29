@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import {
   Download, FileText, GitCompare, ArrowLeft,
   CheckCircle, AlertCircle, Shield, Square, Activity,
-  Search, RefreshCw, Database, ChevronDown, ChevronUp
+  Search, RefreshCw, Database, ChevronDown, ChevronUp, Clock
 } from 'lucide-react';
 import { optimizationAPI } from '../api';
 import BrandLogo from '../components/BrandLogo';
@@ -142,7 +142,7 @@ const SessionDetailPage = () => {
       progressPollTimer = window.setInterval(() => {
         if (
           document.visibilityState === 'visible'
-          && ['queued', 'processing'].includes(sessionStatusRef.current)
+          && ['queued', 'processing', 'waiting_browser_agent'].includes(sessionStatusRef.current)
         ) {
           loadSessionDetail();
         }
@@ -893,7 +893,14 @@ const SessionDetailPage = () => {
                 </div>
               )}
 
-              {(session.status === 'processing' || session.status === 'queued') && (
+              {session.status === 'waiting_browser_agent' && (
+                <div className="aurora-status-pill aurora-status-pill-muted">
+                  <Clock className="h-4 w-4" />
+                  <span>等待本机朱雀插件</span>
+                </div>
+              )}
+
+              {(['processing', 'queued', 'waiting_browser_agent'].includes(session.status)) && (
                 <button
                   onClick={handleStop}
                   className="aurora-stop-button"

@@ -16,7 +16,10 @@ x-runtime-environment: &runtime-environment
   EMOTION_BASE_URL: ${EMOTION_BASE_URL:-https://api.openai.com/v1}
   COMPRESSION_MODEL: ${COMPRESSION_MODEL:-gpt-5.5}
   COMPRESSION_BASE_URL: ${COMPRESSION_BASE_URL:-https://api.openai.com/v1}
-  MAX_CONCURRENT_USERS: ${MAX_CONCURRENT_USERS:-7}
+  MAX_CONCURRENT_USERS: ${MAX_CONCURRENT_USERS:-5}
+  API_KEY_CONCURRENCY: ${API_KEY_CONCURRENCY:-2}
+  MAX_PENDING_SESSIONS_PER_USER: ${MAX_PENDING_SESSIONS_PER_USER:-3}
+  TASK_WORKER_MAX_CONCURRENCY: ${TASK_WORKER_MAX_CONCURRENCY:-10}
   API_REQUEST_INTERVAL: ${API_REQUEST_INTERVAL:-6}
   ENABLE_VERBOSE_AI_LOGS: ${ENABLE_VERBOSE_AI_LOGS:-false}
   AUTH_RATE_LIMIT_PER_MINUTE: ${AUTH_RATE_LIMIT_PER_MINUTE:-10}
@@ -133,7 +136,6 @@ services:
       ENHANCE_API_KEY_FILE: /run/secrets/enhance_api_key
       EMOTION_API_KEY_FILE: /run/secrets/emotion_api_key
       COMPRESSION_API_KEY_FILE: /run/secrets/compression_api_key
-      TASK_WORKER_ID: ${TASK_WORKER_ID:-docker-worker-1}
     volumes: !override
       - type: bind
         source: ${GANKAIGC_HOST_PROJECT_DIR:-${PWD:-.}}/.env.runtime

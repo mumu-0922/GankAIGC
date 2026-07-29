@@ -252,6 +252,7 @@ const getSessionStatusLabel = (status) => {
     completed: '已完成',
     processing: '处理中',
     queued: '排队中',
+    waiting_browser_agent: '等待本机朱雀插件',
     failed: '失败',
     stopped: '已停止',
   };
@@ -260,7 +261,7 @@ const getSessionStatusLabel = (status) => {
 
 const getSessionStatusClass = (status) => {
   if (status === 'completed') return 'text-emerald-600';
-  if (status === 'processing' || status === 'queued') return 'text-[#2563eb]';
+  if (status === 'processing' || status === 'queued' || status === 'waiting_browser_agent') return 'text-[#2563eb]';
   if (status === 'failed') return 'text-rose-600';
   if (status === 'stopped') return 'text-orange-600';
   return 'text-slate-500';
@@ -271,6 +272,7 @@ const HISTORY_STATUS_FILTERS = [
   { id: 'completed', label: '已完成' },
   { id: 'processing', label: '处理中' },
   { id: 'queued', label: '排队中' },
+  { id: 'waiting_browser_agent', label: '等待本机朱雀插件' },
   { id: 'failed', label: '失败' },
   { id: 'stopped', label: '已停止' },
 ];
@@ -448,6 +450,7 @@ const SessionItem = memo(({ session, activeSession, projects, openProjectMenuSes
         {session.status === 'completed' && <FileText className="h-5 w-5" />}
         {session.status === 'processing' && <div className="h-5 w-5 rounded-full border-2 border-[#3b82f6]/25 border-t-[#3b82f6] animate-spin" />}
         {session.status === 'queued' && <Clock className="h-5 w-5" />}
+        {session.status === 'waiting_browser_agent' && <Clock className="h-5 w-5" />}
         {session.status === 'failed' && <AlertCircle className="h-5 w-5" />}
         {session.status === 'stopped' && <AlertCircle className="h-5 w-5" />}
       </div>
@@ -523,7 +526,7 @@ const SessionItem = memo(({ session, activeSession, projects, openProjectMenuSes
           </div>
         )}
 
-        {session.status === 'processing' && (
+        {(session.status === 'processing' || session.status === 'waiting_browser_agent') && (
           <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
             <div
               className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-indigo-500 transition-all duration-500 ease-out"
@@ -762,7 +765,7 @@ const WorkspacePage = () => {
 
       // 查找正在处理的会话
       const processing = response.data.find(
-        s => s.status === 'processing' || s.status === 'queued'
+        s => ['processing', 'queued', 'waiting_browser_agent'].includes(s.status)
       );
       setActiveSession(processing ? processing.session_id : null);
     } catch (error) {
@@ -2410,6 +2413,9 @@ const WorkspacePage = () => {
                     <span>进度：<span className="font-semibold text-slate-950">{session.current_position + 1}</span> / {session.total_segments} 段</span>
                     {session.status === 'queued' && queueStatus?.your_position && (
                       <span className="text-orange-500">排队第 {queueStatus.your_position} 位 (~{Math.ceil(queueStatus.estimated_wait_time / 60)}分)</span>
+                    )}
+                    {session.status === 'waiting_browser_agent' && (
+                      <span className="text-amber-600">等待本机朱雀插件检测，期间不占全站处理名额</span>
                     )}
                   </div>
                 </div>

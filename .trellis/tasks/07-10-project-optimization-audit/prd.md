@@ -15,6 +15,7 @@
 - 区分“已确认问题”“技术债/可维护性改进”“仅在特定部署模式下成立的条件项”。
 - 明确哪些现有机制已经足够，不重复提出仓库中已经落实的能力。
 - 推荐方案以单 VPS 的最小运维复杂度为约束；跨进程事件优先复用 PostgreSQL durable outbox + `LISTEN/NOTIFY`，暂不为此单独引入 Redis。
+- 当前目标为约 100 名注册用户、峰值约 10 名用户同时处理；继续使用 PostgreSQL durable queue，只有多 VPS/几十个 worker 或实测数据库成为瓶颈后才评估 Redis。
 
 ## Acceptance Criteria
 
@@ -29,6 +30,12 @@
 - [x] Phase 3 完成跨进程事件、队列真相和 worker lease/drain。
 - [ ] Phase 4–5 完成 Secrets、容器运行、备份恢复和不可变发布门禁。
 - [ ] Phase 6 的性能项必须有基准或查询计划证据后才实施。
+- [x] v2.1.0 允许管理员在 `5 / 8 / 10` 三档间热切换全站处理容量；降档不杀运行任务，只停止新领取。
+- [x] 同一用户最多 1 个运行或外部等待任务、2 个排队任务；平台与 BYOK 同等优先，按最早可运行用户公平领取。
+- [x] 浏览器插件等待不占全站处理槽位，但继续占该用户的活跃名额；插件完成/失败后由 PostgreSQL 持久化恢复任务，不依赖原 worker 进程存活。
+- [x] AI 请求按脱敏 Key 身份限流，单 Key 并发后台可选 `1 / 2 / 4`（默认 2），不同 BYOK Key 互不阻塞，`429` 退避不得重复扣费或重做已完成段落。
+- [x] v2.1.0 Release 自动附带可直接解压安装的 Chrome 插件 ZIP 及 SHA-256，README 与 Release Notes 同步安装、升级和版本要求。
+- [x] 加密 restic 异地备份同时覆盖已验证 PostgreSQL dump 与 `package/uploads`，并用隔离目录恢复及 SHA-256 比对证明上传文件可恢复。
 
 ## Confirmed Facts
 

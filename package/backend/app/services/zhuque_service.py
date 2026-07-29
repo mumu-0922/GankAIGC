@@ -424,9 +424,10 @@ class ZhuqueService:
             self._ensure_consumer_task()
             return
         if self._use_browser_agent_transport():
-            status = BrowserAgentZhuqueTransport(self.user_id).status()
-            if not status.get("ready"):
-                raise RuntimeError(status.get("message") or "本机浏览器插件未连接")
+            # Transport.detect() first consumes any durable completed job and
+            # only requires an online agent when it must create a new one.
+            # This lets a requeued session resume after a worker restart even
+            # if the browser closes immediately after posting its result.
             self._ready = True
             self._ensure_consumer_task()
             logger.info("[ZhuqueService:%s] browser-agent transport ready", self.owner_label)

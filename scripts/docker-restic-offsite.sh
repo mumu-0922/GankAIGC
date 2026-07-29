@@ -37,6 +37,7 @@ RESTIC_INTERVAL_SECONDS="${RESTIC_INTERVAL_SECONDS:-86400}"
 RESTIC_KEEP_DAILY="${RESTIC_KEEP_DAILY:-14}"
 RESTIC_KEEP_WEEKLY="${RESTIC_KEEP_WEEKLY:-8}"
 RESTIC_KEEP_MONTHLY="${RESTIC_KEEP_MONTHLY:-12}"
+VERIFY_UPLOADS_RESTORE="${VERIFY_UPLOADS_RESTORE:-false}"
 
 if [ -z "${RESTIC_REPOSITORY:-}" ] || [ -z "${RESTIC_PASSWORD:-}" ]; then
   echo "RESTIC_REPOSITORY and RESTIC_PASSWORD(_FILE) are required" >&2
@@ -53,13 +54,47 @@ run_offsite_backup() {
   restic backup /backups \
     --tag gankaigc-postgres \
     --exclude '*.partial.*'
+  restic backup /uploads \
+    --tag gankaigc-uploads \
+    --exclude '*.partial.*'
   restic forget \
     --tag gankaigc-postgres \
     --keep-daily "$RESTIC_KEEP_DAILY" \
     --keep-weekly "$RESTIC_KEEP_WEEKLY" \
-    --keep-monthly "$RESTIC_KEEP_MONTHLY" \
-    --prune
+    --keep-monthly "$RESTIC_KEEP_MONTHLY"
+  restic forget \
+    --tag gankaigc-uploads \
+    --keep-daily "$RESTIC_KEEP_DAILY" \
+    --keep-weekly "$RESTIC_KEEP_WEEKLY" \
+    --keep-monthly "$RESTIC_KEEP_MONTHLY"
+  restic prune
   restic check --read-data-subset=5%
+
+  if [ "$VERIFY_UPLOADS_RESTORE" = "true" ]; then
+    restore_root="$(mktemp -d /tmp/gankaigc-uploads-restore.XXXXXX)"
+    source_manifest="$(mktemp /tmp/gankaigc-uploads-source.XXXXXX)"
+    restored_manifest="$(mktemp /tmp/gankaigc-uploads-restored.XXXXXX)"
+    trap 'rm -rf "$restore_root" "$source_manifest" "$restored_manifest"' EXIT HUP INT TERM
+    restic restore latest \
+      --tag gankaigc-uploads \
+      --target "$restore_root" \
+      --include /uploads
+    (
+      cd /uploads
+      find . -type f -exec sha256sum {} + | LC_ALL=C sort
+    ) > "$source_manifest"
+    (
+      cd "$restore_root/uploads"
+      find . -type f -exec sha256sum {} + | LC_ALL=C sort
+    ) > "$restored_manifest"
+    cmp -s "$source_manifest" "$restored_manifest" || {
+      echo "uploads isolated restore SHA-256 verification failed" >&2
+      exit 1
+    }
+    echo "uploads isolated restore SHA-256 verification passed"
+    rm -rf "$restore_root" "$source_manifest" "$restored_manifest"
+    trap - EXIT HUP INT TERM
+  fi
 }
 
 if [ "${RUN_ONCE:-false}" = "true" ]; then

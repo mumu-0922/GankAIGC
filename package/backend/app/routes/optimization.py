@@ -28,7 +28,12 @@ from app.services.browser_agent_service import BrowserAgentService
 from app.services.provider_config_service import ProviderConfigService
 from app.services.session_credentials import clear_transient_session_api_keys
 from app.services.stream_manager import stream_manager
-from app.services.task_queue import get_persistent_queue_status, process_session_by_id
+from app.services.task_queue import (
+    count_unfinished_sessions_for_user,
+    get_persistent_queue_status,
+    lock_user_submission,
+    process_session_by_id,
+)
 from app.services.optimization_service import parse_zhuque_segment_position
 from app.services.zhuque_service import zhuque_service, zhuque_user_data_root, zhuque_user_dir
 from app.services.zhuque_local_browser_transport import LocalBrowserZhuqueTransport
@@ -1100,6 +1105,19 @@ async def start_optimization(
     fallback_parsed_document = None
     if not use_parsed_segments:
         fallback_parsed_document = document_structure_service.classify_manual_text(data.original_text)
+
+    # Serialize concurrent submissions for this user in PostgreSQL. The lock is
+    # transaction-scoped and the count is repeated after all external preflight
+    # work, so parallel HTTP requests cannot both pass the three-task limit.
+    lock_user_submission(db, user.id)
+    unfinished_count = count_unfinished_sessions_for_user(db, user.id)
+    if unfinished_count >= max(1, settings.MAX_PENDING_SESSIONS_PER_USER):
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="每个用户最多保留 3 个未结束任务（1 个运行、2 个排队），请等待现有任务完成或停止后再提交。",
+        )
+
     session = OptimizationSession(
         user_id=user.id,
         session_id=session_id,
@@ -1866,6 +1884,19 @@ async def retry_session(
     if session.status not in ["failed", "stopped"]:
         raise HTTPException(status_code=400, detail="仅可对失败或已停止的会话执行重试")
 
+    lock_user_submission(db, user.id)
+    unfinished_count = count_unfinished_sessions_for_user(
+        db,
+        user.id,
+        exclude_session_id=session.id,
+    )
+    if unfinished_count >= max(1, settings.MAX_PENDING_SESSIONS_PER_USER):
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="已有 3 个未结束任务，请等待现有任务完成或停止后再重试。",
+        )
+
     requested_billing_mode = data.billing_mode if data else "keep"
     _apply_retry_billing_mode(
         session=session,
@@ -1916,8 +1947,8 @@ async def stop_session(
     if not session:
         raise HTTPException(status_code=404, detail="会话不存在")
 
-    if session.status not in ["queued", "processing"]:
-        raise HTTPException(status_code=400, detail="只能停止排队中或处理中的会话")
+    if session.status not in ["queued", "processing", "waiting_browser_agent"]:
+        raise HTTPException(status_code=400, detail="只能停止排队中、处理中的或等待浏览器插件的会话")
 
     # 更新状态为 stopped
     session.status = "stopped"

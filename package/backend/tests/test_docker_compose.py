@@ -59,6 +59,12 @@ def test_optional_offsite_backup_uses_encrypted_restic_repository():
     assert "read_only: true" in offsite_section
     assert "env_file:" not in offsite_section
     assert "restic backup /backups" in script
+    assert "restic backup /uploads" in script
+    assert "--tag gankaigc-uploads" in script
+    assert "target: /uploads" in offsite_section
+    assert "VERIFY_UPLOADS_RESTORE" in offsite_section
+    assert "restic restore latest" in script
+    assert "cmp -s \"$source_manifest\" \"$restored_manifest\"" in script
     assert "--exclude '*.partial.*'" in script
     assert "restic check --read-data-subset=5%" in script
 
@@ -105,6 +111,10 @@ def test_worker_has_bounded_drain_window_and_database_lease_settings():
     assert "TASK_WORKER_STALE_TIMEOUT_SECONDS=120" in env_example
     assert "TASK_WORKER_MAX_ATTEMPTS=3" in env_example
     assert "TASK_EVENT_POLL_INTERVAL_SECONDS=1" in env_example
+    assert "MAX_CONCURRENT_USERS=5" in env_example
+    assert "API_KEY_CONCURRENCY=2" in env_example
+    assert "MAX_PENDING_SESSIONS_PER_USER=3" in env_example
+    assert "TASK_WORKER_MAX_CONCURRENCY=10" in env_example
 
 
 def test_app_worker_and_migrator_drop_linux_capabilities():

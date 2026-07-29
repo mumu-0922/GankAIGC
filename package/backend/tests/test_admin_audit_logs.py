@@ -207,7 +207,7 @@ def test_config_update_audit_log_records_only_keys(client, tmp_path, monkeypatch
 
     response = client.post(
         "/api/admin/config",
-        json={"POLISH_API_KEY": "new-secret-value", "MAX_CONCURRENT_USERS": "3"},
+        json={"POLISH_API_KEY": "new-secret-value", "MAX_CONCURRENT_USERS": "5"},
         headers=headers,
     )
 
@@ -217,3 +217,27 @@ def test_config_update_audit_log_records_only_keys(client, tmp_path, monkeypatch
     assert logs[0]["target_type"] == "system_config"
     assert logs[0]["detail"] == {"updated_keys": ["POLISH_API_KEY", "MAX_CONCURRENT_USERS"]}
     assert "new-secret-value" not in str(logs[0])
+
+
+def test_config_update_rejects_unsupported_concurrency_tiers(client, tmp_path, monkeypatch):
+    env_file = tmp_path / ".env"
+    env_file.write_text("ADMIN_PASSWORD=test-admin-password\n", encoding="utf-8")
+    monkeypatch.setattr(config_module, "get_env_file_path", lambda: str(env_file))
+    headers = _admin_auth_headers(client)
+
+    task_response = client.post(
+        "/api/admin/config",
+        json={"MAX_CONCURRENT_USERS": "7"},
+        headers=headers,
+    )
+    key_response = client.post(
+        "/api/admin/config",
+        json={"API_KEY_CONCURRENCY": "3"},
+        headers=headers,
+    )
+
+    assert task_response.status_code == 400
+    assert "5 / 8 / 10" in task_response.json()["detail"]
+    assert key_response.status_code == 400
+    assert "1 / 2 / 4" in key_response.json()["detail"]
+    assert env_file.read_text(encoding="utf-8") == "ADMIN_PASSWORD=test-admin-password\n"

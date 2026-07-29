@@ -26,8 +26,9 @@ from app.models.browser_agent_constants import (
 )
 from app.models.models import BrowserAgent, BrowserAgentPairing, OptimizationSession, User, ZhuqueAgentJob
 from app.services.browser_agent_service import BrowserAgentService, hash_agent_token, hash_pairing_code
-from app.services.zhuque_browser_agent_transport import BrowserAgentJobFailed, BrowserAgentZhuqueTransport
+from app.services.zhuque_browser_agent_transport import BrowserAgentZhuqueTransport
 from app.services.zhuque_service import ZhuqueService
+from app.services.task_control import TaskSuspended
 from app.utils.auth import create_user_access_token, get_password_hash
 from app.utils.time import utcnow
 
@@ -611,7 +612,7 @@ async def _complete_first_browser_agent_job(user_id, agent_token, agent_id):
         db.close()
 
 
-def test_browser_agent_transport_detect_creates_job_and_returns_result(monkeypatch):
+def test_browser_agent_transport_suspends_requeues_and_resumes_exact_result(monkeypatch):
     monkeypatch.setattr(config_module.settings, "ZHUQUE_DETECT_TRANSPORT", "browser_agent", raising=False)
     monkeypatch.setattr(config_module.settings, "ZHUQUE_BROWSER_AGENT_JOB_TIMEOUT", 10, raising=False)
     user_id, _ = _create_user("transport-detect-user")
@@ -642,17 +643,46 @@ def test_browser_agent_transport_detect_creates_job_and_returns_result(monkeypat
     finally:
         db.close()
 
-    async def run_detect():
-        completer = asyncio.create_task(_complete_first_browser_agent_job(user_id, agent_token, "agent-transport-1"))
-        result = await BrowserAgentZhuqueTransport(user_id).detect(
+    with pytest.raises(TaskSuspended, match="等待本机朱雀插件"):
+        asyncio.run(
+            BrowserAgentZhuqueTransport(user_id).detect(
+                "本机浏览器检测正文",
+                timeout=10,
+                session_id=session_db_id,
+            )
+        )
+
+    db = SessionLocal()
+    try:
+        waiting_session = db.get(OptimizationSession, session_db_id)
+        assert waiting_session.status == "waiting_browser_agent"
+        service = BrowserAgentService(db)
+        agent = service.authenticate_agent(agent_token)
+        job = service.claim_next_zhuque_job(agent=agent, agent_id="agent-transport-1")
+        assert job is not None
+        service.complete_zhuque_job(
+            agent=agent,
+            job_id=job.job_id,
+            result={
+                "success": True,
+                "rate": 18.5,
+                "labels_ratio": {"0": 0.185, "1": 0.8, "2": 0.015},
+                "segment_labels": [],
+            },
+        )
+        db.refresh(waiting_session)
+        assert waiting_session.status == "queued"
+        assert waiting_session.worker_id is None
+    finally:
+        db.close()
+
+    result = asyncio.run(
+        BrowserAgentZhuqueTransport(user_id).detect(
             "本机浏览器检测正文",
             timeout=10,
             session_id=session_db_id,
         )
-        await completer
-        return result
-
-    result = asyncio.run(run_detect())
+    )
 
     assert result["success"] is True
     assert result["source"] == "browser_agent"
@@ -665,7 +695,86 @@ def test_browser_agent_transport_detect_creates_job_and_returns_result(monkeypat
         db.close()
 
 
-def test_stopping_session_cancels_browser_agent_job_and_releases_transport(client, monkeypatch):
+def test_browser_agent_transport_retry_creates_new_job_after_previous_terminal_failure(monkeypatch):
+    monkeypatch.setattr(config_module.settings, "ZHUQUE_DETECT_TRANSPORT", "browser_agent", raising=False)
+    user_id, _ = _create_user("transport-retry-user")
+    agent_token = "gba_transport_retry"
+    text = "重试时需要重新检测的正文"
+    db = SessionLocal()
+    try:
+        agent = BrowserAgent(
+            user_id=user_id,
+            agent_id="agent-transport-retry",
+            token_hash=hash_agent_token(agent_token),
+            status=BROWSER_AGENT_STATUS_ONLINE,
+            last_seen_at=utcnow(),
+        )
+        session = OptimizationSession(
+            user_id=user_id,
+            session_id="transport-retry-session",
+            original_text=text,
+            current_stage="ai_detect_reduce",
+            status="processing",
+            processing_mode="ai_detect_reduce",
+        )
+        db.add_all([agent, session])
+        db.commit()
+        db.refresh(session)
+
+        service = BrowserAgentService(db)
+        old_job = service.create_zhuque_job(
+            user_id=user_id,
+            session_id=session.id,
+            text=text,
+            timeout_seconds=120,
+        )
+        claimed = service.claim_next_zhuque_job(agent=agent, agent_id=agent.agent_id)
+        assert claimed is not None
+        old_job = service.fail_zhuque_job(
+            agent=agent,
+            job_id=old_job.job_id,
+            error_code="temporary_failure",
+            message="临时检测失败",
+            retryable=True,
+        )
+
+        # Emulate the user retrying after the resumed worker consumed the
+        # terminal failure. A retry must not be poisoned forever by that job.
+        session = db.get(OptimizationSession, session.id)
+        session.status = "processing"
+        session.queued_at = old_job.completed_at + timedelta(seconds=1)
+        session.started_at = session.queued_at
+        db.commit()
+        session_db_id = session.id
+    finally:
+        db.close()
+
+    with pytest.raises(TaskSuspended, match="等待本机朱雀插件"):
+        asyncio.run(
+            BrowserAgentZhuqueTransport(user_id).detect(
+                text,
+                session_id=session_db_id,
+            )
+        )
+
+    db = SessionLocal()
+    try:
+        jobs = (
+            db.query(ZhuqueAgentJob)
+            .filter(ZhuqueAgentJob.session_id == session_db_id)
+            .order_by(ZhuqueAgentJob.id.asc())
+            .all()
+        )
+        assert [job.status for job in jobs] == [
+            ZHUQUE_AGENT_JOB_STATUS_FAILED,
+            ZHUQUE_AGENT_JOB_STATUS_PENDING,
+        ]
+        assert db.get(OptimizationSession, session_db_id).status == "waiting_browser_agent"
+    finally:
+        db.close()
+
+
+def test_stopping_suspended_session_cancels_browser_agent_job(client, monkeypatch):
     monkeypatch.setattr(config_module.settings, "ZHUQUE_DETECT_TRANSPORT", "browser_agent", raising=False)
     monkeypatch.setattr(config_module.settings, "ZHUQUE_BROWSER_AGENT_JOB_TIMEOUT", 30, raising=False)
     user_id, user_token = _create_user("transport-stop-user")
@@ -698,24 +807,12 @@ def test_stopping_session_cancels_browser_agent_job_and_releases_transport(clien
         db.close()
 
     async def run_and_stop():
-        detect_task = asyncio.create_task(
-            BrowserAgentZhuqueTransport(user_id).detect(
+        with pytest.raises(TaskSuspended):
+            await BrowserAgentZhuqueTransport(user_id).detect(
                 "等待插件的检测正文",
                 timeout=30,
                 session_id=session_db_id,
             )
-        )
-        for _ in range(30):
-            db = SessionLocal()
-            try:
-                job = db.query(ZhuqueAgentJob).filter(ZhuqueAgentJob.session_id == session_db_id).first()
-            finally:
-                db.close()
-            if job:
-                break
-            await asyncio.sleep(0.05)
-        else:
-            raise AssertionError("browser-agent job was not created")
 
         stop_response = await asyncio.to_thread(
             client.post,
@@ -723,8 +820,6 @@ def test_stopping_session_cancels_browser_agent_job_and_releases_transport(clien
             headers={"Authorization": f"Bearer {user_token}"},
         )
         assert stop_response.status_code == 200
-        with pytest.raises(BrowserAgentJobFailed, match="任务已取消"):
-            await asyncio.wait_for(detect_task, timeout=3)
 
     asyncio.run(run_and_stop())
     db = SessionLocal()
@@ -736,6 +831,40 @@ def test_stopping_session_cancels_browser_agent_job_and_releases_transport(clien
     finally:
         db.close()
 
+
+def test_browser_agent_transport_without_session_keeps_direct_wait_compatibility(monkeypatch):
+    monkeypatch.setattr(config_module.settings, "ZHUQUE_DETECT_TRANSPORT", "browser_agent", raising=False)
+    monkeypatch.setattr(config_module.settings, "ZHUQUE_BROWSER_AGENT_JOB_TIMEOUT", 10, raising=False)
+    user_id, _ = _create_user("transport-direct-user")
+    agent_token = "gba_transport_direct"
+    db = SessionLocal()
+    try:
+        db.add(
+            BrowserAgent(
+                user_id=user_id,
+                agent_id="agent-transport-direct",
+                token_hash=hash_agent_token(agent_token),
+                status=BROWSER_AGENT_STATUS_ONLINE,
+                last_seen_at=utcnow(),
+            )
+        )
+        db.commit()
+    finally:
+        db.close()
+
+    async def run_direct_detect():
+        completer = asyncio.create_task(
+            _complete_first_browser_agent_job(user_id, agent_token, "agent-transport-direct")
+        )
+        result = await BrowserAgentZhuqueTransport(user_id).detect(
+            "无会话直接检测正文",
+            timeout=10,
+        )
+        await completer
+        return result
+
+    result = asyncio.run(run_direct_detect())
+    assert result["success"] is True
 
 def test_zhuque_service_browser_agent_readiness_and_start(monkeypatch):
     monkeypatch.setattr(config_module.settings, "ZHUQUE_DETECT_TRANSPORT", "browser_agent", raising=False)
@@ -766,17 +895,16 @@ def test_zhuque_service_browser_agent_readiness_and_start(monkeypatch):
     asyncio.run(service.close())
 
 
-def test_zhuque_service_browser_agent_start_fails_without_online_agent(monkeypatch):
+def test_zhuque_service_browser_agent_start_allows_durable_result_resume(monkeypatch):
     monkeypatch.setattr(config_module.settings, "ZHUQUE_DETECT_TRANSPORT", "browser_agent", raising=False)
     user_id, _ = _create_user("service-browser-agent-offline-user")
     service = ZhuqueService(owner_label=f"user_{user_id}", user_id=user_id)
 
-    try:
-        asyncio.run(service.start())
-    except RuntimeError as exc:
-        assert "插件" in str(exc)
-    else:
-        raise AssertionError("browser-agent start should fail without an online agent")
+    asyncio.run(service.start())
+    assert service.is_ready is True
+    readiness = asyncio.run(service.readiness("汉" * 400))
+    assert readiness["ready"] is False
+    asyncio.run(service.close())
 
 
 def test_browser_agent_models_persist_relationships():
