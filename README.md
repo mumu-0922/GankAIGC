@@ -1070,4 +1070,4 @@ QQ群：`1071743320`
 
 ## ⭐ Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=mumu-0922/GankAIGC&type=date&legend=top-left)](https://www.star-history.com/?repos=mumu-0922%2FGankAIGC&type=date&legend=top-left)
+[![Star History Chart](https://star-history.dera.page/svg?repos=mumu-0922/GankAIGC&type=date&legend=top-left)](https://star-history.dera.page/#mumu-0922/GankAIGC&type=date&legend=top-left)
